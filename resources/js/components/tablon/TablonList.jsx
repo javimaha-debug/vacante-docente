@@ -68,7 +68,7 @@ export default function TablonList() {
     const [categoria, setCategoria] = useState('');
     const [contactAnuncio, setContactAnuncio] = useState(null);
 
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, isError, error } = useQuery({
         queryKey: ['tablon', categoria],
         queryFn: async () => {
             const params = {};
@@ -101,10 +101,16 @@ export default function TablonList() {
                 ))}
             </div>
 
-            {isLoading ? (
+            {isError ? (
+                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
+                    {error?.friendlyMessage ?? 'No se pudo cargar el tablón.'}
+                </p>
+            ) : isLoading ? (
                 <p className="text-sm text-slate-400">Cargando…</p>
             ) : anuncios.length === 0 ? (
-                <p className="text-sm text-slate-400">No hay anuncios en esta categoría.</p>
+                <p className="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 shadow-sm ring-1 ring-slate-200">
+                    No hay anuncios en esta categoría todavía. ¡Publica el primero!
+                </p>
             ) : (
                 <ul className="space-y-3">
                     {anuncios.map((a) => {

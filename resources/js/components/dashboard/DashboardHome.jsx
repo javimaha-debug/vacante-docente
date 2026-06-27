@@ -34,7 +34,7 @@ function Empty({ children }) {
 }
 
 export default function DashboardHome() {
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, isError, error } = useQuery({
         queryKey: ['dashboard'],
         queryFn: async () => (await api.get('/user/dashboard')).data,
     });
@@ -46,6 +46,14 @@ export default function DashboardHome() {
 
     if (isLoading) {
         return <div className="flex h-40 items-center justify-center text-sm text-slate-400">Cargando…</div>;
+    }
+
+    if (isError) {
+        return (
+            <div className="mx-auto max-w-md rounded-2xl bg-rose-50 p-6 text-center text-sm text-rose-600">
+                {error?.friendlyMessage ?? 'No se pudo cargar el panel.'}
+            </div>
+        );
     }
 
     const procesos = data?.procesos_activos ?? [];

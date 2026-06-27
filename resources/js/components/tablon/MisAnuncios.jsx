@@ -13,7 +13,7 @@ const BADGES = {
 export default function MisAnuncios() {
     const queryClient = useQueryClient();
 
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, isError, error } = useQuery({
         queryKey: ['mis-anuncios'],
         queryFn: async () => (await api.get('/tablon/mis-anuncios')).data,
     });
@@ -32,10 +32,16 @@ export default function MisAnuncios() {
                 <Link to="/dashboard/tablon" className="text-sm text-brand-600 hover:underline">← Volver al tablón</Link>
             </div>
 
-            {isLoading ? (
+            {isError ? (
+                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
+                    {error?.friendlyMessage ?? 'No se pudieron cargar tus anuncios.'}
+                </p>
+            ) : isLoading ? (
                 <p className="text-sm text-slate-400">Cargando…</p>
             ) : anuncios.length === 0 ? (
-                <p className="text-sm text-slate-400">Todavía no has publicado anuncios.</p>
+                <p className="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 shadow-sm ring-1 ring-slate-200">
+                    Todavía no has publicado anuncios.
+                </p>
             ) : (
                 <ul className="space-y-3">
                     {anuncios.map((a) => (
