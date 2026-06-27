@@ -14,9 +14,10 @@ class ImportVacantesPdf extends Command
 {
     protected $signature = 'vacantes:import-pdf {path : Path to the GVA vacancies PDF}
                             {proceso_id : Proceso the vacancies belong to}
+                            {--format=orientacion : PDF layout — "orientacion" (specialty-section list) or "suprimidos" (per-row puesto)}
                             {--dry-run : Parse and report without writing to the database}';
 
-    protected $description = 'Parse a GVA vacancies PDF (2026 format) and import its rows for a proceso.';
+    protected $description = 'Parse a GVA vacancies PDF and import its rows for a proceso.';
 
     /** GVA centre-code province prefixes. */
     private const PROVINCE_PREFIXES = [
@@ -50,7 +51,11 @@ class ImportVacantesPdf extends Command
             return self::FAILURE;
         }
 
-        $parsed = $this->parseText($text);
+        $format = (string) $this->option('format');
+        $cuerpo = $proceso->colectivo?->body;
+        $now = Carbon::now();
+
+        $parsed = $format === 'suprimidos' ? $this->parseSuprimidosText($text) : $this->parseText($text);
 
         if (empty($parsed)) {
             $this->warn('No vacancy rows could be parsed from the PDF.');
@@ -58,31 +63,34 @@ class ImportVacantesPdf extends Command
             return self::SUCCESS;
         }
 
-        // Resolve specialty codes to ids, preferring the proceso's cuerpo.
-        $cuerpo = $proceso->colectivo?->body;
         $rows = [];
-        $now = Carbon::now();
         $unresolved = [];
 
-        foreach ($parsed as $r) {
-            $specialty = $this->resolveSpecialty($r['specialty_code'], $cuerpo);
+        foreach ($parsed as $i => $r) {
+            // Orientación rows carry a specialty code; suprimidos rows carry a
+            // free-text puesto that we match against specialty names.
+            $specialty = $format === 'suprimidos'
+                ? $this->resolveSpecialtyByName($r['puesto'], $cuerpo)
+                : $this->resolveSpecialty($r['specialty_code'], $cuerpo);
 
             if (! $specialty) {
-                $unresolved[$r['specialty_code']] = true;
+                $unresolved[$format === 'suprimidos' ? $r['puesto'] : $r['specialty_code']] = true;
 
                 continue;
             }
+
+            $num = $r['num'] ?? ($i + 1);
 
             $rows[] = [
                 'specialty_id' => $specialty->id,
                 'proceso_id' => $proceso->id,
                 'ccaa_id' => $proceso->ccaa_id,
-                'num' => $r['num'],
-                'num_orden' => $r['num'],
+                'num' => $num,
+                'num_orden' => $num,
                 'provincia' => $r['provincia'],
                 'localidad' => $r['localidad'],
-                'centro_codigo' => $r['codi'],
-                'codi_centre' => $r['codi'],
+                'centro_codigo' => $r['codi'] ?? '',
+                'codi_centre' => $r['codi'] ?? null,
                 'centro_nombre' => $r['centro'],
                 'tipo_centro' => $r['tipo_centro'],
                 'lloc' => $r['lloc'],
@@ -102,7 +110,7 @@ class ImportVacantesPdf extends Command
         $this->info('Parsed '.count($parsed).' rows; '.count($rows).' resolved to a known specialty.');
 
         if (! empty($unresolved)) {
-            $this->warn('Unresolved specialty codes (skipped): '.implode(', ', array_keys($unresolved)));
+            $this->warn('Unresolved (skipped): '.implode(' | ', array_keys($unresolved)));
         }
 
         if ($this->option('dry-run')) {
@@ -261,5 +269,156 @@ class ImportVacantesPdf extends Command
         }
 
         return $query->first();
+    }
+
+    /**
+     * Parse the "suprimidos" layout, where each row is a displaced post:
+     *   LLOC  DESCRIPCIÓ PUESTO  CENTRE  LOCALITAT  [RL]  [OBSERVACIONS]
+     * Columns are separated by 2+ spaces (pdftotext -layout). There is no
+     * specialty section header — the puesto description identifies it per row.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function parseSuprimidosText(string $text): array
+    {
+        $rows = [];
+
+        foreach (preg_split('/\r\n|\r|\n/', $text) as $line) {
+            $line = rtrim($line);
+
+            // A data row begins with the lloc code (4+ digits).
+            if (! preg_match('/^\s*(\d{4,})\s{2,}(.+)$/u', $line, $m)) {
+                continue;
+            }
+
+            $lloc = $m[1];
+            $cols = preg_split('/\s{2,}/', trim($m[2]));
+
+            $puesto = trim($cols[0] ?? '');
+            $centro = trim($cols[1] ?? '');
+            $localitat = trim($cols[2] ?? '');
+
+            // Optional requisit lingüístic column (SI/SÍ/S/NO/N), then observations.
+            $idx = 3;
+            $rl = '';
+            if (isset($cols[3]) && preg_match('/^(s[íi]?|no?)$/iu', trim($cols[3]))) {
+                $rl = trim($cols[3]);
+                $idx = 4;
+            }
+            $obs = trim(implode(' ', array_slice($cols, $idx)));
+
+            if ($puesto === '') {
+                continue;
+            }
+
+            // A centre code may appear inside the centre/observations text.
+            $codi = null;
+            if (preg_match('/(\d{8})/', $centro.' '.$obs, $cm)) {
+                $codi = $cm[1];
+            }
+
+            $reqLing = (bool) preg_match('/^s/iu', $rl) || $this->detectReqLing($obs);
+
+            $rows[] = [
+                'lloc' => $lloc,
+                'puesto' => $puesto,
+                'centro' => $centro,
+                'localidad' => $localitat,
+                'codi' => $codi,
+                'provincia' => $codi ? $this->provinceFromCode($codi) : 'València',
+                'tipo_centro' => $this->centerTypeFromName($centro),
+                'req_ling' => $reqLing,
+                'itinerante' => (bool) preg_match('/itinerant/iu', $obs),
+                'observaciones' => $obs !== '' ? $obs : null,
+                'num' => null,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Resolve a specialty from a free-text puesto description (Valencian or
+     * Spanish), preferring the proceso's cuerpo. Exact accent-insensitive match
+     * first, then a best fuzzy match above a similarity threshold.
+     */
+    /**
+     * Common Valencian puesto descriptions → GVA specialty code. Starting set;
+     * extend against the real suprimidos PDF as needed.
+     */
+    private const PUESTO_ALIASES = [
+        'orientacio educativa' => '117',
+        'matematiques' => '104',
+        'angles' => '109',
+        'frances' => '108',
+        'geografia i historia' => '103',
+        'llengua castellana i literatura' => '102',
+        'fisica i quimica' => '105',
+        'biologia i geologia' => '106',
+        'educacio fisica' => '116',
+        'musica' => '115',
+        'filosofia' => '101',
+        'tecnologia' => '114',
+        'economia' => '113',
+        'informatica' => '126',
+    ];
+
+    public function resolveSpecialtyByName(string $puesto, ?string $cuerpo): ?Specialty
+    {
+        $needle = $this->normalize($puesto);
+        if ($needle === '') {
+            return null;
+        }
+
+        // 1) Known Valencian alias → resolve by its specialty code.
+        if (isset(self::PUESTO_ALIASES[$needle])) {
+            $byCode = $this->resolveSpecialty(self::PUESTO_ALIASES[$needle], $cuerpo);
+            if ($byCode) {
+                return $byCode;
+            }
+        }
+
+        $candidates = Specialty::query()
+            ->when($cuerpo, fn ($q) => $q->where('cuerpo', $cuerpo))
+            ->get();
+
+        if ($candidates->isEmpty()) {
+            $candidates = Specialty::all();
+        }
+
+        $best = null;
+        $bestScore = 0.0;
+
+        foreach ($candidates as $specialty) {
+            $hay = $this->normalize($specialty->name);
+
+            if ($hay === $needle) {
+                return $specialty;
+            }
+
+            similar_text($needle, $hay, $percent);
+            if ($percent > $bestScore) {
+                $bestScore = $percent;
+                $best = $specialty;
+            }
+        }
+
+        // Only accept a fuzzy match when it is clearly the same puesto.
+        return $bestScore >= 85.0 ? $best : null;
+    }
+
+    /**
+     * Lower-case, accent-stripped, whitespace-collapsed form for matching.
+     */
+    private function normalize(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = strtr($value, [
+            'à' => 'a', 'á' => 'a', 'ä' => 'a', 'è' => 'e', 'é' => 'e', 'ë' => 'e',
+            'í' => 'i', 'ï' => 'i', 'ò' => 'o', 'ó' => 'o', 'ö' => 'o', 'ú' => 'u',
+            'ü' => 'u', 'ç' => 'c', 'ñ' => 'n',
+        ]);
+
+        return preg_replace('/\s+/', ' ', $value);
     }
 }
