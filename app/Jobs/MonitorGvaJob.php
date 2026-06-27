@@ -160,13 +160,20 @@ class MonitorGvaJob implements ShouldQueue
 
             $titulo = $text !== '' ? $text : basename(parse_url($href, PHP_URL_PATH) ?: $href);
 
+            // Flag participant-list PDFs so an admin can trigger their import.
+            $matched = $this->matchedKeywords($titulo);
+            if ($this->isParticipantPdf($href)) {
+                $matched[] = 'lista_participantes';
+            }
+
             $noticias[] = [
                 'titulo' => mb_substr($titulo, 0, 300),
                 'url' => mb_substr($href, 0, 500),
                 'fecha_publicacion' => null,
                 'tipo' => 'PDF',
                 'resumen' => null,
-                'keywords_matched' => $this->matchedKeywords($titulo),
+                // notificado stays false (default) so admins review/import it.
+                'keywords_matched' => array_values(array_unique($matched)),
             ];
         }
 
@@ -206,6 +213,14 @@ class MonitorGvaJob implements ShouldQueue
         }
 
         return $created;
+    }
+
+    /**
+     * Heuristic: does a PDF URL look like a participant list?
+     */
+    public function isParticipantPdf(string $url): bool
+    {
+        return (bool) preg_match('/participantes|participants|lis_/i', $url);
     }
 
     private function absoluteUrl(string $href, string $baseUrl): string

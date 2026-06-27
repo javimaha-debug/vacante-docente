@@ -1,10 +1,15 @@
 <?php
 
+use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\CentroController;
 use App\Http\Controllers\Api\DistanceController;
 use App\Http\Controllers\Api\GeocodeController;
 use App\Http\Controllers\Api\GvaController;
+use App\Http\Controllers\Api\ParticipanteController;
 use App\Http\Controllers\Api\PreferenceController;
+use App\Http\Controllers\Api\ProcesoController;
 use App\Http\Controllers\Api\SpecialtyController;
+use App\Http\Controllers\Api\TablonController;
 use App\Http\Controllers\Api\UserListController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\Api\VacancyController;
@@ -54,6 +59,23 @@ Route::prefix('v1')->group(function () {
     // GVA monitor (public): latest official notices.
     Route::get('gva/noticias', [GvaController::class, 'index']);
 
+    // Procesos (public): list + per-proceso vacancies with filters.
+    Route::get('procesos', [ProcesoController::class, 'index']);
+    Route::get('procesos/{proceso}/vacantes', [ProcesoController::class, 'vacantes']);
+
+    // Participant lists (public list + search).
+    Route::get('participantes/{proceso}', [ParticipanteController::class, 'index']);
+
+    // Centros directory (public): list + detail.
+    Route::get('centros', [CentroController::class, 'index']);
+    Route::get('centros/{codigo}', [CentroController::class, 'show']);
+
+    // Tablón de anuncios (public listing).
+    Route::get('tablon', [TablonController::class, 'index']);
+
+    // Address autocomplete (public, rate limited like geocode).
+    Route::get('geocode', [AddressController::class, 'suggest'])->middleware('throttle:geocode');
+
     // Authenticated teacher profile + dashboard (Sanctum bearer token).
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('user/me', [UserProfileController::class, 'me']);
@@ -62,5 +84,27 @@ Route::prefix('v1')->group(function () {
         Route::post('user/especialidades', [UserProfileController::class, 'storeEspecialidad']);
         Route::delete('user/especialidades/{specialty}', [UserProfileController::class, 'destroyEspecialidad']);
         Route::get('user/dashboard', [UserProfileController::class, 'dashboard']);
+
+        // Authenticated vacancy list (kanban) synced to the account.
+        Route::get('user/lista', [UserProfileController::class, 'lista']);
+        Route::put('user/lista/sync', [UserProfileController::class, 'syncLista']);
+
+        // Participant self-lookup.
+        Route::get('participantes/{proceso}/mi-posicion', [ParticipanteController::class, 'miPosicion']);
+
+        // Community contributions for a centro.
+        Route::post('centros/{codigo}/horarios', [CentroController::class, 'storeHorario']);
+        Route::post('centros/{codigo}/valoraciones', [CentroController::class, 'storeValoracion']);
+
+        // Tablón de anuncios (authenticated).
+        Route::get('tablon/mis-anuncios', [TablonController::class, 'misAnuncios']);
+        Route::post('tablon', [TablonController::class, 'store']);
+        Route::delete('tablon/{anuncio}', [TablonController::class, 'destroy']);
+        Route::post('tablon/{anuncio}/contactar', [TablonController::class, 'contactar']);
+        Route::get('tablon/{anuncio}/contactos', [TablonController::class, 'contactos']);
+        Route::post('tablon/contactos/{contacto}/responder', [TablonController::class, 'responder']);
+
+        // GVA admin review (id=1 or is_admin).
+        Route::get('admin/gva-noticias', [GvaController::class, 'adminUnnotified']);
     });
 });

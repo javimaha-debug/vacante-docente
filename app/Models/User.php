@@ -35,6 +35,7 @@ class User extends Authenticatable
         'notificaciones_email',
         'avatar_url',
         'locale',
+        'is_admin',
     ];
 
     /**
@@ -61,7 +62,13 @@ class User extends Authenticatable
             'notificaciones_email' => 'boolean',
             'lat_origen' => 'decimal:8',
             'lng_origen' => 'decimal:8',
+            'is_admin' => 'boolean',
         ];
+    }
+
+    public function lists(): HasMany
+    {
+        return $this->hasMany(UserList::class);
     }
 
     public function ccaa(): BelongsTo

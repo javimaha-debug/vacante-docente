@@ -66,6 +66,45 @@ class GoogleMapsService
     }
 
     /**
+     * Return up to $limit address suggestions for autocomplete-style input.
+     *
+     * @return array<int, array{formatted_address: string, lat: float, lng: float}>
+     */
+    public function suggestAddresses(string $address, int $limit = 5): array
+    {
+        $this->ensureConfigured();
+
+        $response = Http::timeout(15)->get(self::GEOCODE_URL, [
+            'address' => $address,
+            'region' => 'es',
+            'language' => 'es',
+            'key' => $this->apiKey,
+        ]);
+
+        $data = $response->json();
+        $status = $data['status'] ?? 'UNKNOWN_ERROR';
+
+        if ($status === 'ZERO_RESULTS') {
+            return [];
+        }
+
+        if (! $response->successful() || $status !== 'OK' || empty($data['results'])) {
+            Log::warning('Geocoding suggest failed', ['status' => $status, 'address' => $address]);
+
+            return [];
+        }
+
+        return collect($data['results'])
+            ->take($limit)
+            ->map(fn (array $result) => [
+                'formatted_address' => $result['formatted_address'] ?? $address,
+                'lat' => (float) ($result['geometry']['location']['lat'] ?? 0),
+                'lng' => (float) ($result['geometry']['location']['lng'] ?? 0),
+            ])
+            ->all();
+    }
+
+    /**
      * Compute travel time/distance from a home coordinate to a vacancy's centre.
      *
      * @return array{duration_minutes: int|null, distance_km: float|null, traffic_note: string|null}|null

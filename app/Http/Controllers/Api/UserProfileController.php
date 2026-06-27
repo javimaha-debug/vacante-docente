@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\VacancyResource;
 use App\Models\Proceso;
 use App\Models\User;
 use App\Models\UserEspecialidad;
+use App\Models\UserList;
+use App\Models\Vacancy;
 use App\Services\GoogleMapsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class UserProfileController extends Controller
@@ -42,6 +46,8 @@ class UserProfileController extends Controller
         $data = $request->validate([
             'nombre_gva' => ['sometimes', 'nullable', 'string', 'max:200'],
             'direccion_origen' => ['sometimes', 'nullable', 'string', 'max:300'],
+            'lat_origen' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'lng_origen' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
             'locale' => ['sometimes', 'in:es,ca'],
             'notificaciones_email' => ['sometimes', 'boolean'],
             'colectivo_id' => ['sometimes', 'nullable', 'integer', 'exists:colectivos,id'],
@@ -52,9 +58,18 @@ class UserProfileController extends Controller
         $addressChanged = array_key_exists('direccion_origen', $data)
             && $data['direccion_origen'] !== $user->direccion_origen;
 
-        $user->fill($data);
+        // Coordinates verified client-side (a suggestion was selected) take
+        // precedence; only the address text fields get mass-assigned otherwise.
+        $coordsProvided = array_key_exists('lat_origen', $data) && array_key_exists('lng_origen', $data)
+            && $data['lat_origen'] !== null && $data['lng_origen'] !== null;
 
-        if ($addressChanged) {
+        $user->fill(collect($data)->except(['lat_origen', 'lng_origen'])->all());
+
+        if ($coordsProvided) {
+            $user->lat_origen = $data['lat_origen'];
+            $user->lng_origen = $data['lng_origen'];
+        } elseif ($addressChanged) {
+            // Fallback: geocode server-side when no verified coordinates given.
             $this->geocodeHomeAddress($user, $data['direccion_origen']);
         }
 
@@ -186,6 +201,121 @@ class UserProfileController extends Controller
             'proximos_plazos' => $proximosPlazos,
             'resumen_historial' => $resumenHistorial,
         ]);
+    }
+
+    /**
+     * The authenticated user's ordered (selected) vacancy list.
+     */
+    public function lista(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'specialty_id' => ['sometimes', 'nullable', 'integer', 'exists:specialties,id'],
+            'proceso_id' => ['sometimes', 'nullable', 'integer', 'exists:procesos,id'],
+        ]);
+
+        $user = $request->user();
+        $procesoId = $data['proceso_id'] ?? $this->defaultProcesoId($user);
+
+        $lists = UserList::query()
+            ->where('user_id', $user->id)
+            ->when($procesoId, fn ($q) => $q->where('proceso_id', $procesoId))
+            ->when(! empty($data['specialty_id']), fn ($q) => $q->where('specialty_id', $data['specialty_id']))
+            ->pluck('id');
+
+        $items = [];
+        if ($lists->isNotEmpty()) {
+            $prefs = \App\Models\UserVacancyPreference::query()
+                ->with('vacancy')
+                ->whereIn('user_list_id', $lists)
+                ->where('status', 'selected')
+                ->orderBy('position')
+                ->get();
+
+            $items = $prefs->filter(fn ($p) => $p->vacancy)->map(function ($p) {
+                return array_merge(
+                    (new VacancyResource($p->vacancy))->toArray(request()),
+                    ['notes' => $p->notes, 'position' => $p->position, 'status' => $p->status],
+                );
+            })->values()->all();
+        }
+
+        return response()->json([
+            'proceso_id' => $procesoId,
+            'items' => $items,
+        ]);
+    }
+
+    /**
+     * Persist the full ordered list coming from the SPA for the logged-in user.
+     */
+    public function syncLista(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'specialty_id' => ['required', 'integer', 'exists:specialties,id'],
+            'proceso_id' => ['sometimes', 'nullable', 'integer', 'exists:procesos,id'],
+            'items' => ['present', 'array'],
+            'items.*.vacancy_id' => ['required', 'integer', 'exists:vacancies,id'],
+            'items.*.position' => ['nullable', 'integer'],
+            'items.*.status' => ['nullable', 'in:selected,discarded,neutral'],
+            'items.*.notes' => ['nullable', 'string'],
+        ]);
+
+        $user = $request->user();
+        $list = $this->findOrCreateUserList($user, $data['specialty_id'], $data['proceso_id'] ?? null);
+
+        DB::transaction(function () use ($list, $data) {
+            // Replace this list's preferences with the incoming ordered set.
+            $list->preferences()->delete();
+
+            $rows = [];
+            foreach ($data['items'] as $i => $item) {
+                $rows[] = [
+                    'user_list_id' => $list->id,
+                    'vacancy_id' => $item['vacancy_id'],
+                    'position' => $item['position'] ?? ($i + 1),
+                    'status' => $item['status'] ?? 'selected',
+                    'notes' => $item['notes'] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            foreach (array_chunk($rows, 100) as $chunk) {
+                DB::table('user_vacancy_preferences')->insert($chunk);
+            }
+        });
+
+        return response()->json([
+            'list_id' => $list->id,
+            'proceso_id' => $list->proceso_id,
+            'saved' => count($data['items']),
+        ]);
+    }
+
+    private function findOrCreateUserList(User $user, int $specialtyId, ?int $procesoId): UserList
+    {
+        // Synthetic session_token keeps the existing NOT NULL + unique
+        // (session_token, specialty_id) constraint satisfied for auth lists.
+        $token = 'auth-'.$user->id.'-'.($procesoId ?? 0).'-'.$specialtyId;
+
+        return UserList::firstOrCreate(
+            [
+                'user_id' => $user->id,
+                'proceso_id' => $procesoId,
+                'specialty_id' => $specialtyId,
+            ],
+            ['session_token' => $token],
+        );
+    }
+
+    private function defaultProcesoId(User $user): ?int
+    {
+        return Proceso::query()
+            ->where('estado', 'publicado')
+            ->when($user->ccaa_id, fn ($q) => $q->where('ccaa_id', $user->ccaa_id))
+            ->when($user->colectivo_id, fn ($q) => $q->where('colectivo_id', $user->colectivo_id))
+            ->orderByDesc('anyo')
+            ->value('id');
     }
 
     /**
