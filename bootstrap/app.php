@@ -13,8 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // API routes are stateless; the SPA identifies the user via a
-        // client-generated session_token, so no auth middleware is needed yet.
+        // Public API routes are stateless (client-generated session_token);
+        // authenticated routes use Sanctum bearer tokens (no session/CSRF).
+        // The OAuth logout endpoint is a web route called with a bearer token,
+        // so it is exempt from CSRF verification.
+        $middleware->validateCsrfTokens(except: [
+            'auth/logout',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Always render API errors as JSON for the SPA / API consumers.

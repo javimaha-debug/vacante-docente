@@ -2,6 +2,7 @@ import '../css/app.css';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import Layout from './components/Layout';
 import SpecialtySelector from './components/SpecialtySelector';
@@ -12,9 +13,16 @@ import SortableList from './components/SortableList';
 import VacancyCard from './components/VacancyCard';
 import ExportPanel from './components/ExportPanel';
 
+import LoginPage from './components/auth/LoginPage';
+import Dashboard from './components/dashboard/Dashboard';
+import DashboardHome from './components/dashboard/DashboardHome';
+import UserProfile from './components/dashboard/UserProfile';
+import MisEspecialidades from './components/dashboard/MisEspecialidades';
+
 import { useUserList } from './hooks/useUserList';
 import { useVacancies } from './hooks/useVacancies';
 import { useDistances } from './hooks/useDistances';
+import { AuthContext, useAuth, useProvideAuth } from './hooks/useAuth';
 import { getSpecialtyId, setSpecialtyId, clearSpecialty } from './lib/session';
 
 const queryClient = new QueryClient({
@@ -23,10 +31,10 @@ const queryClient = new QueryClient({
 
 const EMPTY_FILTERS = { search: '', provincia: '', tiposCentro: [], tags: [] };
 
-function Organizer({ specialtyId, onChangeSpecialty }) {
+function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
     const [filters, setFilters] = useState(EMPTY_FILTERS);
     const [showDiscarded, setShowDiscarded] = useState(false);
-    const [viewMode, setViewMode] = useState('kanban');
+    const [viewMode, setViewMode] = useState(initialView);
     const [exporting, setExporting] = useState(false);
     const notesTimers = useRef({});
 
@@ -203,7 +211,9 @@ function ListView({ selected, neutral, onStatusChange, onNotesChange, onReorder,
     );
 }
 
-function App() {
+// Existing vacancy explorer flow (specialty selection → kanban/list organizer).
+// Rendered inside the dashboard at /dashboard/vacantes and /dashboard/lista.
+function VacancyExplorer({ initialView = 'kanban' }) {
     const [specialtyId, setActiveSpecialty] = useState(getSpecialtyId());
     const [isSelecting, setIsSelecting] = useState(false);
 
@@ -223,11 +233,82 @@ function App() {
         return <SpecialtySelector onSelect={handleSelect} isSelecting={isSelecting} />;
     }
 
-    return <Organizer specialtyId={specialtyId} onChangeSpecialty={handleChangeSpecialty} />;
+    return (
+        <div className="-m-4 h-full sm:-m-6">
+            <Organizer
+                specialtyId={specialtyId}
+                onChangeSpecialty={handleChangeSpecialty}
+                initialView={initialView}
+            />
+        </div>
+    );
+}
+
+function ComingSoon({ title }) {
+    return (
+        <div className="mx-auto max-w-md rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
+            <h1 className="text-lg font-bold text-slate-800">{title}</h1>
+            <p className="mt-2 text-sm text-slate-400">Esta sección estará disponible próximamente.</p>
+        </div>
+    );
+}
+
+function Spinner() {
+    return <div className="flex h-full items-center justify-center text-sm text-slate-400">Cargando…</div>;
+}
+
+// Provides shared auth state to the tree.
+function AuthProvider({ children }) {
+    const auth = useProvideAuth();
+    return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+}
+
+// Gate for the dashboard: wait for the user to load, redirect to login if absent.
+function RequireAuth({ children }) {
+    const { isAuthenticated, loading } = useAuth();
+    if (loading) return <Spinner />;
+    if (!isAuthenticated) return <Navigate to="/" replace />;
+    return children;
+}
+
+// Root: authenticated users go to the dashboard, everyone else sees login.
+function RootRoute() {
+    const { isAuthenticated, loading } = useAuth();
+    if (loading) return <Spinner />;
+    return isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />;
+}
+
+function AppRoutes() {
+    return (
+        <Routes>
+            <Route path="/" element={<RootRoute />} />
+            <Route
+                path="/dashboard"
+                element={
+                    <RequireAuth>
+                        <Dashboard />
+                    </RequireAuth>
+                }
+            >
+                <Route index element={<DashboardHome />} />
+                <Route path="perfil" element={<UserProfile />} />
+                <Route path="especialidades" element={<MisEspecialidades />} />
+                <Route path="vacantes" element={<VacancyExplorer initialView="kanban" />} />
+                <Route path="lista" element={<VacancyExplorer initialView="list" />} />
+                <Route path="centros" element={<ComingSoon title="Centros" />} />
+                <Route path="tablon" element={<ComingSoon title="Tablón" />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    );
 }
 
 createRoot(document.getElementById('app')).render(
     <QueryClientProvider client={queryClient}>
-        <App />
+        <BrowserRouter>
+            <AuthProvider>
+                <AppRoutes />
+            </AuthProvider>
+        </BrowserRouter>
     </QueryClientProvider>
 );
