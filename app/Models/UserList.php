@@ -14,6 +14,8 @@ class UserList extends Model
     protected $fillable = [
         'session_token',
         'specialty_id',
+        'user_id',
+        'proceso_id',
         'home_address',
         'home_lat',
         'home_lng',
@@ -30,6 +32,16 @@ class UserList extends Model
     public function specialty(): BelongsTo
     {
         return $this->belongsTo(Specialty::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function proceso(): BelongsTo
+    {
+        return $this->belongsTo(Proceso::class);
     }
 
     public function preferences(): HasMany

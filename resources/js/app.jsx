@@ -1,5 +1,5 @@
 import '../css/app.css';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -12,16 +12,23 @@ import KanbanBoard from './components/KanbanBoard';
 import SortableList from './components/SortableList';
 import VacancyCard from './components/VacancyCard';
 import ExportPanel from './components/ExportPanel';
+import ProcesoSelector from './components/ProcesoSelector';
 
 import LoginPage from './components/auth/LoginPage';
 import Dashboard from './components/dashboard/Dashboard';
 import DashboardHome from './components/dashboard/DashboardHome';
 import UserProfile from './components/dashboard/UserProfile';
 import MisEspecialidades from './components/dashboard/MisEspecialidades';
+import CentrosList from './components/centros/CentrosList';
+import CentroDetail from './components/centros/CentroDetail';
+import TablonList from './components/tablon/TablonList';
+import TablonForm from './components/tablon/TablonForm';
+import MisAnuncios from './components/tablon/MisAnuncios';
 
 import { useUserList } from './hooks/useUserList';
 import { useVacancies } from './hooks/useVacancies';
 import { useDistances } from './hooks/useDistances';
+import { useListSync } from './hooks/useListSync';
 import { AuthContext, useAuth, useProvideAuth } from './hooks/useAuth';
 import { getSpecialtyId, setSpecialtyId, clearSpecialty } from './lib/session';
 
@@ -36,14 +43,25 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
     const [showDiscarded, setShowDiscarded] = useState(false);
     const [viewMode, setViewMode] = useState(initialView);
     const [exporting, setExporting] = useState(false);
+    const [procesoId, setProcesoId] = useState(null);
     const notesTimers = useRef({});
+    const hydratedRef = useRef(false);
+
+    const { isAuthenticated, user } = useAuth();
 
     const { list, listId, preferences, savePreferences, updateAddress, geocode } = useUserList(specialtyId);
     const distances = useDistances(listId);
     const { vacancies, total, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useVacancies(
         specialtyId,
-        filters
+        filters,
+        procesoId
     );
+
+    const { status: syncStatus, savedItems, isHydrating, sync } = useListSync({
+        specialtyId,
+        procesoId,
+        enabled: isAuthenticated,
+    });
 
     // Preference lookup + derived columns.
     const prefByVacancy = useMemo(() => {
@@ -63,6 +81,40 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
         (rows) => savePreferences.mutate(rows),
         [savePreferences]
     );
+
+    // Logged-in users: hydrate the kanban once from the account-saved list,
+    // then keep the account in sync as the selection changes (debounced).
+    useEffect(() => {
+        if (!isAuthenticated) {
+            hydratedRef.current = true;
+            return;
+        }
+        if (hydratedRef.current || isHydrating || !listId) return;
+
+        if (savedItems.length && selected.length === 0) {
+            persist(
+                savedItems.map((it, i) => ({
+                    vacancy_id: it.id,
+                    status: 'selected',
+                    position: it.position ?? i + 1,
+                    notes: it.notes ?? null,
+                }))
+            );
+        }
+        hydratedRef.current = true;
+    }, [isAuthenticated, isHydrating, savedItems, selected.length, listId, persist]);
+
+    useEffect(() => {
+        if (!isAuthenticated || !hydratedRef.current) return;
+        sync(
+            selected.map((p, i) => ({
+                vacancy_id: p.vacancy_id,
+                position: p.position ?? i + 1,
+                status: 'selected',
+                notes: p.notes ?? null,
+            }))
+        );
+    }, [selected, isAuthenticated, sync]);
 
     const handleStatusChange = useCallback(
         (vacancyId, status) => {
@@ -112,6 +164,20 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
 
     const sidebar = (
         <div className="space-y-5">
+            <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
+                <ProcesoSelector
+                    value={procesoId}
+                    onChange={setProcesoId}
+                    colectivoBody={user?.colectivo?.body ?? null}
+                />
+                {isAuthenticated && (
+                    <p className="mt-2 text-xs font-medium text-slate-400">
+                        {syncStatus === 'saving' && <span className="text-amber-600">Guardando…</span>}
+                        {syncStatus === 'saved' && <span className="text-green-600">Guardado ✓</span>}
+                        {syncStatus === 'idle' && <span>Tu lista se guarda en tu cuenta</span>}
+                    </p>
+                )}
+            </div>
             <HomeAddressPanel list={list} geocode={geocode} distances={distances} selectedCount={selected.length} />
             <FiltersPanel
                 filters={filters}
@@ -295,8 +361,11 @@ function AppRoutes() {
                 <Route path="especialidades" element={<MisEspecialidades />} />
                 <Route path="vacantes" element={<VacancyExplorer initialView="kanban" />} />
                 <Route path="lista" element={<VacancyExplorer initialView="list" />} />
-                <Route path="centros" element={<ComingSoon title="Centros" />} />
-                <Route path="tablon" element={<ComingSoon title="Tablón" />} />
+                <Route path="centros" element={<CentrosList />} />
+                <Route path="centros/:codigo" element={<CentroDetail />} />
+                <Route path="tablon" element={<TablonList />} />
+                <Route path="tablon/nuevo" element={<TablonForm />} />
+                <Route path="tablon/mis-anuncios" element={<MisAnuncios />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
