@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function HomeAddressPanel({ list, geocode, distances, selectedCount }) {
+export default function HomeAddressPanel({ list, geocode, distances, vacancyIds = [] }) {
     const [address, setAddress] = useState(list?.home_address ?? '');
     const [status, setStatus] = useState('idle'); // idle | geocoding | calculating | done | error
     const [message, setMessage] = useState(null);
@@ -14,9 +14,9 @@ export default function HomeAddressPanel({ list, geocode, distances, selectedCou
             setMessage('Introduce una dirección de origen.');
             return;
         }
-        if (selectedCount === 0) {
+        if (vacancyIds.length === 0) {
             setStatus('error');
-            setMessage('Selecciona al menos una vacante para calcular distancias.');
+            setMessage('No hay vacantes cargadas para calcular distancias.');
             return;
         }
 
@@ -26,8 +26,10 @@ export default function HomeAddressPanel({ list, geocode, distances, selectedCou
             await geocode.mutateAsync(address.trim());
 
             setStatus('calculating');
-            setMessage(`Calculando distancias para ${selectedCount} centros…`);
-            const res = await distances.calculate.mutateAsync('all');
+            setMessage(`Calculando distancias para ${vacancyIds.length} vacantes…`);
+            // Driving time/distance for every loaded vacancy — no need to
+            // select them first, so the list can be organized by distance.
+            const res = await distances.calculate.mutateAsync({ mode: 'driving', vacancyIds });
 
             setResultCount(res.count);
             setStatus(res.error ? 'error' : 'done');
@@ -79,7 +81,7 @@ export default function HomeAddressPanel({ list, geocode, distances, selectedCou
                     )}
                     {status === 'done' && (
                         <p className="rounded-md bg-emerald-50 px-2 py-1.5 font-medium text-emerald-700">
-                            ✓ Distancias calculadas para {resultCount} centros seleccionados.
+                            ✓ Distancias calculadas para {resultCount} vacantes. Ordena por distancia para organizar.
                         </p>
                     )}
                     {status === 'error' && (
