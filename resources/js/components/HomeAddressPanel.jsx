@@ -26,16 +26,32 @@ export default function HomeAddressPanel({ list, geocode, distances, vacancyIds 
             await geocode.mutateAsync(address.trim());
 
             setStatus('calculating');
-            setMessage(`Calculando distancias para ${vacancyIds.length} vacantes…`);
             // Driving time/distance for every loaded vacancy — no need to
             // select them first, so the list can be organized by distance.
-            const res = await distances.calculate.mutateAsync({ mode: 'driving', vacancyIds });
+            // The server computes in capped chunks (cache-first); we re-call
+            // with the same ids until nothing remains, showing progress.
+            const total = vacancyIds.length;
+            let res = null;
+            let remaining = total;
+            let lastRemaining = Infinity;
+            let guard = 0;
 
-            setResultCount(res.count);
-            setStatus(res.error ? 'error' : 'done');
+            do {
+                setMessage(`Calculando distancias… ${total - remaining}/${total}`);
+                res = await distances.calculate.mutateAsync({ mode: 'driving', vacancyIds });
+                remaining = res.remaining ?? 0;
+                // Stop if a round makes no progress (e.g. API error) to avoid looping.
+                if (remaining >= lastRemaining) break;
+                lastRemaining = remaining;
+                guard += 1;
+            } while (remaining > 0 && guard < 50);
+
+            setResultCount(res?.count ?? 0);
+            const failed = res?.error || remaining > 0;
+            setStatus(failed ? 'error' : 'done');
             setMessage(
-                res.error
-                    ? 'Algunas distancias no se pudieron calcular. Revisa la clave de Google Maps.'
+                failed
+                    ? 'Algunas distancias no se pudieron calcular. Revisa la clave de Google Maps e inténtalo de nuevo.'
                     : null
             );
         } catch (err) {

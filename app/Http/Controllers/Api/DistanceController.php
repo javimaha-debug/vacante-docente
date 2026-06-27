@@ -13,6 +13,9 @@ use RuntimeException;
 
 class DistanceController extends Controller
 {
+    /** Max new Google lookups per request; the client loops until done. */
+    private const MAX_LOOKUPS_PER_REQUEST = 250;
+
     public function __construct(
         private readonly GoogleMapsService $maps,
         private readonly DistanceCacheRepository $cache,
@@ -58,6 +61,12 @@ class DistanceController extends Controller
 
         $apiError = null;
 
+        // Cap how many *new* Google lookups happen per request so a 1000+
+        // vacancy list never blocks on ~40 sequential API calls. The client
+        // re-calls with the same ids (cache-first) until `remaining` is 0.
+        $budget = self::MAX_LOOKUPS_PER_REQUEST;
+        $remaining = 0;
+
         // Compute each mode in batches, hitting the cache first.
         foreach ($modes as $mode) {
             $uncached = [];
@@ -75,9 +84,18 @@ class DistanceController extends Controller
                 continue;
             }
 
+            // Only process up to the remaining budget this request; defer the rest.
+            $toProcess = $budget > 0 ? array_slice($uncached, 0, $budget) : [];
+            $budget -= count($toProcess);
+            $remaining += count($uncached) - count($toProcess);
+
+            if (empty($toProcess)) {
+                continue;
+            }
+
             try {
-                $batch = $this->maps->distancesToVacancies($homeLat, $homeLng, $uncached, $mode);
-                foreach ($uncached as $vacancy) {
+                $batch = $this->maps->distancesToVacancies($homeLat, $homeLng, $toProcess, $mode);
+                foreach ($toProcess as $vacancy) {
                     $payload = $batch[$vacancy->id] ?? [
                         'duration_minutes' => null, 'distance_km' => null, 'traffic_note' => 'NO_RESULT',
                     ];
@@ -86,7 +104,7 @@ class DistanceController extends Controller
                 }
             } catch (RuntimeException $e) {
                 $apiError = $e->getMessage();
-                foreach ($uncached as $vacancy) {
+                foreach ($toProcess as $vacancy) {
                     $entries[$vacancy->id][$mode] = null;
                 }
             }
@@ -95,6 +113,7 @@ class DistanceController extends Controller
         return response()->json([
             'results' => array_values($entries),
             'count' => count($entries),
+            'remaining' => $remaining,
             'modes' => $modes,
             'error' => $apiError,
         ]);
