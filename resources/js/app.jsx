@@ -24,6 +24,7 @@ import CentroDetail from './components/centros/CentroDetail';
 import TablonList from './components/tablon/TablonList';
 import TablonForm from './components/tablon/TablonForm';
 import MisAnuncios from './components/tablon/MisAnuncios';
+import TablonResponder from './components/tablon/TablonResponder';
 
 import { useUserList } from './hooks/useUserList';
 import { useVacancies } from './hooks/useVacancies';
@@ -383,6 +384,8 @@ function AppRoutes() {
     return (
         <Routes>
             <Route path="/" element={<RootRoute />} />
+            {/* Signed reply link from the tablón contact email. */}
+            <Route path="/tablon/responder/:contacto" element={<TablonResponder />} />
             <Route
                 path="/dashboard"
                 element={

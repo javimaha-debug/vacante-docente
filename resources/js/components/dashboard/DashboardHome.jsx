@@ -3,6 +3,71 @@ import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import api from '../../lib/api';
 
+const ESTADO_BOLSA_STYLES = {
+    Activat: 'bg-green-100 text-green-700',
+    Desactivat: 'bg-slate-100 text-slate-600',
+    Adjudicat: 'bg-blue-100 text-blue-700',
+};
+
+// Official position in the published participant list for a proceso, via the
+// authenticated /participantes/{proceso}/mi-posicion endpoint.
+function MiPosicionCard({ proceso }) {
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ['mi-posicion', proceso?.id],
+        enabled: Boolean(proceso?.id),
+        retry: false,
+        queryFn: async () => (await api.get(`/participantes/${proceso.id}/mi-posicion`)).data,
+    });
+
+    if (!proceso) return null;
+
+    const needsNombre = isError && error?.response?.status === 422;
+    const adj = data?.adjudicacion;
+
+    return (
+        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:col-span-2">
+            <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-slate-700">Mi posición en la lista — {proceso.nombre}</h2>
+                {data?.found && data.estado && (
+                    <span className={clsx('rounded-full px-2 py-0.5 text-xs font-bold', ESTADO_BOLSA_STYLES[data.estado] ?? 'bg-slate-100 text-slate-600')}>
+                        {data.estado}
+                    </span>
+                )}
+            </div>
+
+            {isLoading ? (
+                <p className="text-sm text-slate-400">Cargando…</p>
+            ) : needsNombre ? (
+                <p className="text-sm text-slate-500">
+                    Configura tu <span className="font-semibold">Nombre GVA</span> en{' '}
+                    <Link to="/dashboard/perfil" className="text-brand-600 hover:underline">tu perfil</Link>{' '}
+                    para localizarte en la lista.
+                </p>
+            ) : isError ? (
+                <p className="text-sm text-rose-600">{error?.friendlyMessage ?? 'No se pudo consultar tu posición.'}</p>
+            ) : !data?.found ? (
+                <p className="text-sm text-slate-400">No apareces en la lista publicada de este proceso (o aún no está cargada).</p>
+            ) : (
+                <div className="flex flex-wrap items-end gap-6">
+                    <div>
+                        <p className="text-xs text-slate-400">Posición</p>
+                        <p className="text-3xl font-extrabold tabular-nums text-brand-600">{data.posicion ?? '—'}</p>
+                    </div>
+                    {adj && (
+                        <div className="text-sm text-slate-600">
+                            <p className="text-xs font-semibold uppercase text-blue-600">Adjudicación</p>
+                            <p className="font-medium text-slate-800">{adj.centro_nombre ?? adj.lloc ?? '—'}</p>
+                            <p className="text-xs text-slate-500">
+                                {[adj.localitat, adj.especialidad_codigo, adj.jornada].filter(Boolean).join(' · ')}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </section>
+    );
+}
+
 const ESTADO_STYLES = {
     pendiente: 'bg-slate-100 text-slate-600',
     publicado: 'bg-green-100 text-green-700',
@@ -62,9 +127,13 @@ export default function DashboardHome() {
     const favoritas = data?.mis_vacantes_favoritas ?? [];
     const resumen = data?.resumen_historial ?? {};
     const novedades = (noticias?.data ?? []).slice(0, 5);
+    // Prefer a published proceso for the official position lookup.
+    const procesoPublicado = procesos.find((p) => p.estado === 'publicado') ?? procesos[0] ?? null;
 
     return (
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2">
+            <MiPosicionCard proceso={procesoPublicado} />
+
             <Card title="Procesos activos">
                 {procesos.length === 0 ? (
                     <Empty>No hay procesos activos en este momento.</Empty>
