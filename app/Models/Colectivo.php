@@ -7,40 +7,27 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Specialty extends Model
+class Colectivo extends Model
 {
     use HasFactory;
 
+    protected $table = 'colectivos';
+
     protected $fillable = [
+        'ccaa_id',
         'code',
         'name',
         'body',
-        'education_level',
-        'ccaa_id',
-        'codigo',
-        'cuerpo',
-        'is_active',
+        'description',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'is_active' => 'boolean',
-        ];
-    }
 
     public function ccaa(): BelongsTo
     {
         return $this->belongsTo(Ccaa::class);
     }
 
-    public function vacancies(): HasMany
+    public function procesos(): HasMany
     {
-        return $this->hasMany(Vacancy::class);
-    }
-
-    public function userLists(): HasMany
-    {
-        return $this->hasMany(UserList::class);
+        return $this->hasMany(Proceso::class);
     }
 }

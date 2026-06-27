@@ -5,6 +5,8 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -22,6 +24,16 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'nombre_gva',
+        'ccaa_id',
+        'colectivo_id',
+        'direccion_origen',
+        'lat_origen',
+        'lng_origen',
+        'preferencias_filtro',
+        'notificaciones_email',
+        'avatar_url',
+        'locale',
     ];
 
     /**
@@ -44,6 +56,40 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'preferencias_filtro' => 'array',
+            'notificaciones_email' => 'boolean',
+            'lat_origen' => 'decimal:8',
+            'lng_origen' => 'decimal:8',
         ];
+    }
+
+    public function ccaa(): BelongsTo
+    {
+        return $this->belongsTo(Ccaa::class);
+    }
+
+    public function colectivo(): BelongsTo
+    {
+        return $this->belongsTo(Colectivo::class);
+    }
+
+    public function especialidades(): HasMany
+    {
+        return $this->hasMany(UserEspecialidad::class);
+    }
+
+    public function historial(): HasMany
+    {
+        return $this->hasMany(UserHistorial::class);
+    }
+
+    public function valoraciones(): HasMany
+    {
+        return $this->hasMany(CentroValoracion::class);
+    }
+
+    public function anuncios(): HasMany
+    {
+        return $this->hasMany(TablonAnuncio::class);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Ccaa;
 use App\Models\Specialty;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -11,6 +12,16 @@ class SpecialtySeeder extends Seeder
     public function run(): void
     {
         $now = Carbon::now();
+
+        // All current specialties belong to the Comunitat Valenciana.
+        $ccaaId = Ccaa::where('code', 'CV')->value('id');
+
+        // Maps the internal education_level to the GVA `cuerpo` label.
+        $cuerpoMap = [
+            'maestros' => 'MAESTROS',
+            'secundaria' => 'SECUNDARIA',
+            'fp' => 'FP',
+        ];
 
         $maestros = 'Maestros';
         $secundaria = 'Profesores de Enseñanza Secundaria';
@@ -106,6 +117,10 @@ class SpecialtySeeder extends Seeder
                     'name' => $name,
                     'body' => $group['body'],
                     'education_level' => $level,
+                    'ccaa_id' => $ccaaId,
+                    'codigo' => (string) $code,
+                    'cuerpo' => $cuerpoMap[$level] ?? null,
+                    'is_active' => true,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
@@ -116,7 +131,7 @@ class SpecialtySeeder extends Seeder
         Specialty::upsert(
             $rows,
             ['code', 'education_level'],
-            ['name', 'body', 'updated_at']
+            ['name', 'body', 'ccaa_id', 'codigo', 'cuerpo', 'is_active', 'updated_at']
         );
     }
 }

@@ -2,6 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Ccaa;
+use App\Models\Colectivo;
+use App\Models\Proceso;
 use App\Models\Specialty;
 use App\Models\Vacancy;
 use Illuminate\Database\Seeder;
@@ -35,14 +38,47 @@ class VacancySeeder extends Seeder
         $now = Carbon::now();
         $year = 2025;
 
+        // Link to the proceso for Orientación Educativa interinos 2025/2026.
+        // Resolved (or created) only when its CCAA + colectivo exist; otherwise
+        // vacancies are seeded with a null proceso_id (column is nullable).
+        $cv = Ccaa::where('code', 'CV')->first();
+        $proceso = null;
+
+        if ($cv) {
+            $colectivo = Colectivo::where('ccaa_id', $cv->id)
+                ->where('code', 'INTERINO')
+                ->where('body', 'SECUNDARIA')
+                ->first();
+
+            if ($colectivo) {
+                $proceso = Proceso::firstOrCreate(
+                    [
+                        'ccaa_id' => $cv->id,
+                        'colectivo_id' => $colectivo->id,
+                        'anyo' => $year,
+                        'curso' => '2025-2026',
+                    ],
+                    [
+                        'nombre' => 'Adjudicació interins Secundària 2025-2026',
+                        'estado' => 'publicado',
+                    ],
+                );
+            }
+        }
+
+        $procesoId = $proceso?->id;
+        $ccaaId = $cv?->id;
+
         // Re-seedable: clear this specialty's vacancies first.
         Vacancy::where('specialty_id', $specialty->id)->where('year', $year)->delete();
 
-        $rows = collect($records)->map(function (array $r) use ($specialty, $now, $year) {
+        $rows = collect($records)->map(function (array $r) use ($specialty, $now, $year, $procesoId, $ccaaId) {
             $tags = $r['observ_tags'] ?? [];
 
             return [
                 'specialty_id' => $specialty->id,
+                'proceso_id' => $procesoId,
+                'ccaa_id' => $ccaaId,
                 'num' => (int) $r['num'],
                 'provincia' => $r['provincia'],
                 'localidad' => $r['localidad'],
