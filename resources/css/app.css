@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.{js,jsx}';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-brand-50: #eef5ff;
+    --color-brand-100: #d9e7ff;
+    --color-brand-200: #bcd6ff;
+    --color-brand-300: #8ebcff;
+    --color-brand-400: #5996ff;
+    --color-brand-500: #3170f6;
+    --color-brand-600: #1f52e3;
+    --color-brand-700: #1a40b8;
+    --color-brand-800: #1b3893;
+    --color-brand-900: #1c3375;
+}
+
+html,
+body,
+#app {
+    height: 100%;
+}
+
+body {
+    @apply bg-slate-100 text-slate-900 antialiased;
+}
+
+/* Thin scrollbars for the kanban columns */
+.scroll-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-slate-300;
+}
+.scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
