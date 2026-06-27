@@ -176,6 +176,99 @@ class GoogleMapsService
     }
 
     /**
+     * Batch variant: travel time/distance from one home coordinate to many
+     * vacancies in a single Distance Matrix request (max 25 destinations per
+     * call). Returns a map keyed by vacancy id.
+     *
+     * @param  \Illuminate\Support\Collection<int, Vacancy>|array<int, Vacancy>  $vacancies
+     * @return array<int, array{duration_minutes: int|null, distance_km: float|null, traffic_note: string|null}>
+     */
+    public function distancesToVacancies(float $homeLat, float $homeLng, $vacancies, string $mode): array
+    {
+        $this->ensureConfigured();
+
+        $vacancies = collect($vacancies)->values();
+        $out = [];
+
+        // Distance Matrix allows up to 25 destinations per request.
+        foreach ($vacancies->chunk(25) as $chunk) {
+            $chunk = $chunk->values();
+            $destinations = $chunk->map(fn (Vacancy $v) => $this->destinationFor($v))->implode('|');
+
+            $params = [
+                'origins' => sprintf('%F,%F', $homeLat, $homeLng),
+                'destinations' => $destinations,
+                'mode' => $mode,
+                'language' => 'es',
+                'region' => 'es',
+                'units' => 'metric',
+                'key' => $this->apiKey,
+            ];
+
+            if ($mode === 'driving' || $mode === 'transit') {
+                $params['departure_time'] = $this->nextMondayMorning()->timestamp;
+                if ($mode === 'driving') {
+                    $params['traffic_model'] = 'best_guess';
+                }
+            }
+
+            $response = Http::timeout(30)->get(self::DISTANCE_MATRIX_URL, $params);
+            $data = $response->json();
+            $status = $data['status'] ?? 'UNKNOWN_ERROR';
+
+            if (! $response->successful() || $status !== 'OK') {
+                Log::warning('Distance Matrix batch failed', ['status' => $status]);
+                throw new RuntimeException('Distance Matrix failed: '.$status);
+            }
+
+            $elements = $data['rows'][0]['elements'] ?? [];
+
+            foreach ($chunk as $i => $vacancy) {
+                $out[$vacancy->id] = $this->parseElement($elements[$i] ?? null, $mode);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Normalise a single Distance Matrix element into our payload shape.
+     *
+     * @param  array<string, mixed>|null  $element
+     * @return array{duration_minutes: int|null, distance_km: float|null, traffic_note: string|null}
+     */
+    private function parseElement(?array $element, string $mode): array
+    {
+        if (! $element || ($element['status'] ?? '') !== 'OK') {
+            return [
+                'duration_minutes' => null,
+                'distance_km' => null,
+                'traffic_note' => $element['status'] ?? 'NO_RESULT',
+            ];
+        }
+
+        $durationSeconds = $element['duration_in_traffic']['value']
+            ?? $element['duration']['value']
+            ?? null;
+
+        $trafficNote = null;
+        if ($mode === 'driving' && isset($element['duration_in_traffic'], $element['duration'])) {
+            $delta = (int) round(($element['duration_in_traffic']['value'] - $element['duration']['value']) / 60);
+            $trafficNote = $delta > 0
+                ? "+{$delta} min por tráfico (lun. 08:00)"
+                : 'Sin retraso por tráfico (lun. 08:00)';
+        }
+
+        return [
+            'duration_minutes' => $durationSeconds !== null ? (int) round($durationSeconds / 60) : null,
+            'distance_km' => isset($element['distance']['value'])
+                ? round($element['distance']['value'] / 1000, 2)
+                : null,
+            'traffic_note' => $trafficNote,
+        ];
+    }
+
+    /**
      * Build a geocodable destination string from the vacancy's centre data.
      */
     public function destinationFor(Vacancy $vacancy): string

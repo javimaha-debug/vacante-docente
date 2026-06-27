@@ -178,7 +178,12 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
                     </p>
                 )}
             </div>
-            <HomeAddressPanel list={list} geocode={geocode} distances={distances} selectedCount={selected.length} />
+            <HomeAddressPanel
+                list={list}
+                geocode={geocode}
+                distances={distances}
+                vacancyIds={vacancies.map((v) => v.id)}
+            />
             <FiltersPanel
                 filters={filters}
                 setFilters={setFilters}

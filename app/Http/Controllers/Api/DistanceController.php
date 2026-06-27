@@ -40,43 +40,61 @@ class DistanceController extends Controller
         $homeLat = (float) $userList->home_lat;
         $homeLng = (float) $userList->home_lng;
 
-        $vacancies = Vacancy::query()
-            ->whereIn('id', $userList->preferences()
-                ->where('status', 'selected')
-                ->pluck('vacancy_id'))
-            ->get();
+        // Target set: the explicit list sent by the client (the full loaded /
+        // filtered explorer) or — for backward compatibility — the selected
+        // vacancies. This lets distances be computed for every vacancy so the
+        // user can organize by distance without selecting first.
+        $requestedIds = $request->input('vacancy_ids');
+        $targetIds = is_array($requestedIds) && count($requestedIds)
+            ? $requestedIds
+            : $userList->preferences()->where('status', 'selected')->pluck('vacancy_id')->all();
 
-        $results = [];
+        $vacancies = Vacancy::query()->whereIn('id', $targetIds)->get();
+
+        $entries = [];
+        foreach ($vacancies as $vacancy) {
+            $entries[$vacancy->id] = ['vacancy_id' => $vacancy->id];
+        }
+
         $apiError = null;
 
-        foreach ($vacancies as $vacancy) {
-            $entry = ['vacancy_id' => $vacancy->id];
+        // Compute each mode in batches, hitting the cache first.
+        foreach ($modes as $mode) {
+            $uncached = [];
 
-            foreach ($modes as $mode) {
+            foreach ($vacancies as $vacancy) {
                 $cached = $this->cache->find($vacancy->id, $homeLat, $homeLng, $mode);
-
                 if ($cached) {
-                    $entry[$mode] = $this->cache->payload($cached);
-
-                    continue;
-                }
-
-                try {
-                    $payload = $this->maps->distanceToVacancy($homeLat, $homeLng, $vacancy, $mode);
-                    $stored = $this->cache->store($vacancy->id, $homeLat, $homeLng, $mode, $payload);
-                    $entry[$mode] = $this->cache->payload($stored);
-                } catch (RuntimeException $e) {
-                    $apiError = $e->getMessage();
-                    $entry[$mode] = null;
+                    $entries[$vacancy->id][$mode] = $this->cache->payload($cached);
+                } else {
+                    $uncached[] = $vacancy;
                 }
             }
 
-            $results[] = $entry;
+            if (empty($uncached)) {
+                continue;
+            }
+
+            try {
+                $batch = $this->maps->distancesToVacancies($homeLat, $homeLng, $uncached, $mode);
+                foreach ($uncached as $vacancy) {
+                    $payload = $batch[$vacancy->id] ?? [
+                        'duration_minutes' => null, 'distance_km' => null, 'traffic_note' => 'NO_RESULT',
+                    ];
+                    $stored = $this->cache->store($vacancy->id, $homeLat, $homeLng, $mode, $payload);
+                    $entries[$vacancy->id][$mode] = $this->cache->payload($stored);
+                }
+            } catch (RuntimeException $e) {
+                $apiError = $e->getMessage();
+                foreach ($uncached as $vacancy) {
+                    $entries[$vacancy->id][$mode] = null;
+                }
+            }
         }
 
         return response()->json([
-            'results' => $results,
-            'count' => count($results),
+            'results' => array_values($entries),
+            'count' => count($entries),
             'modes' => $modes,
             'error' => $apiError,
         ]);

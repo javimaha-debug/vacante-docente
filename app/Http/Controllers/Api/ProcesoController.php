@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\VacancyResource;
 use App\Models\Proceso;
+use App\Models\UserList;
+use App\Models\Vacancy;
+use App\Services\DistanceCacheRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProcesoController extends Controller
 {
+    public function __construct(private readonly DistanceCacheRepository $distances) {}
+
     /**
      * All procesos with estado, colectivo, dates and vacancy counts.
      */
@@ -55,6 +60,7 @@ class ProcesoController extends Controller
             'req_ling' => ['sometimes', 'boolean'],
             'itinerante' => ['sometimes', 'boolean'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:1000'],
+            'session_token' => ['sometimes', 'nullable', 'string', 'max:64'],
         ]);
 
         $query = $proceso->vacancies()->getQuery();
@@ -91,6 +97,43 @@ class ProcesoController extends Controller
             ->paginate((int) ($validated['per_page'] ?? 100))
             ->withQueryString();
 
+        // Attach cached distances (same as the legacy /vacancies endpoint) so
+        // vacancies show travel time/distance for organizing.
+        $distanceMap = $this->resolveDistances(
+            $validated['session_token'] ?? null,
+            $validated['especialidad'] ?? null,
+            $paginator->getCollection()->modelKeys()
+        );
+
+        $paginator->getCollection()->transform(
+            fn (Vacancy $vacancy) => (new VacancyResource($vacancy))->withDistances($distanceMap[$vacancy->id] ?? null)
+        );
+
         return VacancyResource::collection($paginator);
+    }
+
+    /**
+     * Cached distances keyed by vacancy id, resolved from the caller's
+     * session list home coordinate.
+     *
+     * @param  array<int>  $vacancyIds
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveDistances(?string $sessionToken, ?int $specialtyId, array $vacancyIds): array
+    {
+        if (! $sessionToken || ! $specialtyId || empty($vacancyIds)) {
+            return [];
+        }
+
+        $list = UserList::query()
+            ->where('session_token', $sessionToken)
+            ->where('specialty_id', $specialtyId)
+            ->first();
+
+        if (! $list || ! $list->hasHome()) {
+            return [];
+        }
+
+        return $this->distances->forVacancies($vacancyIds, (float) $list->home_lat, (float) $list->home_lng);
     }
 }

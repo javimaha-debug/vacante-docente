@@ -15,6 +15,11 @@ class CalculateDistancesRequest extends FormRequest
     {
         return [
             'mode' => ['required', 'in:driving,transit,walking,all'],
+            // Optional explicit set of vacancies to compute (the full loaded /
+            // filtered list). When omitted, the controller falls back to the
+            // list's selected vacancies for backward compatibility.
+            'vacancy_ids' => ['sometimes', 'array', 'max:2000'],
+            'vacancy_ids.*' => ['integer'],
         ];
     }
 

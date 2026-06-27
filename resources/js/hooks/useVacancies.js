@@ -17,7 +17,7 @@ export function useVacancies(specialtyId, filters, procesoId = null) {
         initialPageParam: 1,
         queryFn: async ({ pageParam }) => {
             if (procesoId) {
-                const params = { especialidad: specialtyId, page: pageParam, per_page: 1000 };
+                const params = { especialidad: specialtyId, session_token: sessionToken, page: pageParam, per_page: 1000 };
                 if (filters.provincia) params.provincia = filters.provincia;
                 if (filters.tiposCentro?.length) params.tipo_centro = filters.tiposCentro;
                 if (filters.search) params.localitat = filters.search;
