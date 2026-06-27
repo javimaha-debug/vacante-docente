@@ -24,6 +24,15 @@ class Vacancy extends Model
         'observ',
         'observ_tags',
         'year',
+        'proceso_id',
+        'ccaa_id',
+        'num_orden',
+        'codi_centre',
+        'tipo_jornada',
+        'requisito_linguistico',
+        'itinerante',
+        'observaciones',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -33,12 +42,26 @@ class Vacancy extends Model
             'observ_tags' => 'array',
             'num' => 'integer',
             'year' => 'integer',
+            'num_orden' => 'integer',
+            'requisito_linguistico' => 'boolean',
+            'itinerante' => 'boolean',
+            'is_active' => 'boolean',
         ];
     }
 
     public function specialty(): BelongsTo
     {
         return $this->belongsTo(Specialty::class);
+    }
+
+    public function proceso(): BelongsTo
+    {
+        return $this->belongsTo(Proceso::class);
+    }
+
+    public function ccaa(): BelongsTo
+    {
+        return $this->belongsTo(Ccaa::class);
     }
 
     public function preferences(): HasMany
