@@ -30,7 +30,7 @@ import { useVacancies } from './hooks/useVacancies';
 import { useDistances } from './hooks/useDistances';
 import { useListSync } from './hooks/useListSync';
 import { AuthContext, useAuth, useProvideAuth } from './hooks/useAuth';
-import { getSpecialtyId, setSpecialtyId, clearSpecialty } from './lib/session';
+import { getSpecialtyId, setSpecialtyId, clearSpecialty, getProcesoId, setProcesoId } from './lib/session';
 
 const queryClient = new QueryClient({
     defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
@@ -43,9 +43,16 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
     const [showDiscarded, setShowDiscarded] = useState(false);
     const [viewMode, setViewMode] = useState(initialView);
     const [exporting, setExporting] = useState(false);
-    const [procesoId, setProcesoId] = useState(null);
+    const [procesoId, setProcesoIdState] = useState(getProcesoId);
+    const [sortBy, setSortBy] = useState('default'); // 'default' | 'distance'
     const notesTimers = useRef({});
     const hydratedRef = useRef(false);
+
+    // Persist the chosen proceso so the explorer remembers it across reloads.
+    const handleProcesoChange = useCallback((id) => {
+        setProcesoIdState(id);
+        setProcesoId(id);
+    }, []);
 
     const { isAuthenticated, user } = useAuth();
 
@@ -76,6 +83,18 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
         () => vacancies.filter((v) => (prefByVacancy.get(v.id)?.status ?? 'neutral') === 'neutral'),
         [vacancies, prefByVacancy]
     );
+
+    // Optional ordering by driving distance (falls back to duration), so the
+    // list can be organized by proximity. Vacancies without a computed
+    // distance sink to the bottom.
+    const neutralSorted = useMemo(() => {
+        if (sortBy !== 'distance') return neutral;
+        const metric = (v) => {
+            const d = v.distances?.driving;
+            return d?.distance_km ?? (d?.duration_minutes != null ? d.duration_minutes / 10 : Infinity);
+        };
+        return [...neutral].sort((a, b) => metric(a) - metric(b));
+    }, [neutral, sortBy]);
 
     const persist = useCallback(
         (rows) => savePreferences.mutate(rows),
@@ -167,9 +186,20 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
             <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
                 <ProcesoSelector
                     value={procesoId}
-                    onChange={setProcesoId}
+                    onChange={handleProcesoChange}
                     colectivoBody={user?.colectivo?.body ?? null}
                 />
+                <div className="mt-2 flex items-center gap-2">
+                    <label className="text-xs font-semibold text-slate-500">Ordenar</label>
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm focus:border-brand-400 focus:ring-brand-400"
+                    >
+                        <option value="default">Por defecto</option>
+                        <option value="distance">Por distancia</option>
+                    </select>
+                </div>
                 {isAuthenticated && (
                     <p className="mt-2 text-xs font-medium text-slate-400">
                         {syncStatus === 'saving' && <span className="text-amber-600">Guardando…</span>}
@@ -208,7 +238,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
                 <div className="flex h-full items-center justify-center text-sm text-slate-400">Cargando vacantes…</div>
             ) : viewMode === 'kanban' ? (
                 <KanbanBoard
-                    neutral={neutral}
+                    neutral={neutralSorted}
                     selected={selected}
                     discarded={discarded}
                     showDiscarded={showDiscarded}
@@ -222,7 +252,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
             ) : (
                 <ListView
                     selected={selected}
-                    neutral={neutral}
+                    neutral={neutralSorted}
                     onStatusChange={handleStatusChange}
                     onNotesChange={handleNotesChange}
                     onReorder={handleReorder}

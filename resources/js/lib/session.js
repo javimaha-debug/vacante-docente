@@ -3,6 +3,7 @@
 
 const TOKEN_KEY = 'vd.session_token';
 const SPECIALTY_KEY = 'vd.specialty_id';
+const PROCESO_KEY = 'vd.proceso_id';
 
 function randomToken() {
     // 32 hex chars — fits the varchar(64) column and the min:8 rule.
@@ -32,4 +33,17 @@ export function setSpecialtyId(id) {
 
 export function clearSpecialty() {
     localStorage.removeItem(SPECIALTY_KEY);
+}
+
+export function getProcesoId() {
+    const raw = localStorage.getItem(PROCESO_KEY);
+    return raw ? Number(raw) : null;
+}
+
+export function setProcesoId(id) {
+    if (id) {
+        localStorage.setItem(PROCESO_KEY, String(id));
+    } else {
+        localStorage.removeItem(PROCESO_KEY);
+    }
 }
