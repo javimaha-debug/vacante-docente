@@ -30,9 +30,10 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by($request->ip());
         });
 
-        // Distance Matrix: 5 requests / minute / IP (each request fans out to many centres).
+        // Distance Matrix: the explorer computes distances in chunks and loops
+        // until done, so allow enough requests/min/IP to finish a full list.
         RateLimiter::for('distances', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            return Limit::perMinute(40)->by($request->ip());
         });
     }
 }

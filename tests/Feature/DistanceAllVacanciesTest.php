@@ -63,7 +63,10 @@ class DistanceAllVacanciesTest extends TestCase
         $this->postJson("/api/v1/user-lists/{$list->id}/calculate-distances", [
             'mode' => 'driving',
             'vacancy_ids' => $ids,
-        ])->assertOk()->assertJsonPath('count', 3);
+        ])->assertOk()
+            ->assertJsonPath('count', 3)
+            // Everything fit under the per-request cap → nothing left to do.
+            ->assertJsonPath('remaining', 0);
 
         // All three were cached.
         $this->assertSame(3, DistanceCache::where('mode', 'driving')->count());
