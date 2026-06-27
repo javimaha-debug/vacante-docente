@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Api\DistanceController;
 use App\Http\Controllers\Api\GeocodeController;
+use App\Http\Controllers\Api\GvaController;
 use App\Http\Controllers\Api\PreferenceController;
 use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\UserListController;
+use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\Api\VacancyController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,4 +40,27 @@ Route::prefix('v1')->group(function () {
 
     Route::post('user-lists/{userList}/calculate-distances', DistanceController::class)
         ->middleware('throttle:distances');
+
+    // Catalog (public): collectives available for the profile selector.
+    Route::get('colectivos', function () {
+        return response()->json([
+            'data' => \App\Models\Colectivo::query()
+                ->orderBy('body')
+                ->orderBy('name')
+                ->get(['id', 'code', 'name', 'body']),
+        ]);
+    });
+
+    // GVA monitor (public): latest official notices.
+    Route::get('gva/noticias', [GvaController::class, 'index']);
+
+    // Authenticated teacher profile + dashboard (Sanctum bearer token).
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('user/me', [UserProfileController::class, 'me']);
+        Route::get('user/profile', [UserProfileController::class, 'show']);
+        Route::put('user/profile', [UserProfileController::class, 'update']);
+        Route::post('user/especialidades', [UserProfileController::class, 'storeEspecialidad']);
+        Route::delete('user/especialidades/{specialty}', [UserProfileController::class, 'destroyEspecialidad']);
+        Route::get('user/dashboard', [UserProfileController::class, 'dashboard']);
+    });
 });
