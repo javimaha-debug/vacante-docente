@@ -19,7 +19,7 @@ export default function CentrosList() {
         retry: false,
     });
 
-    const { data, isFetching } = useQuery({
+    const { data, isFetching, isError, error } = useQuery({
         queryKey: ['centros', filters.tipo, filters.provincia, debouncedLocalidad, debouncedQuery, page],
         placeholderData: keepPreviousData,
         queryFn: async () => {
@@ -69,10 +69,16 @@ export default function CentrosList() {
                 />
             </div>
 
-            {isFetching && centros.length === 0 ? (
+            {isError ? (
+                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
+                    {error?.friendlyMessage ?? 'No se pudo cargar el directorio de centros.'}
+                </p>
+            ) : isFetching && centros.length === 0 ? (
                 <p className="text-sm text-slate-400">Cargando…</p>
             ) : centros.length === 0 ? (
-                <p className="text-sm text-slate-400">No se encontraron centros con esos filtros.</p>
+                <p className="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 shadow-sm ring-1 ring-slate-200">
+                    No se encontraron centros con esos filtros. Si el directorio está vacío, ejecuta <code>php artisan centros:import</code>.
+                </p>
             ) : (
                 <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {centros.map((c) => (

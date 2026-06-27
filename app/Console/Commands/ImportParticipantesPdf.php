@@ -95,21 +95,27 @@ class ImportParticipantesPdf extends Command
      *
      * @return array<int, array<string, mixed>>
      */
+    /** Status tokens accepted in either Valencian or Spanish. */
+    private const STATUS = 'Activat|Desactivat|Adjudicat|Activado|Desactivado|Adjudicado';
+
     public function parseText(string $text): array
     {
+        $lines = preg_split('/\r\n|\r|\n/', $text);
+        $n = count($lines);
         $rows = [];
 
-        foreach (preg_split('/\r\n|\r|\n/', $text) as $line) {
-            $line = trim($line);
+        for ($i = 0; $i < $n; $i++) {
+            $line = trim($lines[$i]);
             if ($line === '') {
                 continue;
             }
 
-            if (! preg_match('/^(\d+)\s+(.+?,\s*.+?)\s+(Activat|Desactivat|Adjudicat)\b(.*)$/u', $line, $m)) {
+            if (! preg_match('/^(\d+)\s+(.+?,\s*.+?)\s+('.self::STATUS.')\b(.*)$/iu', $line, $m)) {
                 continue;
             }
 
-            [, $posicion, $nombre, $estado, $rest] = $m;
+            [, $posicion, $nombre, $estadoRaw, $rest] = $m;
+            $estado = $this->normalizeEstado($estadoRaw);
             $row = [
                 'posicion' => (int) $posicion,
                 'nombre_gva' => $this->normalizeName($nombre),
@@ -121,14 +127,55 @@ class ImportParticipantesPdf extends Command
                 'jornada' => null,
             ];
 
-            if ($estado === 'Adjudicat' && trim($rest) !== '') {
-                $row = array_merge($row, $this->parseAdjudicacio(trim($rest)));
+            if ($estado === 'Adjudicat') {
+                $tail = trim($rest);
+
+                // The adjudication detail may continue on the following lines
+                // (lloc / localitat(codi) centre / codesp / jornada). Gather
+                // them until the next participant row.
+                if ($tail === '') {
+                    $block = [];
+                    $j = $i + 1;
+                    while ($j < $n) {
+                        $next = trim($lines[$j]);
+                        if ($next === '') {
+                            $j++;
+
+                            continue;
+                        }
+                        if (preg_match('/^\d+\s+.+?,\s*.+?\s+('.self::STATUS.')\b/iu', $next)) {
+                            break; // start of the next participant
+                        }
+                        $block[] = $next;
+                        $j++;
+                    }
+                    // Join with 2 spaces so each line becomes its own column.
+                    $tail = trim(implode('  ', $block));
+                    $i = $j - 1;
+                }
+
+                if ($tail !== '') {
+                    $row = array_merge($row, $this->parseAdjudicacio($tail));
+                }
             }
 
             $rows[] = $row;
         }
 
         return $rows;
+    }
+
+    /**
+     * Canonicalise a status token to the Valencian form used across the app.
+     */
+    private function normalizeEstado(string $raw): string
+    {
+        return match (true) {
+            (bool) preg_match('/^desactiv/iu', $raw) => 'Desactivat',
+            (bool) preg_match('/^adjudic/iu', $raw) => 'Adjudicat',
+            (bool) preg_match('/^activ/iu', $raw) => 'Activat',
+            default => ucfirst(mb_strtolower($raw)),
+        };
     }
 
     /**

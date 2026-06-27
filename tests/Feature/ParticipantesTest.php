@@ -90,4 +90,45 @@ class ParticipantesTest extends TestCase
 
         $this->getJson("/api/v1/participantes/{$proceso->id}/mi-posicion")->assertStatus(422);
     }
+
+    public function test_parser_normalizes_spanish_statuses(): void
+    {
+        $layout = <<<TXT
+        1    PEREZ GOMEZ, ANA            Activado
+        2    GARCIA LOPEZ, JUAN          Desactivado
+        TXT;
+
+        $rows = (new ImportParticipantesPdf())->parseText($layout);
+
+        $this->assertSame('Activat', $rows[0]['estado']);
+        $this->assertSame('Desactivat', $rows[1]['estado']);
+    }
+
+    public function test_parser_handles_multiline_adjudication(): void
+    {
+        $layout = <<<TXT
+        3    MARTINEZ RUIZ, LAURA        Adjudicat
+             896238
+             VALÈNCIA(46011223) IES LA FONT
+             218 / ORIENTACIÓ EDUCATIVA
+             Jornada completa
+        4    SOLER PONS, MARC            Activat
+        TXT;
+
+        $rows = (new ImportParticipantesPdf())->parseText($layout);
+
+        $this->assertCount(2, $rows);
+
+        $adj = $rows[0];
+        $this->assertSame('Adjudicat', $adj['estado']);
+        $this->assertSame('896238', $adj['lloc_adjudicado']);
+        $this->assertSame('VALÈNCIA', $adj['localitat']);
+        $this->assertStringContainsString('IES LA FONT', $adj['centro_nombre']);
+        $this->assertSame('218', $adj['especialidad_codigo']);
+        $this->assertStringContainsString('Jornada', $adj['jornada']);
+
+        // The following participant is parsed normally, not swallowed.
+        $this->assertSame(4, $rows[1]['posicion']);
+        $this->assertSame('Activat', $rows[1]['estado']);
+    }
 }
