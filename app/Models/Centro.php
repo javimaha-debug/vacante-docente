@@ -31,12 +31,14 @@ class Centro extends Model
         'bilingue',
         'datos_verificados',
         'fuente',
+        'caracteristicas',
     ];
 
     protected function casts(): array
     {
         return [
             'etapas' => 'array',
+            'caracteristicas' => 'array',
             'lineas' => 'integer',
             'bilingue' => 'boolean',
             'datos_verificados' => 'boolean',
