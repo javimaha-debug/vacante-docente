@@ -126,7 +126,14 @@ class GvaAutoImportService
         }
 
         if ($exit !== 0) {
-            $noticia->forceFill(['import_estado' => 'error', 'import_resumen' => 'La importación terminó con errores.'])->save();
+            // Surface the command's own output (e.g. "pdftotext no instalado")
+            // so the failure is diagnosable from the admin view / logs.
+            $detalle = trim(\Illuminate\Support\Str::limit((string) \Illuminate\Support\Facades\Artisan::output(), 300));
+            Log::warning('GvaAutoImport: command exit '.$exit, ['cmd' => $command, 'output' => $detalle]);
+            $noticia->forceFill([
+                'import_estado' => 'error',
+                'import_resumen' => 'La importación terminó con errores. '.$detalle,
+            ])->save();
 
             return $noticia->import_resumen;
         }

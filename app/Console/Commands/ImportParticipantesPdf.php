@@ -99,6 +99,10 @@ class ImportParticipantesPdf extends Command
             return self::SUCCESS;
         }
 
+        // Drop exact duplicate (persona × especialidad) rows that a malformed
+        // PDF could yield — keeps counts and the diff consistent.
+        $rows = collect($rows)->unique(fn ($r) => $this->diffKey($r))->values()->all();
+
         // Diff vs the previous participant listing (keyed by person+especialidad)
         // to flag new/modified entries and record an import summary.
         $old = ParticipanteProceso::where('proceso_id', $proceso->id)

@@ -20,6 +20,13 @@ class MonitorGvaJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Retry transient failures with backoff; bound total runtime. */
+    public int $tries = 3;
+
+    public int $backoff = 60;
+
+    public int $timeout = 600;
+
     private const RSS_URL = 'https://dogv.gva.es/portal/rss/rss.xhtml';
 
     private const ADJUDICACIONES_URL = 'https://ceice.gva.es/va/web/rrhh-educacion/adjudicaciones';
@@ -44,9 +51,24 @@ class MonitorGvaJob implements ShouldQueue
         Log::info('MonitorGvaJob: '.count($created).' new GVA notice(s) stored.');
 
         if (config('gva.auto_import', true)) {
-            $this->autoImportContinua($created);
-            $this->autoImport(array_filter($created, fn (GvaNoticia $n) => ! $this->isContinuaPdf($n->url)));
+            // Drive auto-import off notice STATE (not the in-memory $created
+            // array), so if the job retries after persisting, the import/notify
+            // step resumes instead of being skipped. Bounded to the last week to
+            // avoid touching the page's historical backlog.
+            $pending = GvaNoticia::where('tipo', 'PDF')
+                ->whereNull('import_estado')
+                ->where('created_at', '>=', now()->subDays(7))
+                ->get()
+                ->all();
+
+            $this->autoImportContinua(array_filter($pending, fn (GvaNoticia $n) => $this->isContinuaPdf($n->url)));
+            $this->autoImport(array_filter($pending, fn (GvaNoticia $n) => ! $this->isContinuaPdf($n->url)));
         }
+    }
+
+    public function failed(\Throwable $e): void
+    {
+        Log::error('MonitorGvaJob failed', ['error' => $e->getMessage()]);
     }
 
     /**
