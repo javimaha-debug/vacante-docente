@@ -18,6 +18,7 @@ class SpecialtyController extends Controller
         $year = (int) $request->integer('year', 2025);
 
         $specialties = Specialty::query()
+            ->where('is_active', true)
             ->withCount(['vacancies' => fn ($q) => $q->where('year', $year)])
             ->orderBy('code')
             ->get()

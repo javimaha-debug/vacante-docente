@@ -23,7 +23,7 @@ class PreferenceController extends Controller
     {
         $preferences = $userList->preferences()
             ->with('vacancy')
-            ->orderByRaw("FIELD(status, 'selected', 'neutral', 'discarded')")
+            ->orderByRaw("CASE status WHEN 'selected' THEN 0 WHEN 'neutral' THEN 1 ELSE 2 END")
             ->orderBy('position')
             ->orderBy('id')
             ->get();
