@@ -11,19 +11,17 @@ import { getSessionToken } from '../lib/session';
 export function useVacancies(specialtyId, filters, procesoId = null) {
     const sessionToken = getSessionToken();
 
+    // All explorer filters are applied client-side (real-time, combinable with
+    // accurate counts), so we fetch the full specialty set for the proceso and
+    // let the SPA filter/sort it. `filters` is intentionally NOT in the query
+    // key — changing a filter must not refetch.
     const query = useInfiniteQuery({
-        queryKey: ['vacancies', specialtyId, filters, procesoId],
+        queryKey: ['vacancies', specialtyId, procesoId],
         enabled: Boolean(specialtyId),
         initialPageParam: 1,
         queryFn: async ({ pageParam }) => {
             if (procesoId) {
                 const params = { especialidad: specialtyId, session_token: sessionToken, page: pageParam, per_page: 1000 };
-                if (filters.provincia) params.provincia = filters.provincia;
-                if (filters.tiposCentro?.length) params.tipo_centro = filters.tiposCentro;
-                // Text search is applied client-side across all columns/fields.
-                if (filters.reqLing) params.req_ling = 1;
-                if (filters.itinerante) params.itinerante = 1;
-                if (filters.tags?.length) params.tags = filters.tags;
                 const { data } = await api.get(`/procesos/${procesoId}/vacantes`, { params });
                 return data;
             }
@@ -34,11 +32,6 @@ export function useVacancies(specialtyId, filters, procesoId = null) {
                 page: pageParam,
                 per_page: 1000,
             };
-            if (filters.provincia) params.provincia = filters.provincia;
-            if (filters.tiposCentro?.length) params.tipo_centro = filters.tiposCentro;
-            // Text search is applied client-side across all columns/fields.
-            if (filters.tags?.length) params.tags = filters.tags;
-
             const { data } = await api.get('/vacancies', { params });
             return data;
         },

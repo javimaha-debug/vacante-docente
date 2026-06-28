@@ -35,6 +35,7 @@ class VacancyResource extends JsonResource
             'tipo_centro' => $this->tipo_centro,
             'lloc' => $this->lloc,
             'req_ling' => (bool) $this->req_ling,
+            'itinerante' => (bool) $this->itinerante,
             'observ' => $this->observ,
             'observ_tags' => $this->resolveTags(),
             'cambio' => $this->cambio, // 'nueva' | 'modificada' | null
@@ -56,6 +57,10 @@ class VacancyResource extends JsonResource
             'CRA' => 'CRA',
             'SINGULAR' => 'Centre singular',
             'JORNADA_CONTINUA' => 'Jornada contínua',
+            'EDUCACIO_ESPECIAL' => 'CEE',
+            'FPA' => 'FPA',
+            'UECO' => 'UECO',
+            'PENITENCIARI' => 'Penitenciari',
         ];
 
         $tags = collect($this->observ_tags ?? []);
@@ -66,6 +71,11 @@ class VacancyResource extends JsonResource
                     $tags->push($labels[$c]);
                 }
             }
+        }
+
+        // FP integrated centres are recognisable by their name prefix.
+        if (preg_match('/\b(CIPFP|CIFP|IFP)\b/u', mb_strtoupper((string) $this->centro_nombre))) {
+            $tags->push('CIPFP');
         }
 
         return $tags->unique()->values()->all();

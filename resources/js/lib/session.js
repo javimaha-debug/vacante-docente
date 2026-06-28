@@ -4,6 +4,7 @@
 const TOKEN_KEY = 'vd.session_token';
 const SPECIALTY_KEY = 'vd.specialty_id';
 const PROCESO_KEY = 'vd.proceso_id';
+const FILTERS_KEY = 'vd.explorer_filters';
 
 function randomToken() {
     // 32 hex chars — fits the varchar(64) column and the min:8 rule.
@@ -45,5 +46,22 @@ export function setProcesoId(id) {
         localStorage.setItem(PROCESO_KEY, String(id));
     } else {
         localStorage.removeItem(PROCESO_KEY);
+    }
+}
+
+export function getStoredFilters() {
+    try {
+        const raw = localStorage.getItem(FILTERS_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+export function setStoredFilters(filters) {
+    try {
+        localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+    } catch {
+        /* storage full / unavailable — non-fatal */
     }
 }
