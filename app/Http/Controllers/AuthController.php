@@ -8,44 +8,130 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
+    /** OAuth providers the app can use (enabled individually via config). */
+    private const PROVIDERS = ['google', 'microsoft', 'apple'];
+
     /**
-     * Redirect the user to Google's OAuth consent screen.
+     * Register a new account with email + password and issue a Sanctum token.
      */
-    public function redirectToGoogle(): RedirectResponse
+    public function register(Request $request): JsonResponse
     {
-        return Socialite::driver('google')->redirect();
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ]);
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            // The User model casts 'password' => 'hashed', so pass it plain.
+            'password' => $data['password'],
+            'locale' => 'es',
+        ]);
+
+        return response()->json([
+            'token' => $user->createToken('password-spa')->plainTextToken,
+            'user' => $user,
+        ], 201);
     }
 
     /**
-     * Handle the Google OAuth callback: find or create the user, issue a
+     * Log in with email + password and issue a Sanctum token.
+     */
+    public function login(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = User::where('email', $data['email'])->first();
+
+        if (! $user || ! $user->password || ! Hash::check($data['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => 'Las credenciales no son correctas.',
+            ]);
+        }
+
+        return response()->json([
+            'token' => $user->createToken('password-spa')->plainTextToken,
+            'user' => $user,
+        ]);
+    }
+
+    /**
+     * Which login methods are available (for the SPA to render the buttons).
+     */
+    public function providers(): JsonResponse
+    {
+        return response()->json([
+            'password' => true,
+            'providers' => array_values(array_filter(
+                self::PROVIDERS,
+                fn (string $p) => $this->providerEnabled($p),
+            )),
+        ]);
+    }
+
+    /**
+     * Redirect to a social provider's consent screen.
+     */
+    public function redirect(string $provider): RedirectResponse
+    {
+        if (! $this->providerEnabled($provider)) {
+            return redirect('/?error=oauth_provider');
+        }
+
+        try {
+            return Socialite::driver($provider)->redirect();
+        } catch (\Throwable $e) {
+            return redirect('/?error=oauth');
+        }
+    }
+
+    /**
+     * Handle a social provider callback: find or create the user, issue a
      * Sanctum token and bounce back to the SPA dashboard carrying the token.
      */
-    public function handleGoogleCallback(): RedirectResponse
+    public function callback(string $provider): RedirectResponse
     {
+        if (! $this->providerEnabled($provider)) {
+            return redirect('/?error=oauth_provider');
+        }
+
         try {
-            $googleUser = Socialite::driver('google')->user();
+            $social = Socialite::driver($provider)->user();
         } catch (\Throwable $e) {
             return redirect('/?error=oauth');
         }
 
-        $user = User::firstOrNew(['email' => $googleUser->getEmail()]);
+        $email = $social->getEmail();
+        if (! $email) {
+            return redirect('/?error=oauth_email');
+        }
+
+        $user = User::firstOrNew(['email' => $email]);
 
         if (! $user->exists) {
-            // New account defaults; GVA name is filled in later by the user.
             $user->nombre_gva = null;
             $user->locale = 'es';
             $user->password = Hash::make(Str::random(40));
         }
 
-        $user->name = $googleUser->getName() ?: ($user->name ?: $googleUser->getEmail());
-        $user->avatar_url = $googleUser->getAvatar();
+        $user->name = $social->getName() ?: ($user->name ?: $email);
+        if ($social->getAvatar()) {
+            $user->avatar_url = $social->getAvatar();
+        }
         $user->save();
 
-        $token = $user->createToken('google-spa')->plainTextToken;
+        $token = $user->createToken($provider.'-spa')->plainTextToken;
 
         return redirect('/dashboard?token='.urlencode($token));
     }
@@ -58,5 +144,26 @@ class AuthController extends Controller
         $request->user()?->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Sessió tancada.']);
+    }
+
+    /**
+     * A provider is usable when its OAuth client credentials are configured.
+     */
+    private function providerEnabled(string $provider): bool
+    {
+        return in_array($provider, self::PROVIDERS, true)
+            && (bool) config("services.{$provider}.client_id");
+    }
+
+    // --- Backwards-compatible Google entry points (named routes) ---
+
+    public function redirectToGoogle(): RedirectResponse
+    {
+        return $this->redirect('google');
+    }
+
+    public function handleGoogleCallback(): RedirectResponse
+    {
+        return $this->callback('google');
     }
 }
