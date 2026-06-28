@@ -24,6 +24,7 @@ class CentroController extends Controller
             'tipo' => ['sometimes', 'nullable', 'string', 'max:50'],
             'localidad' => ['sometimes', 'nullable', 'string', 'max:100'],
             'provincia' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'caracteristica' => ['sometimes', 'nullable', 'string', 'max:50'],
             'query' => ['sometimes', 'nullable', 'string', 'max:200'],
             'lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
@@ -41,6 +42,11 @@ class CentroController extends Controller
         }
         if (! empty($data['provincia'])) {
             $query->where('provincia', $data['provincia']);
+        }
+        if (! empty($data['caracteristica'])) {
+            // Portable JSON-array contains (Postgres + SQLite): the value is
+            // stored as a quoted string inside the caracteristicas array.
+            $query->where('caracteristicas', 'like', '%"'.$data['caracteristica'].'"%');
         }
         if (! empty($data['query'])) {
             $query->where('nombre', 'like', '%'.$data['query'].'%');
@@ -256,6 +262,7 @@ class CentroController extends Controller
             'localidad' => $centro->localidad,
             'provincia' => $centro->provincia,
             'telefono' => $centro->telefono,
+            'caracteristicas' => $centro->caracteristicas ?? [],
         ];
 
         if ($withDistance) {
