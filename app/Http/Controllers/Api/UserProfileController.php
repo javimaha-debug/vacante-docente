@@ -246,6 +246,43 @@ class UserProfileController extends Controller
     }
 
     /**
+     * The authenticated user's weekly continuous-adjudication history, matched
+     * by nombre_gva (or a previously linked user_id), newest tanda first.
+     */
+    public function adjudicacionesContinuas(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user->nombre_gva) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Configura tu nombre GVA en el perfil para ver tus adjudicaciones semanales.',
+                'data' => [],
+            ]);
+        }
+
+        $rows = \App\Models\AdjudicacionContinua::query()
+            ->where(fn ($q) => $q->where('user_id', $user->id)
+                ->orWhereRaw('LOWER(nombre_gva) = ?', [mb_strtolower($user->nombre_gva)]))
+            ->orderByDesc('fecha')
+            ->limit(40)
+            ->get()
+            ->map(fn ($a) => [
+                'fecha' => $a->fecha?->toDateString(),
+                'cuerpo' => $a->cuerpo,
+                'estado' => $a->estado,
+                'especialidad_codigo' => $a->especialidad_codigo,
+                'posicion' => $a->posicion,
+                'centro' => $a->centro_nombre,
+                'localidad' => $a->localitat,
+                'lloc' => $a->lloc_adjudicado,
+                'jornada' => $a->jornada,
+            ]);
+
+        return response()->json(['found' => $rows->isNotEmpty(), 'data' => $rows]);
+    }
+
+    /**
      * The proceso whose participant list was imported most recently (scoped to
      * the user's CCAA when set), with the import date. Used so the official
      * position is always read from the latest available listing.

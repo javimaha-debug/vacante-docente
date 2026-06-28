@@ -291,8 +291,46 @@ export default function DashboardHome() {
                 )}
             </Card>
 
+            <AdjudicacionesContinuasCard />
+
             <HistorialSection historial={historial} />
         </div>
+    );
+}
+
+// The user's weekly continuous-adjudication history (full width).
+function AdjudicacionesContinuasCard() {
+    const { data } = useQuery({
+        queryKey: ['adjudicaciones-continuas'],
+        queryFn: async () => (await api.get('/user/adjudicaciones-continuas')).data,
+        retry: false,
+    });
+
+    const items = data?.data ?? [];
+    if (items.length === 0) return null;
+
+    return (
+        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:col-span-2">
+            <h2 className="mb-3 text-sm font-bold text-slate-700">Mis adjudicaciones semanales</h2>
+            <ul className="divide-y divide-slate-100">
+                {items.map((a, i) => (
+                    <li key={i} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+                        <div className="min-w-0">
+                            <span className="text-sm font-semibold text-slate-800">{formatListadoDate(a.fecha)}</span>
+                            <span className="ml-2 text-xs text-slate-400">{a.especialidad_codigo}</span>
+                            {a.centro && (
+                                <p className="text-xs text-slate-500">
+                                    {a.centro}{a.localidad && ` (${a.localidad})`}{a.jornada && ` · ${a.jornada}`}
+                                </p>
+                            )}
+                        </div>
+                        <span className={clsx('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold', ESTADO_BOLSA_STYLES[a.estado] ?? 'bg-slate-100 text-slate-600')}>
+                            {a.estado ?? '—'}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+        </section>
     );
 }
 
