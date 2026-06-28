@@ -7,8 +7,20 @@ import { useDebounce } from '../../hooks/useDebounce';
 const TIPOS = ['', 'CEIP', 'IES', 'CEE', 'CIPFP', 'CRA', 'EI', 'CEP', 'CIFP', 'EOI', 'FPA', 'Otro'];
 const PROVINCIAS = ['', 'Alacant', 'Castelló', 'València'];
 
+// ANPE characteristics → readable label (for the filter + the card badges).
+const CARAC_LABELS = {
+    JORNADA_CONTINUA: 'Jornada contínua',
+    CRA: 'CRA',
+    SINGULAR: 'Centre singular',
+    UECO: 'Aula UECO',
+    EDUCACIO_ESPECIAL: 'Educació especial',
+    FPA: 'FPA',
+    PENITENCIARI: 'Penitenciari',
+};
+const CARACTERISTICAS = [['', 'Todas las características'], ...Object.entries(CARAC_LABELS)];
+
 export default function CentrosList() {
-    const [filters, setFilters] = useState({ tipo: '', provincia: '', localidad: '', query: '' });
+    const [filters, setFilters] = useState({ tipo: '', provincia: '', localidad: '', query: '', caracteristica: '' });
     const [page, setPage] = useState(1);
     const debouncedQuery = useDebounce(filters.query, 400);
     const debouncedLocalidad = useDebounce(filters.localidad, 400);
@@ -20,12 +32,13 @@ export default function CentrosList() {
     });
 
     const { data, isFetching, isError, error } = useQuery({
-        queryKey: ['centros', filters.tipo, filters.provincia, debouncedLocalidad, debouncedQuery, page],
+        queryKey: ['centros', filters.tipo, filters.provincia, filters.caracteristica, debouncedLocalidad, debouncedQuery, page],
         placeholderData: keepPreviousData,
         queryFn: async () => {
             const params = { page };
             if (filters.tipo) params.tipo = filters.tipo;
             if (filters.provincia) params.provincia = filters.provincia;
+            if (filters.caracteristica) params.caracteristica = filters.caracteristica;
             if (debouncedLocalidad) params.localidad = debouncedLocalidad;
             if (debouncedQuery) params.query = debouncedQuery;
             if (profile?.lat_origen && profile?.lng_origen) {
@@ -67,6 +80,15 @@ export default function CentrosList() {
                     placeholder="Localidad"
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-400 focus:ring-brand-400 sm:col-span-2"
                 />
+                <select
+                    value={filters.caracteristica}
+                    onChange={(e) => set('caracteristica', e.target.value)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
+                >
+                    {CARACTERISTICAS.map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                    ))}
+                </select>
             </div>
 
             {isError ? (
@@ -92,6 +114,20 @@ export default function CentrosList() {
                                     <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-700">{c.tipo}</span>
                                 </div>
                                 <p className="mt-1 text-xs text-slate-500">{c.localidad} · {c.provincia}</p>
+                                {(c.caracteristicas ?? []).some((k) => CARAC_LABELS[k]) && (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        {(c.caracteristicas ?? [])
+                                            .filter((k) => CARAC_LABELS[k])
+                                            .map((k) => (
+                                                <span
+                                                    key={k}
+                                                    className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+                                                >
+                                                    {CARAC_LABELS[k]}
+                                                </span>
+                                            ))}
+                                    </div>
+                                )}
                                 <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
                                     <span>{c.telefono ?? ''}</span>
                                     {c.distance_km != null && <span className="font-semibold text-brand-600">{c.distance_km} km</span>}
