@@ -24,6 +24,9 @@ class MonitorGvaJob implements ShouldQueue
 
     private const ADJUDICACIONES_URL = 'https://ceice.gva.es/va/web/rrhh-educacion/adjudicaciones';
 
+    /** Weekly ("contínues") adjudication results page. */
+    private const RESOLUCIO_URL = 'https://ceice.gva.es/va/web/rrhh-educacion/resolucion';
+
     /** Keywords (lower-case) that mark a notice as relevant to docentes. */
     public const KEYWORDS = [
         'adjudicació', 'adjudicacion', 'personal docent', 'interí', 'interino',
@@ -34,14 +37,103 @@ class MonitorGvaJob implements ShouldQueue
     {
         $rss = $this->fetchRssNoticias();
         $pdfs = $this->fetchPdfNoticias();
+        $continua = $this->fetchHtmlPdfNoticias(self::RESOLUCIO_URL);
 
-        $created = array_merge($this->persist($rss), $this->persist($pdfs));
+        $created = array_merge($this->persist($rss), $this->persist($pdfs), $this->persist($continua));
 
         Log::info('MonitorGvaJob: '.count($created).' new GVA notice(s) stored.');
 
         if (config('gva.auto_import', true)) {
-            $this->autoImport($created);
+            $this->autoImportContinua($created);
+            $this->autoImport(array_filter($created, fn (GvaNoticia $n) => ! $this->isContinuaPdf($n->url)));
         }
+    }
+
+    /**
+     * Auto-import newly detected weekly ("contínua") adjudication listings and
+     * notify affected users. These don't map to a proceso, so they bypass
+     * GvaAutoImportService and go straight to the tanda importer.
+     *
+     * @param  array<int, GvaNoticia>  $created
+     */
+    private function autoImportContinua(array $created): void
+    {
+        foreach ($created as $noticia) {
+            if (! $this->isContinuaPdf($noticia->url)) {
+                continue;
+            }
+
+            // Only auto-import (and notify) recent tandas; older ones are kept
+            // as notices for the admin to import manually, never auto-notified.
+            if (! $this->isRecentContinua($noticia->url)) {
+                $noticia->forceFill(['import_estado' => 'sin_proceso', 'import_resumen' => 'Tanda antigua: importación manual.'])->save();
+
+                continue;
+            }
+
+            try {
+                $exit = \Illuminate\Support\Facades\Artisan::call('adjudicaciones:import-continua', [
+                    'path' => $noticia->url,
+                    '--notify' => true,
+                ]);
+                $noticia->forceFill([
+                    'importado_en' => now(),
+                    'import_estado' => $exit === 0 ? 'ok' : 'error',
+                    'import_resumen' => 'Adjudicació contínua '.basename($noticia->url),
+                ])->save();
+            } catch (\Throwable $e) {
+                Log::error('MonitorGvaJob: continua import failed', ['url' => $noticia->url, 'error' => $e->getMessage()]);
+                $noticia->forceFill(['import_estado' => 'error', 'import_resumen' => 'Error: '.$e->getMessage()])->save();
+            }
+        }
+    }
+
+    /**
+     * A weekly continuous-adjudication listing PDF (YYMMDD_lis_sec/mae.pdf).
+     */
+    public function isContinuaPdf(string $url): bool
+    {
+        return (bool) preg_match('/\d{6}_lis_(sec|mae)\.pdf/i', $url);
+    }
+
+    /**
+     * Whether a continua listing URL is recent (its YYMMDD date within ~16 days),
+     * to avoid auto-importing/notifying the page's historical backlog.
+     */
+    public function isRecentContinua(string $url): bool
+    {
+        if (! preg_match('/(\d{2})(\d{2})(\d{2})_lis_(?:sec|mae)\.pdf/i', $url, $m)) {
+            return false;
+        }
+        try {
+            $fecha = Carbon::createFromDate(2000 + (int) $m[1], (int) $m[2], (int) $m[3])->startOfDay();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $fecha->isFuture() === false && $fecha->diffInDays(Carbon::now()) <= 16;
+    }
+
+    /**
+     * Fetch + parse PDF links from an arbitrary GVA HTML page.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchHtmlPdfNoticias(string $url): array
+    {
+        try {
+            $response = Http::timeout(30)->get($url);
+        } catch (\Throwable $e) {
+            Log::warning('MonitorGvaJob: page fetch failed', ['url' => $url, 'error' => $e->getMessage()]);
+
+            return [];
+        }
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        return $this->parsePdfLinks($response->body(), $url);
     }
 
     /**

@@ -16,6 +16,7 @@ class ImportAdjudicacionContinua extends Command
     protected $signature = 'adjudicaciones:import-continua {path : Ruta o URL del PDF de la tanda (YYMMDD_lis_sec.pdf)}
                             {--fecha= : Fecha de la tanda YYYY-MM-DD (si no se detecta del PDF)}
                             {--cuerpo= : SECUNDARIA|MAESTROS (si no se detecta del nombre)}
+                            {--notify : Avisa a los usuarios adjudicados en esta tanda}
                             {--dry-run : Analiza sin escribir}';
 
     protected $description = 'Importa una tanda de adjudicaciones contínues (semanales), conservando el histórico por fecha.';
@@ -94,7 +95,7 @@ class ImportAdjudicacionContinua extends Command
 
         DB::transaction(function () use ($fecha, $cuerpo, $payload) {
             // Re-runnable: replace this tanda (same fecha+cuerpo) and re-insert.
-            AdjudicacionContinua::where('fecha', $fecha->toDateString())->where('cuerpo', $cuerpo)->delete();
+            AdjudicacionContinua::whereDate('fecha', $fecha->toDateString())->where('cuerpo', $cuerpo)->delete();
             foreach (array_chunk($payload, 500) as $chunk) {
                 AdjudicacionContinua::insert($chunk);
             }
@@ -104,7 +105,42 @@ class ImportAdjudicacionContinua extends Command
         $adj = collect($payload)->where('estado', 'Adjudicat')->count();
         $this->info('Importadas '.count($payload)." filas; {$adj} adjudicades; {$linked} enllaçades a usuaris.");
 
+        if ($this->option('notify')) {
+            $avisados = $this->notifyAdjudicados($fecha, $cuerpo);
+            $this->info("Avisados {$avisados} usuarios adjudicados.");
+        }
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Notify the registered users adjudicated in a freshly imported tanda.
+     */
+    private function notifyAdjudicados(Carbon $fecha, string $cuerpo): int
+    {
+        $rows = AdjudicacionContinua::whereDate('fecha', $fecha->toDateString())
+            ->where('cuerpo', $cuerpo)
+            ->where('estado', 'Adjudicat')
+            ->whereNotNull('user_id')
+            ->with('user')
+            ->get();
+
+        $count = 0;
+        foreach ($rows as $row) {
+            if (! $row->user) {
+                continue;
+            }
+            $row->user->notify(new \App\Notifications\AdjudicacionContinuaAsignada(
+                $fecha->toDateString(),
+                $row->centro_nombre,
+                $row->localitat,
+                $row->especialidad_codigo,
+                $row->jornada,
+            ));
+            $count++;
+        }
+
+        return $count;
     }
 
     /**
