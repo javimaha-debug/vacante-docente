@@ -48,7 +48,7 @@ const EMPTY_FILTERS = {
     sort: 'priority',
 };
 
-function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
+function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', focused = false }) {
     const [filters, setFilters] = useState(EMPTY_FILTERS);
     const [showDiscarded, setShowDiscarded] = useState(false);
     const [viewMode, setViewMode] = useState(initialView);
@@ -102,9 +102,11 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
         let list = neutral;
         const max = parseFloat(filters.maxDistance);
         if (!Number.isNaN(max)) {
+            // Keep candidates without a computed distance visible — only drop
+            // those that DO have a distance and exceed the limit.
             list = list.filter((v) => {
                 const km = drivingKm(v);
-                return km != null && km <= max;
+                return km == null || km <= max;
             });
         }
 
@@ -226,9 +228,9 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
                 list={list}
                 geocode={geocode}
                 distances={distances}
-                // Only compute travel times for the vacancies in "Mi lista" —
-                // far fewer Google calls than the whole loaded set.
-                vacancyIds={selected.map((p) => p.vacancy_id)}
+                // Compute travel times for every loaded vacancy so distance is
+                // available while browsing candidates, not just the selected.
+                vacancyIds={vacancies.map((v) => v.id)}
             />
             <FiltersPanel
                 filters={filters}
@@ -244,17 +246,58 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
         ? { lat: list.home_lat, lng: list.home_lng }
         : null;
 
+    // Focused "Mi Lista" page: only the prioritised selection, no explorer.
+    const focusedSidebar = (
+        <div className="space-y-5">
+            <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
+                <ProcesoSelector
+                    value={procesoId}
+                    onChange={handleProcesoChange}
+                    colectivoBody={user?.colectivo?.body ?? null}
+                />
+            </div>
+            <HomeAddressPanel
+                list={list}
+                geocode={geocode}
+                distances={distances}
+                vacancyIds={selected.map((p) => p.vacancy_id)}
+            />
+        </div>
+    );
+
+    const focusedContent = (
+        <div className="scroll-thin mx-auto h-full max-w-3xl space-y-3 overflow-y-auto pr-1">
+            <div className="flex items-baseline justify-between">
+                <h1 className="text-lg font-bold text-slate-800">Mi lista priorizada</h1>
+                <span className="text-sm text-slate-400">{selected.length} vacantes</span>
+            </div>
+            <p className="text-xs text-slate-500">
+                Arrastra <span className="font-semibold">⠿</span> para ordenar tus preferencias. Pulsa «Exportar lista» arriba para descargarla.
+            </p>
+            <SortableRows
+                items={selected}
+                home={home}
+                onReorder={handleReorder}
+                onStatusChange={handleStatusChange}
+                onNotesChange={handleNotesChange}
+                emptyLabel="Aún no has añadido vacantes. Ve a «Explorador Vacantes» y pulsa ✓ Mi lista."
+            />
+        </div>
+    );
+
     return (
         <Layout
             specialty={list?.specialty}
             vacancyCount={total}
             onChangeSpecialty={onChangeSpecialty}
             onExport={() => setExporting(true)}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            sidebar={sidebar}
+            viewMode={focused ? undefined : viewMode}
+            onViewModeChange={focused ? undefined : setViewMode}
+            sidebar={focused ? focusedSidebar : sidebar}
         >
-            {isLoading ? (
+            {focused ? (
+                focusedContent
+            ) : isLoading ? (
                 <div className="flex h-full items-center justify-center text-sm text-slate-400">Cargando vacantes…</div>
             ) : viewMode === 'kanban' ? (
                 <KanbanBoard
@@ -347,7 +390,7 @@ function ListView({ selected, neutral, home, onStatusChange, onNotesChange, onRe
 
 // Existing vacancy explorer flow (specialty selection → kanban/list organizer).
 // Rendered inside the dashboard at /dashboard/vacantes and /dashboard/lista.
-function VacancyExplorer({ initialView = 'kanban' }) {
+function VacancyExplorer({ initialView = 'kanban', focused = false }) {
     const [specialtyId, setActiveSpecialty] = useState(getSpecialtyId());
     const [isSelecting, setIsSelecting] = useState(false);
 
@@ -373,6 +416,7 @@ function VacancyExplorer({ initialView = 'kanban' }) {
                 specialtyId={specialtyId}
                 onChangeSpecialty={handleChangeSpecialty}
                 initialView={initialView}
+                focused={focused}
             />
         </div>
     );
@@ -430,7 +474,7 @@ function AppRoutes() {
                 <Route path="perfil" element={<UserProfile />} />
                 <Route path="especialidades" element={<MisEspecialidades />} />
                 <Route path="vacantes" element={<VacancyExplorer initialView="kanban" />} />
-                <Route path="lista" element={<VacancyExplorer initialView="list" />} />
+                <Route path="lista" element={<VacancyExplorer initialView="list" focused />} />
                 <Route path="centros" element={<CentrosList />} />
                 <Route path="centros/:codigo" element={<CentroDetail />} />
                 <Route path="tablon" element={<TablonList />} />

@@ -32,14 +32,16 @@ export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onE
                 )}
 
                 <div className="ml-auto flex items-center gap-2">
-                    <div className="hidden rounded-lg bg-slate-100 p-0.5 sm:flex">
-                        <ViewTab active={viewMode === 'kanban'} onClick={() => onViewModeChange('kanban')}>
-                            Kanban
-                        </ViewTab>
-                        <ViewTab active={viewMode === 'list'} onClick={() => onViewModeChange('list')}>
-                            Lista
-                        </ViewTab>
-                    </div>
+                    {onViewModeChange && (
+                        <div className="hidden rounded-lg bg-slate-100 p-0.5 sm:flex">
+                            <ViewTab active={viewMode === 'kanban'} onClick={() => onViewModeChange('kanban')}>
+                                Kanban
+                            </ViewTab>
+                            <ViewTab active={viewMode === 'list'} onClick={() => onViewModeChange('list')}>
+                                Lista
+                            </ViewTab>
+                        </div>
+                    )}
                     <button
                         onClick={onChangeSpecialty}
                         className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"

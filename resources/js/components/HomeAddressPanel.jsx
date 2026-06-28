@@ -124,19 +124,6 @@ export default function HomeAddressPanel({ list, geocode, distances, vacancyIds 
         }
     }, [depTime, retTime, modes]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // When the "Mi lista" set changes (a vacancy added/removed), compute the
-    // times for the new selection. Cache-first on the server, so only the
-    // newly added ones hit Google.
-    const idsKey = [...vacancyIds].sort((a, b) => a - b).join(',');
-    const idsRef = useRef(idsKey);
-    useEffect(() => {
-        if (idsRef.current === idsKey) return;
-        idsRef.current = idsKey;
-        if (!list?.has_home || vacancyIds.length === 0) return;
-        const id = setTimeout(runCalc, 400);
-        return () => clearTimeout(id);
-    }, [idsKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
     const toggleMode = (key) =>
         setModes((prev) => {
             const next = new Set(prev);
@@ -184,8 +171,8 @@ export default function HomeAddressPanel({ list, geocode, distances, vacancyIds 
                 )}
             </div>
             <p className="mt-1 text-[11px] text-slate-400">
-                Elige una sugerencia de Google para fijar la ubicación. Los tiempos se calculan para las
-                vacantes de <span className="font-medium">Mi lista</span>.
+                Elige una sugerencia de Google para fijar la ubicación; las distancias se calculan para las
+                vacantes cargadas.
             </p>
 
             {/* Times */}
@@ -254,12 +241,6 @@ export default function HomeAddressPanel({ list, geocode, distances, vacancyIds 
                         <p className="rounded-md bg-rose-50 px-2 py-1.5 font-medium text-rose-600">{message}</p>
                     )}
                 </div>
-            )}
-
-            {list?.has_home && status === 'idle' && vacancyIds.length === 0 && (
-                <p className="mt-2 text-[11px] text-amber-600">
-                    Añade vacantes a «Mi lista» para calcular sus tiempos.
-                </p>
             )}
 
             {list?.has_home && status === 'idle' && (
