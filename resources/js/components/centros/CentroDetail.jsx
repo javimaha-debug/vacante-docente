@@ -8,6 +8,17 @@ const CURSO = '2025-2026';
 
 // GVA web values sometimes omit the scheme (e.g. "www.centro.es"); ensure the
 // link is absolute so it doesn't resolve relative to the SPA.
+// ANPE characteristics → readable badge label (incl. tipo de jornada).
+const CARAC_LABELS = {
+    JORNADA_CONTINUA: 'Jornada contínua',
+    CRA: 'CRA',
+    SINGULAR: 'Centre singular',
+    UECO: 'Aula UECO',
+    EDUCACIO_ESPECIAL: 'Educació especial',
+    FPA: 'FPA',
+    PENITENCIARI: 'Penitenciari',
+};
+
 function normalizeUrl(url) {
     if (!url) return url;
     return /^https?:\/\//i.test(url) ? url : `https://${url}`;
@@ -68,6 +79,18 @@ export default function CentroDetail() {
                     </div>
                     <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-700">{centro.tipo}</span>
                 </div>
+
+                {(centro.caracteristicas ?? []).some((k) => CARAC_LABELS[k]) && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                        {(centro.caracteristicas ?? [])
+                            .filter((k) => CARAC_LABELS[k])
+                            .map((k) => (
+                                <span key={k} className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                                    {CARAC_LABELS[k]}
+                                </span>
+                            ))}
+                    </div>
+                )}
                 <dl className="mt-3 grid grid-cols-1 gap-1 text-sm text-slate-600 sm:grid-cols-2">
                     {(centro.direccion_oficial || centro.direccion) && <div>📍 {centro.direccion_oficial || centro.direccion}</div>}
                     {centro.telefono && <div>📞 <a href={`tel:${centro.telefono}`} className="text-brand-600 hover:underline">{centro.telefono}</a></div>}

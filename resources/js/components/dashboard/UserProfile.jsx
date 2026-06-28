@@ -4,7 +4,6 @@ import clsx from 'clsx';
 import api from '../../lib/api';
 import { useDebounce } from '../../hooks/useDebounce';
 import PushToggle from './PushToggle';
-import MisEspecialidades from './MisEspecialidades';
 
 function Toggle({ checked, onChange, label }) {
     return (
@@ -226,10 +225,6 @@ export default function UserProfile() {
                 {mutation.isError && <span className="text-sm text-red-600">{mutation.error?.friendlyMessage}</span>}
             </div>
         </form>
-
-            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-                <MisEspecialidades embedded />
-            </section>
         </div>
     );
 }

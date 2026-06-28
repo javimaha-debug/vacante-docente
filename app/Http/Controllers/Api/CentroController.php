@@ -263,6 +263,7 @@ class CentroController extends Controller
             'localidad' => $centro->localidad,
             'provincia' => $centro->provincia,
             'telefono' => $centro->telefono,
+            'web' => $centro->web,
             'caracteristicas' => $centro->caracteristicas ?? [],
         ];
 
