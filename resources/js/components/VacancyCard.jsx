@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import clsx from 'clsx';
+import { TRAVEL_MODES, formatDuration, modeSummary, hasAnyDistance, mapsRouteUrl } from '../lib/distance';
 
 const PROVINCIA_STYLES = {
     Alacant: 'bg-rose-100 text-rose-700',
@@ -13,41 +14,41 @@ const TAG_STYLES = {
     'Centre singular': 'bg-sky-100 text-sky-700',
 };
 
-const MODE_META = {
-    driving: { label: 'Coche', icon: '🚗' },
-    transit: { label: 'Público', icon: '🚆' },
-    walking: { label: 'A pie', icon: '🚶' },
-};
-
-function formatDuration(minutes) {
-    if (minutes == null) return '—';
-    if (minutes < 60) return `${minutes} min`;
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return m ? `${h} h ${m} min` : `${h} h`;
-}
-
-function DistanceRow({ distances }) {
-    const available = Object.keys(MODE_META).filter((m) => distances?.[m]);
-    if (!available.length) return null;
-
-    const driving = distances.driving;
+function DistanceRow({ distances, vacancy, home }) {
+    if (!hasAnyDistance(distances)) return null;
+    const driving = modeSummary(distances, 'driving');
 
     return (
         <div className="mt-2 space-y-1 rounded-lg bg-slate-50 px-2.5 py-2">
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                {available.map((mode) => {
-                    const d = distances[mode];
+            <div className="flex flex-col gap-1 text-xs">
+                {TRAVEL_MODES.map((m) => {
+                    const s = modeSummary(distances, m.key);
+                    if (!s) return null;
                     return (
-                        <span key={mode} className="inline-flex items-center gap-1 text-slate-600">
-                            <span aria-hidden>{MODE_META[mode].icon}</span>
-                            <span className="font-semibold text-slate-800">{formatDuration(d.duration_minutes)}</span>
-                            {d.distance_km != null && <span className="text-slate-400">· {d.distance_km} km</span>}
+                        <span key={m.key} className="inline-flex items-center gap-1 text-slate-600">
+                            <span aria-hidden>{m.icon}</span>
+                            <span className="text-slate-400">ida</span>
+                            <span className="font-semibold text-slate-800">{formatDuration(s.ida) ?? '—'}</span>
+                            {s.tornada != null && (
+                                <>
+                                    <span className="text-slate-400">· tornada</span>
+                                    <span className="font-semibold text-slate-800">{formatDuration(s.tornada)}</span>
+                                </>
+                            )}
+                            {s.km != null && <span className="text-slate-400">· {s.km} km</span>}
                         </span>
                     );
                 })}
             </div>
-            {driving?.traffic_note && <p className="text-[11px] text-slate-400">{driving.traffic_note}</p>}
+            {driving?.trafficNote && <p className="text-[11px] text-slate-400">{driving.trafficNote}</p>}
+            <a
+                href={mapsRouteUrl(home, vacancy, 'driving')}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block text-[11px] font-semibold text-brand-600 hover:text-brand-700"
+            >
+                🗺️ Ver ruta en Google Maps
+            </a>
         </div>
     );
 }
@@ -57,6 +58,7 @@ export default function VacancyCard({
     status = 'neutral',
     position,
     notes = '',
+    home = null,
     onStatusChange,
     onNotesChange,
     dragHandleProps,
@@ -136,7 +138,7 @@ export default function VacancyCard({
 
                     {vacancy.observ && <p className="mt-1.5 text-[11px] italic text-slate-400">{vacancy.observ}</p>}
 
-                    <DistanceRow distances={vacancy.distances} />
+                    <DistanceRow distances={vacancy.distances} vacancy={vacancy} home={home} />
                 </div>
             </div>
 

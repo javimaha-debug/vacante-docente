@@ -97,7 +97,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
     // driving distance and the chosen ordering. (Province / type / req. ling. /
     // itinerant / search are already applied server-side.)
     const neutralSorted = useMemo(() => {
-        const drivingKm = (v) => v.distances?.driving?.distance_km ?? null;
+        const drivingKm = (v) => v.distances?.driving_ida?.distance_km ?? v.distances?.driving_tornada?.distance_km ?? null;
 
         let list = neutral;
         const max = parseFloat(filters.maxDistance);
@@ -238,6 +238,10 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
         </div>
     );
 
+    const home = list?.home_lat != null && list?.home_lng != null
+        ? { lat: list.home_lat, lng: list.home_lng }
+        : null;
+
     return (
         <Layout
             specialty={list?.specialty}
@@ -255,6 +259,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
                     neutral={neutralSorted}
                     selected={selected}
                     discarded={discarded}
+                    home={home}
                     showDiscarded={showDiscarded}
                     onStatusChange={handleStatusChange}
                     onNotesChange={handleNotesChange}
@@ -267,6 +272,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
                 <ListView
                     selected={selected}
                     neutral={neutralSorted}
+                    home={home}
                     onStatusChange={handleStatusChange}
                     onNotesChange={handleNotesChange}
                     onReorder={handleReorder}
@@ -286,7 +292,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
 // Powerful working list: one compact row per vacancy, with the prioritised
 // list (drag-and-drop to move a vacancy up/down) on top and the filtered/sorted
 // candidates below. Distance is shown inline on every row.
-function ListView({ selected, neutral, onStatusChange, onNotesChange, onReorder, hasMore, onLoadMore, isLoadingMore }) {
+function ListView({ selected, neutral, home, onStatusChange, onNotesChange, onReorder, hasMore, onLoadMore, isLoadingMore }) {
     return (
         <div className="scroll-thin mx-auto h-full max-w-4xl space-y-6 overflow-y-auto pr-1">
             <section>
@@ -296,6 +302,7 @@ function ListView({ selected, neutral, onStatusChange, onNotesChange, onReorder,
                 </h2>
                 <SortableRows
                     items={selected}
+                    home={home}
                     onReorder={onReorder}
                     onStatusChange={onStatusChange}
                     onNotesChange={onNotesChange}
@@ -312,6 +319,7 @@ function ListView({ selected, neutral, onStatusChange, onNotesChange, onReorder,
                             key={v.id}
                             vacancy={v}
                             status="neutral"
+                            home={home}
                             onStatusChange={(status) => onStatusChange(v.id, status)}
                         />
                     ))}

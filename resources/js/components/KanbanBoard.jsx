@@ -25,6 +25,7 @@ export default function KanbanBoard({
     neutral,
     selected,
     discarded,
+    home = null,
     showDiscarded,
     onStatusChange,
     onNotesChange,
@@ -64,6 +65,7 @@ export default function KanbanBoard({
                             key={v.id}
                             vacancy={v}
                             status="neutral"
+                            home={home}
                             onStatusChange={(status) => onStatusChange(v.id, status)}
                         />
                     ))
@@ -74,6 +76,7 @@ export default function KanbanBoard({
             <Column title="Mi lista" count={selected.length} accent="bg-emerald-500">
                 <SortableList
                     items={selected}
+                    home={home}
                     onReorder={onReorder}
                     onStatusChange={onStatusChange}
                     onNotesChange={onNotesChange}
@@ -102,6 +105,7 @@ export default function KanbanBoard({
                                     vacancy={item.vacancy}
                                     status="discarded"
                                     notes={item.notes ?? ''}
+                                    home={home}
                                     onStatusChange={(status) => onStatusChange(item.vacancy_id, status)}
                                     onNotesChange={(notes) => onNotesChange(item.vacancy_id, notes)}
                                 />

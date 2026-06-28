@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import clsx from 'clsx';
+import { TRAVEL_MODES, formatDuration, modeSummary, hasAnyDistance, mapsRouteUrl } from '../lib/distance';
 
 const PROVINCIA_STYLES = {
     Alacant: 'bg-rose-100 text-rose-700',
@@ -7,31 +8,24 @@ const PROVINCIA_STYLES = {
     València: 'bg-emerald-100 text-emerald-700',
 };
 
-function formatDuration(minutes) {
-    if (minutes == null) return null;
-    if (minutes < 60) return `${minutes} min`;
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return m ? `${h}h ${m}m` : `${h}h`;
-}
-
-// Compact one-line vacancy row for the powerful list view. Shows the driving
-// distance inline and offers quick prioritise / discard actions. When a drag
-// handle is provided the row can be reordered to set priority.
+// Compact one-line vacancy row for the powerful list view. Shows outbound/return
+// travel times per mode inline plus a Google Maps route link, and offers quick
+// prioritise / discard actions. With a drag handle it can be reordered.
 export default function VacancyRow({
     vacancy,
     status = 'neutral',
     position,
     notes = '',
+    home = null,
     onStatusChange,
     onNotesChange,
     dragHandleProps,
     isDragging = false,
 }) {
     const [showNotes, setShowNotes] = useState(false);
-    const driving = vacancy.distances?.driving;
-    const dur = formatDuration(driving?.duration_minutes);
     const tags = vacancy.observ_tags ?? [];
+    const driving = modeSummary(vacancy.distances, 'driving');
+    const hasDist = hasAnyDistance(vacancy.distances);
 
     return (
         <div
@@ -91,20 +85,32 @@ export default function VacancyRow({
                     </div>
                 </div>
 
-                {/* Distance */}
-                <div className="w-20 shrink-0 text-right">
+                {/* Travel times (ida → tornada) */}
+                <div className="w-28 shrink-0 text-right">
                     {driving ? (
                         <>
-                            <div className="text-xs font-semibold text-slate-800">{driving.distance_km != null ? `${driving.distance_km} km` : '—'}</div>
-                            {dur && <div className="text-[11px] text-slate-400">🚗 {dur}</div>}
+                            <div className="text-xs font-semibold text-slate-800">
+                                🚗 {formatDuration(driving.ida) ?? '—'}
+                                {driving.tornada != null && <span className="text-slate-400"> · {formatDuration(driving.tornada)}</span>}
+                            </div>
+                            {driving.km != null && <div className="text-[11px] text-slate-400">{driving.km} km</div>}
                         </>
                     ) : (
-                        <div className="text-[11px] text-slate-300">— km</div>
+                        <div className="text-[11px] text-slate-300">sin calcular</div>
                     )}
                 </div>
 
                 {/* Quick actions */}
                 <div className="flex shrink-0 items-center gap-1">
+                    <a
+                        href={mapsRouteUrl(home, vacancy, 'driving')}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Ver ruta en Google Maps"
+                        className="rounded-md px-1.5 py-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+                    >
+                        🗺️
+                    </a>
                     <button
                         type="button"
                         onClick={() => onStatusChange?.(status === 'selected' ? 'neutral' : 'selected')}
@@ -139,6 +145,22 @@ export default function VacancyRow({
                     )}
                 </div>
             </div>
+
+            {hasDist && (
+                <div className="mt-1 flex flex-wrap gap-x-3 pl-1 text-[11px] text-slate-400">
+                    {TRAVEL_MODES.filter((m) => m.key !== 'driving').map((m) => {
+                        const s = modeSummary(vacancy.distances, m.key);
+                        if (!s) return null;
+                        return (
+                            <span key={m.key}>
+                                {m.icon} {formatDuration(s.ida) ?? '—'}
+                                {s.tornada != null && ` · ${formatDuration(s.tornada)}`}
+                            </span>
+                        );
+                    })}
+                    {driving?.trafficNote && <span className="text-slate-300">· {driving.trafficNote}</span>}
+                </div>
+            )}
 
             {vacancy.observ && !showNotes && (
                 <p className="mt-1 truncate pl-1 text-[11px] italic text-slate-400" title={vacancy.observ}>{vacancy.observ}</p>
