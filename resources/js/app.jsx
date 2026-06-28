@@ -200,14 +200,20 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
         const lat = user?.lat_origen;
         const lng = user?.lng_origen;
         if (lat != null && lng != null) {
+            // Profile has verified coordinates: use them directly.
             homePreloadedRef.current = true;
             updateAddress.mutate({
                 home_address: user?.direccion_origen ?? '',
                 home_lat: Number(lat),
                 home_lng: Number(lng),
             });
+        } else if (user?.direccion_origen) {
+            // Profile has an address but no stored coordinates: geocode the text
+            // so the origin still preloads and distances can be computed.
+            homePreloadedRef.current = true;
+            geocode.mutate(user.direccion_origen);
         }
-    }, [isAuthenticated, listId, list, user, updateAddress]);
+    }, [isAuthenticated, listId, list, user, updateAddress, geocode]);
 
     const handleStatusChange = useCallback(
         (vacancyId, status) => {
