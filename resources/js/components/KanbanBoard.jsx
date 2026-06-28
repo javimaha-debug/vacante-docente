@@ -3,7 +3,8 @@ import {
     DndContext,
     DragOverlay,
     KeyboardSensor,
-    PointerSensor,
+    MouseSensor,
+    TouchSensor,
     closestCorners,
     useSensor,
     useSensors,
@@ -22,8 +23,22 @@ import VacancyCard from './VacancyCard';
 
 const STATUS_OF = { neutral: 'neutral', selected: 'selected', discarded: 'discarded' };
 
-// A card that can be dragged (by its ⠿ handle) between columns and reordered
-// within "Mi lista". The handle keeps the ✓/✕/notes buttons fully clickable.
+// Pointer events on interactive children (buttons, links, notes) must NOT
+// start a drag, so their normal click/typing behaviour works; dragging from
+// anywhere else on the card does.
+const INTERACTIVE = 'button, a, textarea, input, select, label';
+function guardListeners(listeners) {
+    return {
+        ...listeners,
+        onPointerDown: (e) => {
+            if (e.target.closest?.(INTERACTIVE)) return;
+            listeners?.onPointerDown?.(e);
+        },
+    };
+}
+
+// A card draggable from ANY point (not just a handle) between columns and
+// reorderable within "Mi lista".
 function SortableVacancyCard({ id, vacancy, status, position, notes, home, onStatusChange, onNotesChange }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     const style = {
@@ -33,7 +48,13 @@ function SortableVacancyCard({ id, vacancy, status, position, notes, home, onSta
         opacity: isDragging ? 0.5 : 1,
     };
     return (
-        <div ref={setNodeRef} style={style}>
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...guardListeners(listeners)}
+            className="cursor-grab active:cursor-grabbing"
+        >
             <VacancyCard
                 vacancy={vacancy}
                 status={status}
@@ -42,7 +63,6 @@ function SortableVacancyCard({ id, vacancy, status, position, notes, home, onSta
                 home={home}
                 onStatusChange={onStatusChange}
                 onNotesChange={onNotesChange}
-                dragHandleProps={{ ...attributes, ...listeners }}
                 isDragging={isDragging}
             />
         </div>
@@ -90,7 +110,10 @@ export default function KanbanBoard({
     const [activeId, setActiveId] = useState(null);
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+        // Mouse: drag after a small move (so clicks on the card still register).
+        useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+        // Touch: press-and-hold to drag, so a quick swipe still scrolls the column.
+        useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
