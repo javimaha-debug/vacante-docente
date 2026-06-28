@@ -131,24 +131,86 @@ function StepModo({ modo, setModo }) {
     );
 }
 
+// Accent- and case-insensitive normalization for the specialty search.
+const normalizeText = (s) => (s ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
 function StepEspecialidades({ selected, setSelected }) {
     const { data, isLoading } = useQuery({
         queryKey: ['specialties'],
         queryFn: async () => (await api.get('/specialties')).data,
     });
 
-    const groups = data ? [
+    const [search, setSearch] = useState('');
+    const debounced = useDebounce(search, 150);
+
+    const groups = useMemo(() => (data ? [
         ['Maestros', data.maestros], ['Secundaria', data.secundaria], ['FP', data.fp],
-    ] : [];
+    ] : []), [data]);
+
+    const allItems = useMemo(() => groups.flatMap(([, items]) => items ?? []), [groups]);
+
+    const q = normalizeText(debounced.trim());
+    const searching = q.length > 0;
+    const matches = useMemo(
+        () => (searching ? allItems.filter((s) => normalizeText(s.name).includes(q)) : []),
+        [searching, q, allItems]
+    );
 
     const toggle = (id) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
+    const chipClass = (id) =>
+        `rounded-full border px-3 py-1 text-xs font-medium transition ${
+            selected.includes(id)
+                ? 'border-teal-500 bg-teal-50 text-teal-700'
+                : 'border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200'
+        }`;
+
     return (
         <div>
-            <h2 className="text-lg font-bold text-slate-800">Tus especialidades</h2>
-            <p className="mt-1 text-sm text-slate-500">Selecciona al menos una. ({selected.length} seleccionada{selected.length === 1 ? '' : 's'})</p>
+            <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-800">Tus especialidades</h2>
+                {selected.length > 0 && (
+                    <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">
+                        {selected.length} seleccionada{selected.length === 1 ? '' : 's'}
+                    </span>
+                )}
+            </div>
+            <p className="mt-1 text-sm text-slate-500">Selecciona al menos una.</p>
+
+            {/* Search */}
+            <div className="relative mt-3">
+                <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Busca tu especialidad..."
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-9 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-200"
+                />
+                {search && (
+                    <button
+                        type="button"
+                        onClick={() => setSearch('')}
+                        aria-label="Limpiar búsqueda"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                    >
+                        ×
+                    </button>
+                )}
+            </div>
+
             {isLoading ? (
                 <p className="mt-4 text-sm text-slate-400">Cargando especialidades…</p>
+            ) : searching ? (
+                matches.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                        {matches.map((s) => (
+                            <button key={s.id} onClick={() => toggle(s.id)} className={chipClass(s.id)}>
+                                {s.name}
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="mt-4 text-sm text-slate-400">No se encontró ninguna especialidad con ese nombre</p>
+                )
             ) : (
                 <div className="mt-3 space-y-4">
                     {groups.map(([label, items]) => (items?.length ? (
@@ -156,11 +218,7 @@ function StepEspecialidades({ selected, setSelected }) {
                             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</h3>
                             <div className="mt-1 flex flex-wrap gap-1.5">
                                 {items.map((s) => (
-                                    <button
-                                        key={s.id}
-                                        onClick={() => toggle(s.id)}
-                                        className={`rounded-full px-3 py-1 text-xs font-medium transition ${selected.includes(s.id) ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                                    >
+                                    <button key={s.id} onClick={() => toggle(s.id)} className={chipClass(s.id)}>
                                         {s.name}
                                     </button>
                                 ))}
