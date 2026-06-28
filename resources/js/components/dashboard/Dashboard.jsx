@@ -7,7 +7,6 @@ import NotificationBell from './NotificationBell';
 const NAV = [
     { to: '/dashboard', label: 'Inicio', end: true, icon: '🏠' },
     { to: '/dashboard/perfil', label: 'Mi Perfil', icon: '👤' },
-    { to: '/dashboard/especialidades', label: 'Mis Especialidades', icon: '🎓' },
     { to: '/dashboard/vacantes', label: 'Explorador Vacantes', icon: '🔎' },
     { to: '/dashboard/lista', label: 'Mi Lista', icon: '📋' },
     { to: '/dashboard/centros', label: 'Centros', icon: '🏫' },

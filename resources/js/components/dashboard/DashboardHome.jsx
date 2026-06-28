@@ -9,8 +9,17 @@ const ESTADO_BOLSA_STYLES = {
     Adjudicat: 'bg-blue-100 text-blue-700',
 };
 
-// Official position in the published participant list for a proceso, via the
-// authenticated /participantes/{proceso}/mi-posicion endpoint.
+function formatListadoDate(iso) {
+    if (!iso) return null;
+    try {
+        return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+        return null;
+    }
+}
+
+// Official position read from the LATEST participant listing for a proceso,
+// via the authenticated /participantes/{proceso}/mi-posicion endpoint.
 function MiPosicionCard({ proceso }) {
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['mi-posicion', proceso?.id],
@@ -23,13 +32,19 @@ function MiPosicionCard({ proceso }) {
 
     const needsNombre = isError && error?.response?.status === 422;
     const adj = data?.adjudicacion;
+    const listadoFecha = formatListadoDate(data?.listado_fecha ?? proceso.fecha);
 
     return (
         <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:col-span-2">
-            <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-bold text-slate-700">Mi posición en la lista — {proceso.nombre}</h2>
+            <div className="mb-3 flex items-start justify-between gap-2">
+                <div>
+                    <h2 className="text-sm font-bold text-slate-700">Mi posición en la lista — {proceso.nombre}</h2>
+                    {listadoFecha && (
+                        <p className="mt-0.5 text-[11px] text-slate-400">Según el listado del {listadoFecha}</p>
+                    )}
+                </div>
                 {data?.found && data.estado && (
-                    <span className={clsx('rounded-full px-2 py-0.5 text-xs font-bold', ESTADO_BOLSA_STYLES[data.estado] ?? 'bg-slate-100 text-slate-600')}>
+                    <span className={clsx('shrink-0 rounded-full px-2 py-0.5 text-xs font-bold', ESTADO_BOLSA_STYLES[data.estado] ?? 'bg-slate-100 text-slate-600')}>
                         {data.estado}
                     </span>
                 )}
@@ -134,8 +149,10 @@ export default function DashboardHome() {
     const favoritas = data?.mis_vacantes_favoritas ?? [];
     const resumen = data?.resumen_historial ?? {};
     const novedades = (noticias?.data ?? []).slice(0, 5);
-    // Prefer a published proceso for the official position lookup.
-    const procesoPublicado = procesos.find((p) => p.estado === 'publicado') ?? procesos[0] ?? null;
+    // Read the official position from the LATEST participant listing; fall back
+    // to a published proceso if no listing has been imported yet.
+    const procesoListado = data?.proceso_listado ?? null;
+    const procesoPublicado = procesoListado ?? procesos.find((p) => p.estado === 'publicado') ?? procesos[0] ?? null;
 
     return (
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2">

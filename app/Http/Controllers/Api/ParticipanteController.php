@@ -68,20 +68,36 @@ class ParticipanteController extends Controller
             ], 422);
         }
 
-        $participante = ParticipanteProceso::query()
+        $matches = ParticipanteProceso::query()
             ->where('proceso_id', $proceso->id)
             ->whereRaw('LOWER(nombre_gva) = ?', [mb_strtolower($user->nombre_gva)])
-            ->first();
+            ->get();
 
-        if (! $participante) {
-            return response()->json(['found' => false]);
+        if ($matches->isEmpty()) {
+            return response()->json([
+                'found' => false,
+                'listado_fecha' => $this->listadoFecha($proceso),
+            ]);
         }
+
+        // Sectioned listings hold one row per (persona × especialidad). Prefer
+        // the row matching one of the user's own specialty codes.
+        $userCodes = $user->especialidades()->with('specialty')->get()
+            ->flatMap(fn ($e) => [$e->specialty?->codigo, $e->specialty?->code])
+            ->filter()
+            ->map(fn ($c) => (string) $c)
+            ->all();
+
+        $participante = $matches->first(fn ($p) => in_array((string) $p->especialidad_codigo, $userCodes, true))
+            ?? $matches->first();
 
         return response()->json([
             'found' => true,
             'posicion' => $participante->posicion,
             'estado' => $participante->estado,
             'cambio' => $participante->cambio,
+            'especialidad_codigo' => $participante->especialidad_codigo,
+            'listado_fecha' => $this->listadoFecha($proceso),
             'adjudicacion' => $participante->estado === 'Adjudicat' ? [
                 'lloc' => $participante->lloc_adjudicado,
                 'centro_nombre' => $participante->centro_nombre,
@@ -90,5 +106,15 @@ class ParticipanteController extends Controller
                 'jornada' => $participante->jornada,
             ] : null,
         ]);
+    }
+
+    /**
+     * Date of the most recent participant-list import for a proceso, if any.
+     */
+    private function listadoFecha(Proceso $proceso): ?string
+    {
+        return ParticipanteImportacion::where('proceso_id', $proceso->id)
+            ->orderByDesc('importado_en')
+            ->first()?->importado_en?->toDateString();
     }
 }

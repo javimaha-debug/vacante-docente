@@ -211,6 +211,13 @@ class UserProfileControllerTest extends TestCase
             'centro_adjudicado_id' => $centro->id,
         ]);
 
+        // A participant listing was imported for the active proceso → it is the
+        // "último listado" surfaced to the dashboard, with its date.
+        \App\Models\ParticipanteImportacion::create([
+            'proceso_id' => $proceso->id, 'importado_en' => \Illuminate\Support\Carbon::parse('2026-06-22'),
+            'total' => 5, 'nuevos' => 0, 'modificados' => 0, 'eliminados' => 0, 'es_primera' => true,
+        ]);
+
         Sanctum::actingAs($user);
 
         $this->getJson('/api/v1/user/dashboard')
@@ -223,6 +230,8 @@ class UserProfileControllerTest extends TestCase
             ->assertJsonPath('mis_especialidades.0.posicion_bolsa', 3)
             ->assertJsonPath('resumen_historial.cursos_trabajados', 1)
             ->assertJsonPath('resumen_historial.ultimo_centro', 'IES LA FONT')
-            ->assertJsonPath('resumen_historial.ultima_posicion', 7);
+            ->assertJsonPath('resumen_historial.ultima_posicion', 7)
+            ->assertJsonPath('proceso_listado.id', $proceso->id)
+            ->assertJsonPath('proceso_listado.fecha', '2026-06-22');
     }
 }
