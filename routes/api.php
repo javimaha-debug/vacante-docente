@@ -70,6 +70,16 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
+    // Plans catalogue (public): drives the pricing / upgrade page.
+    Route::get('planes', function () {
+        return response()->json([
+            'data' => \App\Models\Plan::query()
+                ->where('activo', true)
+                ->orderBy('sort_order')
+                ->get(['codigo', 'nombre', 'descripcion', 'features', 'sort_order']),
+        ]);
+    });
+
     // GVA monitor (public): latest official notices.
     Route::get('gva/noticias', [GvaController::class, 'index']);
 

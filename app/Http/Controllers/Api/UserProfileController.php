@@ -26,8 +26,18 @@ class UserProfileController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user()->load(['especialidades.specialty', 'ccaa', 'colectivo']);
+        $impersonation = $this->impersonationState();
 
-        return response()->json($user);
+        return response()->json(array_merge($user->toArray(), [
+            'features' => app(\App\Policies\FeaturePolicy::class)->featureMap($user),
+            'plan_label' => $user->planLabel(),
+            'plan_status_label' => $user->planStatusLabel(),
+            'is_paid' => $user->isPaid(),
+            'is_admin' => $user->isAdmin(),
+            'is_superadmin' => $user->isSuperAdmin(),
+            'is_impersonated' => $impersonation['active'],
+            'impersonated_by' => $impersonation['by'],
+        ]));
     }
 
     /**
