@@ -48,7 +48,13 @@ function MiPosicionCard({ proceso }) {
             ) : !data?.found ? (
                 <p className="text-sm text-slate-400">No apareces en la lista publicada de este proceso (o aún no está cargada).</p>
             ) : (
-                <div className="flex flex-wrap items-end gap-6">
+                <div className="space-y-3">
+                    {data.cambio && (
+                        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 ring-1 ring-amber-200">
+                            📣 {data.cambio === 'nuevo' ? 'Apareces por primera vez en el último listado.' : 'Tu situación ha cambiado en el último listado.'}
+                        </p>
+                    )}
+                    <div className="flex flex-wrap items-end gap-6">
                     <div>
                         <p className="text-xs text-slate-400">Posición</p>
                         <p className="text-3xl font-extrabold tabular-nums text-brand-600">{data.posicion ?? '—'}</p>
@@ -62,6 +68,7 @@ function MiPosicionCard({ proceso }) {
                             </p>
                         </div>
                     )}
+                    </div>
                 </div>
             )}
         </section>

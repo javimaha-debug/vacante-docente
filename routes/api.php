@@ -66,6 +66,7 @@ Route::prefix('v1')->group(function () {
 
     // Participant lists (public list + search).
     Route::get('participantes/{proceso}', [ParticipanteController::class, 'index']);
+    Route::get('participantes/{proceso}/cambios', [ParticipanteController::class, 'cambios']);
 
     // Centros directory (public): list + detail.
     Route::get('centros', [CentroController::class, 'index']);

@@ -22,12 +22,15 @@ class ParticipanteProceso extends Model
         'localitat',
         'especialidad_codigo',
         'jornada',
+        'cambio',
+        'cambio_en',
     ];
 
     protected function casts(): array
     {
         return [
             'posicion' => 'integer',
+            'cambio_en' => 'datetime',
         ];
     }
 

@@ -153,6 +153,52 @@ class ParticipantesTest extends TestCase
         $this->assertSame(1, $rows[2]['posicion']);
     }
 
+    public function test_cambios_endpoint_reflects_latest_import(): void
+    {
+        $proceso = $this->makeProceso();
+
+        \App\Models\ParticipanteImportacion::create([
+            'proceso_id' => $proceso->id, 'importado_en' => now()->subDay(),
+            'total' => 5, 'nuevos' => 0, 'modificados' => 0, 'eliminados' => 0, 'es_primera' => true,
+        ]);
+        \App\Models\ParticipanteImportacion::create([
+            'proceso_id' => $proceso->id, 'importado_en' => now(),
+            'total' => 6, 'nuevos' => 2, 'modificados' => 1, 'eliminados' => 0, 'es_primera' => false,
+        ]);
+
+        $this->getJson("/api/v1/participantes/{$proceso->id}/cambios")
+            ->assertOk()
+            ->assertJsonPath('has_changes', true)
+            ->assertJsonPath('nuevos', 2)
+            ->assertJsonPath('modificados', 1);
+    }
+
+    public function test_cambios_endpoint_ignores_first_import(): void
+    {
+        $proceso = $this->makeProceso();
+        \App\Models\ParticipanteImportacion::create([
+            'proceso_id' => $proceso->id, 'importado_en' => now(),
+            'total' => 5, 'nuevos' => 0, 'modificados' => 0, 'eliminados' => 0, 'es_primera' => true,
+        ]);
+
+        $this->getJson("/api/v1/participantes/{$proceso->id}/cambios")
+            ->assertOk()
+            ->assertJsonPath('has_changes', false);
+    }
+
+    public function test_mi_posicion_exposes_cambio_flag(): void
+    {
+        $proceso = $this->makeProceso();
+        ParticipanteProceso::create(['proceso_id' => $proceso->id, 'posicion' => 7, 'nombre_gva' => 'PEREZ GOMEZ, ANA', 'estado' => 'Activat', 'cambio' => 'modificado']);
+
+        $user = User::factory()->create(['nombre_gva' => 'PEREZ GOMEZ, ANA']);
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/v1/participantes/{$proceso->id}/mi-posicion")
+            ->assertOk()
+            ->assertJsonPath('cambio', 'modificado');
+    }
+
     public function test_parser_handles_multiline_adjudication(): void
     {
         $layout = <<<TXT
