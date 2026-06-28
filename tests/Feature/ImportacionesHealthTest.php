@@ -49,7 +49,9 @@ class ImportacionesHealthTest extends TestCase
 
     public function test_run_monitor_executes_and_returns_health(): void
     {
-        // Stub every outbound GVA request so the monitor runs offline.
+        // Stub every outbound GVA request so the monitor runs offline, and
+        // disable the headless renderer so no browser is launched in tests.
+        config(['gva.render.enabled' => false]);
         Http::fake(['*' => Http::response('<html></html>', 200)]);
 
         Sanctum::actingAs($this->admin());

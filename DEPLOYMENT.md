@@ -249,10 +249,34 @@ Comprobación: `php artisan schedule:list` debe mostrar `monitor-gva`.
 
 > Diagrama del flujo completo y referencia de la API en [`docs/API.md`](docs/API.md).
 
+### Navegador headless (páginas JS de la GVA)
+
+Las páginas de **inicio de curso** y **adjudicaciones contínues** de la GVA
+cargan sus PDFs por JavaScript, así que el monitor las **renderiza con un
+Chromium headless** (`scripts/gva-render.mjs`, vía `playwright-core`). En el
+servidor hay que instalar el navegador una vez:
+
+```bash
+# en la carpeta del proyecto, tras npm ci
+npx playwright install --with-deps chromium
+```
+
+Variables relevantes (`.env`):
+```
+GVA_RENDER_ENABLED=true                 # ponlo a false para desactivar el render
+GVA_CHROMIUM_PATH=                       # opcional: ruta a un Chromium del sistema
+GVA_RENDER_TIMEOUT=90
+```
+
+Si el navegador no está disponible, el monitor **no falla**: cae al rastreo
+estático (solo detecta lo que la GVA publique como HTML plano).
+
 ### Flujo automático
 
-1. `MonitorGvaJob` (diario) lee el RSS del DOGV y rastrea la página de
-   adjudicaciones; guarda novedades en `gva_noticias`.
+1. `MonitorGvaJob` (diario) lee el RSS del DOGV, rastrea la página de
+   resolución (estático) y **renderiza** las páginas de *inicio de curso* y
+   *contínues*; guarda novedades en `gva_noticias`, **clasificadas por
+   categoría** (`inicio` / `continua` / `otro`).
 2. Si `GVA_AUTO_IMPORT=true`, descarga los PDFs de listado detectados y los
    **importa automáticamente**, deduciendo el proceso destino del nombre del
    fichero (tipo · cuerpo · colectivo · año).

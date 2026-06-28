@@ -58,6 +58,7 @@ class ImportacionesController extends Controller
                 'id' => $n->id,
                 'titulo' => $n->titulo,
                 'tipo' => $n->tipo,
+                'categoria' => $n->categoria ?? 'otro',
                 'url' => $n->url,
                 'estado' => $n->import_estado ?? 'pendiente',
                 'resumen' => $n->import_resumen,
