@@ -247,6 +247,8 @@ Comprobación: `php artisan schedule:list` debe mostrar `monitor-gva`.
 
 ## 8. GVA: detección, importación automática y revisión
 
+> Diagrama del flujo completo y referencia de la API en [`docs/API.md`](docs/API.md).
+
 ### Flujo automático
 
 1. `MonitorGvaJob` (diario) lee el RSS del DOGV y rastrea la página de
