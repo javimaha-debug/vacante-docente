@@ -6,14 +6,13 @@ use App\Models\Ccaa;
 use App\Models\Specialty;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SpecialtySeeder extends Seeder
 {
     public function run(): void
     {
         $now = Carbon::now();
-
-        // All current specialties belong to the Comunitat Valenciana.
         $ccaaId = Ccaa::where('code', 'CV')->value('id');
 
         // Maps the internal education_level to the GVA `cuerpo` label.
@@ -23,108 +22,55 @@ class SpecialtySeeder extends Seeder
             'fp' => 'FP',
         ];
 
-        $maestros = 'Maestros';
-        $secundaria = 'Profesores de Enseñanza Secundaria';
-        $fp = 'Profesorado Especialista en Sectores Singulares de FP';
-
-        $groups = [
-            'maestros' => [
-                'body' => $maestros,
-                'items' => [
-                    '120' => 'Educación Infantil',
-                    '121' => 'Educación Primaria',
-                    '122' => 'Lengua Extranjera: Inglés',
-                    '123' => 'Educación Física',
-                    '124' => 'Música',
-                    '125' => 'Audición y Lenguaje',
-                    '126' => 'Pedagogía Terapéutica',
-                ],
-            ],
-            'secundaria' => [
-                'body' => $secundaria,
-                'items' => [
-                    '101' => 'Filosofía',
-                    '102' => 'Lengua Castellana y Literatura',
-                    '103' => 'Geografía e Historia',
-                    '104' => 'Matemáticas',
-                    '105' => 'Física y Química',
-                    '106' => 'Biología y Geología',
-                    '107' => 'Dibujo',
-                    '108' => 'Francés',
-                    '109' => 'Inglés',
-                    '110' => 'Alemán',
-                    '111' => 'Italiano',
-                    '112' => 'Latín y Griego',
-                    '113' => 'Economía',
-                    '114' => 'Tecnología e Ingeniería',
-                    '115' => 'Música',
-                    '116' => 'Educación Física',
-                    '117' => 'Orientación Educativa',
-                    '118' => 'Valenciano: Llengua i Literatura',
-                    '119' => 'Cultura Clásica',
-                    '120' => 'Administración de Empresas',
-                    '121' => 'Análisis y Química Industrial',
-                    '122' => 'Construcciones Civiles y Edificación',
-                    '123' => 'Electricidad y Electrónica',
-                    '124' => 'Formación y Orientación Laboral',
-                    '125' => 'Hostelería y Turismo',
-                    '126' => 'Informática',
-                    '127' => 'Intervención Sociocomunitaria',
-                    '128' => 'Laboratorio',
-                    '129' => 'Navegación e Instalaciones Marinas',
-                    '130' => 'Organización y Proyectos de Fabricación Mecánica',
-                    '131' => 'Organización y Proyectos de Sistemas Energéticos',
-                    '132' => 'Organización y Gestión Comercial',
-                    '133' => 'Procesos Diagnósticos Clínicos y Productos Ortoprotésicos',
-                    '134' => 'Procesos Sanitarios y Asistenciales',
-                    '135' => 'Procesos y Medios de Comunicación',
-                    '136' => 'Procesos de Producción Agraria',
-                    '137' => 'Sistemas Electrónicos',
-                    '138' => 'Sistemas Electrotécnicos y Automáticos',
-                    '139' => 'Asesoría y Procesos de Imagen Personal',
-                    '140' => 'Operaciones y Equipos de Elaboración de Productos Alimentarios',
-                    '141' => 'Madera, Mueble y Corcho',
-                    '142' => 'Textil, Confección y Piel',
-                    '143' => 'Artes Plásticas y Diseño en Volumen',
-                    '144' => 'Música y Artes Escénicas',
-                    '218' => 'Orientación Educativa',
-                ],
-            ],
-            'fp' => [
-                'body' => $fp,
-                'items' => [
-                    '501' => 'Cocina y Pastelería',
-                    '502' => 'Estética',
-                    '503' => 'Mantenimiento de Vehículos',
-                    '504' => 'Mecanizado y Mantenimiento de Máquinas',
-                    '505' => 'Operaciones de Producción Agrícola',
-                    '506' => 'Servicios de Restaurante y Bar',
-                    '507' => 'Instalaciones Electrotécnicas',
-                    '508' => 'Soldadura',
-                    '509' => 'Fabricación e Instalación de Carpintería y Mueble',
-                    '510' => 'Peluquería',
-                    '511' => 'Caracterización y Maquillaje Profesional',
-                    '512' => 'Operaciones de Grabación y Tratamiento de Sonido e Imagen',
-                ],
-            ],
+        // Maestros: the interim bolsa carries habilitaciones (INF PRI ING FRA
+        // EF MUS PT AL); these are the catalogue specialties they map to.
+        $maestros = [
+            ['code' => '120', 'name' => 'Educación Infantil', 'body' => 'Maestros', 'level' => 'maestros'],
+            ['code' => '121', 'name' => 'Educación Primaria', 'body' => 'Maestros', 'level' => 'maestros'],
+            ['code' => '122', 'name' => 'Lengua Extranjera: Inglés', 'body' => 'Maestros', 'level' => 'maestros'],
+            ['code' => '123', 'name' => 'Educación Física', 'body' => 'Maestros', 'level' => 'maestros'],
+            ['code' => '124', 'name' => 'Música', 'body' => 'Maestros', 'level' => 'maestros'],
+            ['code' => '125', 'name' => 'Audición y Lenguaje', 'body' => 'Maestros', 'level' => 'maestros'],
+            ['code' => '126', 'name' => 'Pedagogía Terapéutica', 'body' => 'Maestros', 'level' => 'maestros'],
+            ['code' => '127', 'name' => 'Lengua Extranjera: Francés', 'body' => 'Maestros', 'level' => 'maestros'],
+            // Maestros positions that appear only in the suprimidos listings.
+            ['code' => '151', 'name' => 'Educación Especial: Audición y Lenguaje', 'body' => 'Maestros', 'level' => 'maestros'],
+            ['code' => '152', 'name' => 'Educación Especial: Pedagogía Terapéutica', 'body' => 'Maestros', 'level' => 'maestros'],
+            ['code' => '153', 'name' => 'Formación de Personas Adultas: Primaria', 'body' => 'Maestros', 'level' => 'maestros'],
         ];
 
+        // Secundaria + FP + EOI + Música/Artes + Artes Plásticas: the REAL GVA
+        // codes, extracted from the official 2026-2027 interim listing. These
+        // are the codes used by both the vacancy and participant imports, so
+        // matching by code is exact.
+        $secundaria = require database_path('data/specialties_gva_2026.php');
+
+        // Specialties that appear in the suprimidos vacancy listings but not in
+        // the interim bolsa listing (ESO ámbitos, FPA, acuicultura).
+        $extra = [
+            ['code' => '267', 'name' => 'Procesos de Cultivo Acuícola', 'body' => 'Profesores de Enseñanza Secundaria', 'level' => 'secundaria'],
+            ['code' => '276', 'name' => 'Ámbito Científico y Técnico', 'body' => 'Profesores de Enseñanza Secundaria', 'level' => 'secundaria'],
+            ['code' => '277', 'name' => 'Ámbito Sociolingüístico', 'body' => 'Profesores de Enseñanza Secundaria', 'level' => 'secundaria'],
+            ['code' => '293', 'name' => 'FPA Ciencias Sociales', 'body' => 'Profesores de Enseñanza Secundaria', 'level' => 'secundaria'],
+            ['code' => '294', 'name' => 'FPA Comunicación (Inglés)', 'body' => 'Profesores de Enseñanza Secundaria', 'level' => 'secundaria'],
+            ['code' => '297', 'name' => 'FPA Comunicación (Valenciano)', 'body' => 'Profesores de Enseñanza Secundaria', 'level' => 'secundaria'],
+        ];
+        $secundaria = array_merge($secundaria, $extra);
+
         $rows = [];
-        foreach ($groups as $level => $group) {
-            foreach ($group['items'] as $code => $name) {
-                $rows[] = [
-                    'code' => (string) $code,
-                    'name' => $name,
-                    'body' => $group['body'],
-                    'education_level' => $level,
-                    'ccaa_id' => $ccaaId,
-                    'codigo' => (string) $code,
-                    'cuerpo' => $cuerpoMap[$level] ?? null,
-                    'is_active' => true,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
+        foreach (array_merge($maestros, $secundaria) as $s) {
+            $rows[] = [
+                'code' => (string) $s['code'],
+                'name' => $s['name'],
+                'body' => $s['body'],
+                'education_level' => $s['level'],
+                'ccaa_id' => $ccaaId,
+                'codigo' => (string) $s['code'],
+                'cuerpo' => $cuerpoMap[$s['level']] ?? null,
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
 
         // Idempotent: upsert on (code, education_level).
@@ -133,5 +79,14 @@ class SpecialtySeeder extends Seeder
             ['code', 'education_level'],
             ['name', 'body', 'ccaa_id', 'codigo', 'cuerpo', 'is_active', 'updated_at']
         );
+
+        // Deactivate any leftover fabricated specialties (the previous catalogue
+        // used invented sequential codes that collided across cuerpos and
+        // duplicated some specialties, e.g. two "Orientación Educativa"). We
+        // deactivate rather than delete to preserve FKs (vacancies/users
+        // cascade on delete); new imports resolve by real GVA code.
+        $keep = array_map(fn ($r) => $r['code'].'|'.$r['education_level'], $rows);
+        Specialty::whereNotIn(DB::raw("code || '|' || education_level"), $keep)
+            ->update(['is_active' => false, 'updated_at' => $now]);
     }
 }

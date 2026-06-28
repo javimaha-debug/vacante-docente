@@ -31,13 +31,20 @@ class ImportParticipantesPdf extends Command
         'MUS' => ['124', 'Música'],
         'AL' => ['125', 'Audició i Llenguatge'],
         'PT' => ['126', 'Pedagogia Terapèutica'],
-        'FRA' => ['FRA', 'Francés'], // sin especialidad propia en el catálogo
+        'FRA' => ['127', 'Francés'],
     ];
 
     /** Specialty bodies that belong to each proceso cuerpo (collisions are code-scoped by this). */
     private const CUERPO_BODIES = [
         'MAESTROS' => ['Maestros'],
-        'SECUNDARIA' => ['Profesores de Enseñanza Secundaria', 'Profesorado Especialista en Sectores Singulares de FP'],
+        // The "secundaria" interim listing spans every non-maestros cuerpo.
+        'SECUNDARIA' => [
+            'Profesores de Enseñanza Secundaria',
+            'Profesorado Especialista en Sectores Singulares de FP',
+            'Profesores de Escuelas Oficiales de Idiomas',
+            'Profesores de Música y Artes Escénicas',
+            'Profesores de Artes Plásticas y Diseño',
+        ],
     ];
 
     /** Situació tokens used in the provisional lists. */
