@@ -28,6 +28,7 @@ import AdminDashboard from './components/superadmin/AdminDashboard';
 import AdminUsuarios from './components/superadmin/AdminUsuarios';
 import AdminUsuarioDetalle from './components/superadmin/AdminUsuarioDetalle';
 import AdminSuscripciones from './components/superadmin/AdminSuscripciones';
+import SuperAdminImportaciones from './components/superadmin/AdminImportaciones';
 import AdminMetricas from './components/superadmin/AdminMetricas';
 import AdminSistema from './components/superadmin/AdminSistema';
 import CentrosList from './components/centros/CentrosList';
@@ -564,6 +565,7 @@ function AppRoutes() {
                 <Route path="usuarios" element={<AdminUsuarios />} />
                 <Route path="usuarios/:id" element={<AdminUsuarioDetalle />} />
                 <Route path="suscripciones" element={<AdminSuscripciones />} />
+                <Route path="importaciones" element={<SuperAdminImportaciones />} />
                 <Route path="metricas" element={<AdminMetricas />} />
                 <Route path="sistema" element={<AdminSistema />} />
             </Route>
