@@ -47,7 +47,6 @@ class ImportSuprimidos2026 extends Command
             $exit = Artisan::call('vacantes:import-pdf', [
                 'path' => $fullPath,
                 'proceso_id' => $proceso->id,
-                '--format' => 'suprimidos',
             ]);
             $this->line(trim(Artisan::output()));
 
