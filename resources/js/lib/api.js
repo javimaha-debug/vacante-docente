@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getToken, clearToken } from './auth-token';
+import { getSessionToken } from './session';
 
 // Axios instance pointed at the versioned API. The Google Maps key stays on
 // the server; the SPA only ever talks to these endpoints.
@@ -11,11 +12,16 @@ const api = axios.create({
     },
 });
 
-// Attach the Sanctum bearer token (stored in localStorage) when present.
+// Attach the Sanctum bearer token (stored in localStorage) when present, plus
+// the anonymous session token so list ownership can be verified server-side.
 api.interceptors.request.use((config) => {
     const token = getToken();
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+    }
+    const sessionToken = getSessionToken();
+    if (sessionToken) {
+        config.headers['X-Session-Token'] = sessionToken;
     }
     return config;
 });
