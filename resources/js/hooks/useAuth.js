@@ -55,6 +55,12 @@ export function useProvideAuth() {
         }
     }, []);
 
+    // Optimistically merge fields into the local user (e.g. modo_activo) so the
+    // UI updates immediately, before the server round-trip reconciles via refresh.
+    const patchUser = useCallback((patch) => {
+        setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+    }, []);
+
     const login = useCallback(
         (newToken) => {
             setToken(newToken);
@@ -107,5 +113,6 @@ export function useProvideAuth() {
         login,
         logout,
         refresh: fetchUser,
+        patchUser,
     };
 }

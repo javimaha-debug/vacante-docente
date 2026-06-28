@@ -17,26 +17,43 @@ const NAV_BY_MODE = {
         { to: '/dashboard/tablon', label: 'Tablón', icon: '📌' },
     ],
     oposicion: [
-        { to: '/dashboard', label: 'Mi preparación', end: true, icon: '📚' },
-        { to: '/dashboard/normativa', label: 'Normativa', icon: '📖' },
-        { to: '/dashboard/convocatorias', label: 'Convocatorias', icon: '📣' },
-        { to: '/dashboard/asistente', label: 'Asistente IA', icon: '🤖' },
+        { to: '/dashboard/oposicion', label: 'Mi preparación', icon: '📖', comingSoon: true },
+        { to: '/dashboard/normativa', label: 'Normativa', icon: '📄', comingSoon: true },
+        { to: '/dashboard/convocatorias', label: 'Convocatorias', icon: '📅', comingSoon: true },
+        { to: '/dashboard/asistente', label: 'Asistente IA', icon: '✨', comingSoon: true },
     ],
     docente: [
-        { to: '/dashboard', label: 'Mi aula', end: true, icon: '🍎' },
-        { to: '/dashboard/normativa', label: 'Normativa', icon: '📖' },
-        { to: '/dashboard/asistente', label: 'Asistente IA', icon: '🤖' },
-        { to: '/dashboard/recursos', label: 'Banco de recursos', icon: '🗃️' },
+        { to: '/dashboard/aula', label: 'Mi aula', icon: '🧑‍🏫', comingSoon: true },
+        { to: '/dashboard/normativa', label: 'Normativa', icon: '📄', comingSoon: true },
+        { to: '/dashboard/asistente', label: 'Asistente IA', icon: '✨', comingSoon: true },
+        { to: '/dashboard/recursos', label: 'Banco de recursos', icon: '📚', comingSoon: true },
     ],
 };
 
 const MODOS = [
-    { value: 'bolsa', label: 'Bolsa de interinidades', icon: '🗂️' },
-    { value: 'oposicion', label: 'Preparo oposición', icon: '📚' },
-    { value: 'docente', label: 'Docente en activo', icon: '🍎' },
+    { value: 'bolsa', label: 'Bolsa', icon: '📋' },
+    { value: 'oposicion', label: 'Oposición', icon: '🎓' },
+    { value: 'docente', label: 'Docente', icon: '👩‍🏫' },
 ];
 
 function NavItem({ item, onNavigate }) {
+    // Not-yet-built sections: shown but muted, non-clickable, with a badge.
+    if (item.comingSoon) {
+        return (
+            <span
+                className="flex cursor-default items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate-400"
+                title="Próximamente"
+                aria-disabled="true"
+            >
+                <span className="text-base" aria-hidden="true">{item.icon}</span>
+                {item.label}
+                <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    Próximamente
+                </span>
+            </span>
+        );
+    }
+
     return (
         <NavLink
             to={item.to}
@@ -56,7 +73,7 @@ function NavItem({ item, onNavigate }) {
 }
 
 function ModeSelector() {
-    const { user, refresh } = useAuth();
+    const { user, refresh, patchUser } = useAuth();
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
     const active = MODOS.find((m) => m.value === user?.modo_activo) ?? MODOS[0];
@@ -66,8 +83,14 @@ function ModeSelector() {
     const change = async (modo) => {
         setOpen(false);
         if (modo === user?.modo_activo) return;
-        await api.put('/user/modo', { modo_activo: modo });
-        await refresh();
+        const previous = user?.modo_activo;
+        patchUser({ modo_activo: modo }); // optimistic
+        try {
+            await api.put('/user/modo', { modo_activo: modo });
+            await refresh();
+        } catch {
+            patchUser({ modo_activo: previous }); // revert on failure
+        }
     };
 
     return (
