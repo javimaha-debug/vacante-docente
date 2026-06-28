@@ -38,13 +38,14 @@ class PreferencesBulkTest extends TestCase
         [$a, $b, $c] = $vacancies->all();
 
         // Mix of statuses so the ordering (selected → neutral → discarded) is exercised.
-        $this->putJson("/api/v1/user-lists/{$list->id}/preferences/bulk", [
-            'preferences' => [
-                ['vacancy_id' => $c->id, 'status' => 'discarded', 'position' => 0],
-                ['vacancy_id' => $a->id, 'status' => 'selected', 'position' => 1],
-                ['vacancy_id' => $b->id, 'status' => 'neutral', 'position' => 0],
-            ],
-        ])->assertOk()
+        $this->withHeaders(['X-Session-Token' => 'tok-pref'])
+            ->putJson("/api/v1/user-lists/{$list->id}/preferences/bulk", [
+                'preferences' => [
+                    ['vacancy_id' => $c->id, 'status' => 'discarded', 'position' => 0],
+                    ['vacancy_id' => $a->id, 'status' => 'selected', 'position' => 1],
+                    ['vacancy_id' => $b->id, 'status' => 'neutral', 'position' => 0],
+                ],
+            ])->assertOk()
             ->assertJsonCount(3, 'data')
             // selected first, then neutral, then discarded.
             ->assertJsonPath('data.0.vacancy_id', $a->id)
@@ -52,7 +53,8 @@ class PreferencesBulkTest extends TestCase
             ->assertJsonPath('data.2.status', 'discarded');
 
         // The standalone index endpoint (initial kanban load) must not 500 either.
-        $this->getJson("/api/v1/user-lists/{$list->id}/preferences")
+        $this->withHeaders(['X-Session-Token' => 'tok-pref'])
+            ->getJson("/api/v1/user-lists/{$list->id}/preferences")
             ->assertOk()
             ->assertJsonCount(3, 'data')
             ->assertJsonPath('data.0.status', 'selected');
@@ -63,10 +65,25 @@ class PreferencesBulkTest extends TestCase
         ['list' => $list, 'vacancies' => $vacancies] = $this->scaffold();
         $v = $vacancies->first();
 
-        $this->putJson("/api/v1/user-lists/{$list->id}/preferences/bulk", [
-            'preferences' => [['vacancy_id' => $v->id, 'status' => 'selected', 'position' => 1]],
-        ])->assertOk()
+        $this->withHeaders(['X-Session-Token' => 'tok-pref'])
+            ->putJson("/api/v1/user-lists/{$list->id}/preferences/bulk", [
+                'preferences' => [['vacancy_id' => $v->id, 'status' => 'selected', 'position' => 1]],
+            ])->assertOk()
             ->assertJsonPath('data.0.vacancy_id', $v->id)
             ->assertJsonPath('data.0.status', 'selected');
+    }
+
+    public function test_another_session_cannot_touch_a_list(): void
+    {
+        ['list' => $list] = $this->scaffold();
+
+        // Wrong token → forbidden.
+        $this->withHeaders(['X-Session-Token' => 'otra-sesion'])
+            ->getJson("/api/v1/user-lists/{$list->id}/preferences")
+            ->assertForbidden();
+
+        // No token → forbidden.
+        $this->getJson("/api/v1/user-lists/{$list->id}/preferences")
+            ->assertForbidden();
     }
 }

@@ -63,10 +63,11 @@ class DistanceAllVacanciesTest extends TestCase
         $ids = $vacancies->pluck('id')->all();
 
         // No vacancy is "selected" — we pass the full list explicitly.
-        $this->postJson("/api/v1/user-lists/{$list->id}/calculate-distances", [
-            'mode' => 'driving',
-            'vacancy_ids' => $ids,
-        ])->assertOk()
+        $this->withHeaders(['X-Session-Token' => 'tok-abc'])
+            ->postJson("/api/v1/user-lists/{$list->id}/calculate-distances", [
+                'mode' => 'driving',
+                'vacancy_ids' => $ids,
+            ])->assertOk()
             ->assertJsonPath('count', 3)
             // Everything fit under the per-request cap → nothing left to do.
             ->assertJsonPath('remaining', 0);
