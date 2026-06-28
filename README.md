@@ -160,3 +160,21 @@ php artisan admin:promote usuario@ejemplo.com
 ```bash
 php artisan admin:promote javimaha@gmail.com
 ```
+
+### Enriquecer centros con datos oficiales de la GVA
+
+Rellena web, teléfono, dirección oficial y coordenadas de los centros a partir del
+**dataset abierto** de la GVA (*Centros docentes de la Comunitat Valenciana*,
+`dadesobertes.gva.es`). El CSV viene incluido en el repo (`database/data/centros-gva.csv`)
+y se cruza con los centros por su `codigo`:
+
+```bash
+php artisan centros:enrich-gva                 # usa el CSV incluido
+php artisan centros:enrich-gva --only-missing  # solo los que aún no tienen datos
+php artisan centros:enrich-gva --download      # baja el CSV más reciente del portal y procesa
+php artisan centros:enrich-gva --codigo=46003251
+```
+
+> Nota: el antiguo endpoint REST por centro (`ceice.gva.es/opencms/rest/...`) fue
+> retirado por la GVA; por eso ahora se usa el dataset abierto (una sola descarga
+> en vez de miles de peticiones). Las coordenadas verificadas no se sobrescriben.
