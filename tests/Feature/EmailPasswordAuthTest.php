@@ -61,7 +61,7 @@ class EmailPasswordAuthTest extends TestCase
 
     public function test_providers_endpoint_lists_configured_social_logins(): void
     {
-        config(['services.google.client_id' => 'abc', 'services.microsoft.client_id' => null, 'services.apple.client_id' => null]);
+        config(['services.google.client_id' => 'abc', 'services.microsoft.client_id' => null]);
 
         $this->getJson('/api/v1/auth/providers')
             ->assertOk()

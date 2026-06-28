@@ -77,14 +77,4 @@ return [
         'tenant' => env('MICROSOFT_TENANT', 'common'),
     ],
 
-    /*
-    | Apple OAuth (Socialite). Requires the socialite-providers/apple package.
-    | Enabled when APPLE_CLIENT_ID is set (needs a private key, team & key id).
-    */
-    'apple' => [
-        'client_id' => env('APPLE_CLIENT_ID'),
-        'client_secret' => env('APPLE_CLIENT_SECRET'),
-        'redirect' => env('APPLE_REDIRECT_URI'),
-    ],
-
 ];

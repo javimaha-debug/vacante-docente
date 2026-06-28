@@ -6,6 +6,7 @@ use App\Models\UserList;
 use App\Services\GoogleMapsService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +28,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register the Microsoft Socialite provider when the package is present
+        // (composer require socialite-providers/microsoft). Guarded so the app
+        // boots fine before it's installed.
+        if (class_exists(\SocialiteProviders\Microsoft\Provider::class)) {
+            Event::listen(function (\SocialiteProviders\Manager\SocialiteWasCalled $event) {
+                $event->extendSocialite('microsoft', \SocialiteProviders\Microsoft\Provider::class);
+            });
+        }
+
         // Geocoding: 20 requests / minute / IP.
         RateLimiter::for('geocode', function (Request $request) {
             return Limit::perMinute(20)->by($request->ip());
