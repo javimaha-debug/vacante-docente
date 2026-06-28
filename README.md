@@ -81,6 +81,9 @@ y muestra un aviso. La clave solo se usa en `App\Services\GoogleMapsService` (se
 
 ## API (`/api/v1`)
 
+> Referencia completa con ejemplos de payload y el diagrama del flujo GVA:
+> [`docs/API.md`](docs/API.md). A continuación, un resumen del núcleo del explorador.
+
 | Método | Ruta                                          | Descripción                                            |
 | ------ | --------------------------------------------- | ------------------------------------------------------ |
 | GET    | `/specialties`                                | Especialidades agrupadas por `maestros/secundaria/fp`  |
