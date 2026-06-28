@@ -90,34 +90,44 @@ class FeaturePolicy
 
     /**
      * Whether the user's current plan grants the given concrete feature.
-     * Super-admins implicitly have every feature.
+     *
+     * TEMPORARY: feature gating is disabled — every feature is open to every
+     * user regardless of plan. The plan resolution logic above is kept intact;
+     * to re-enable gating, restore the commented-out body below.
      */
     public function hasFeature(User $user, string $feature): bool
     {
-        if ($user->isSuperAdmin()) {
-            return true;
-        }
+        return true;
 
-        return in_array($feature, $this->resolveFeatures($user->plan), true);
+        // if ($user->isSuperAdmin()) {
+        //     return true;
+        // }
+        //
+        // return in_array($feature, $this->resolveFeatures($user->plan), true);
     }
 
     /**
      * The boolean feature map (every concrete feature → granted?) exposed to the
      * SPA via GET /user/profile so components can gate UI.
      *
+     * TEMPORARY: every feature is reported as granted (open access). To
+     * re-enable gating, restore the commented-out body below.
+     *
      * @return array<string, bool>
      */
     public function featureMap(User $user): array
     {
-        $granted = $user->isSuperAdmin() ? self::ALL_FEATURES : $this->resolveFeatures($user->plan);
-        $granted = array_flip($granted);
+        return array_fill_keys(self::ALL_FEATURES, true);
 
-        $map = [];
-        foreach (self::ALL_FEATURES as $feature) {
-            $map[$feature] = isset($granted[$feature]);
-        }
-
-        return $map;
+        // $granted = $user->isSuperAdmin() ? self::ALL_FEATURES : $this->resolveFeatures($user->plan);
+        // $granted = array_flip($granted);
+        //
+        // $map = [];
+        // foreach (self::ALL_FEATURES as $feature) {
+        //     $map[$feature] = isset($granted[$feature]);
+        // }
+        //
+        // return $map;
     }
 
     // --- Ten named capability checks (used for authorization + gating) ---
