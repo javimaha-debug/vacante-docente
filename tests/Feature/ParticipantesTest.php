@@ -53,11 +53,16 @@ class ParticipantesTest extends TestCase
         $this->assertStringContainsString('Jornada', $adj['jornada']);
     }
 
-    public function test_participantes_endpoint_is_public_paginated_searchable(): void
+    public function test_participantes_endpoint_requires_auth_then_paginated_searchable(): void
     {
         $proceso = $this->makeProceso();
         ParticipanteProceso::create(['proceso_id' => $proceso->id, 'posicion' => 1, 'nombre_gva' => 'PEREZ GOMEZ, ANA', 'estado' => 'Activat']);
         ParticipanteProceso::create(['proceso_id' => $proceso->id, 'posicion' => 2, 'nombre_gva' => 'GARCIA LOPEZ, JUAN', 'estado' => 'Desactivat']);
+
+        // The list contains names: it now requires login.
+        $this->getJson("/api/v1/participantes/{$proceso->id}")->assertUnauthorized();
+
+        Sanctum::actingAs(User::factory()->create());
 
         $this->getJson("/api/v1/participantes/{$proceso->id}")
             ->assertOk()->assertJsonCount(2, 'data');

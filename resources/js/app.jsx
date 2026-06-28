@@ -81,6 +81,15 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
 
     const cambios = useCambios(procesoId);
 
+    // Load every page so ALL plazas are available (filters + counter are
+    // client-side, so partial pages would hide matches / undercount). With
+    // per_page=1000 most specialties fit in one page; larger ones load the rest.
+    useEffect(() => {
+        if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
     // Preference lookup + derived columns.
     const prefByVacancy = useMemo(() => {
         const map = new Map();

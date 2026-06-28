@@ -73,9 +73,7 @@ Route::prefix('v1')->group(function () {
     Route::get('procesos/{proceso}/vacantes', [ProcesoController::class, 'vacantes']);
     Route::get('procesos/{proceso}/cambios', [ProcesoController::class, 'cambios']);
 
-    // Participant lists (public list + search; rate-limited — contains names).
-    Route::get('participantes/{proceso}', [ParticipanteController::class, 'index'])
-        ->middleware('throttle:public-list');
+    // Participant change summary (counts only, no names) stays public.
     Route::get('participantes/{proceso}/cambios', [ParticipanteController::class, 'cambios']);
 
     // Centros directory (public): list + detail.
@@ -112,6 +110,9 @@ Route::prefix('v1')->group(function () {
         // Authenticated vacancy list (kanban) synced to the account.
         Route::get('user/lista', [UserProfileController::class, 'lista']);
         Route::put('user/lista/sync', [UserProfileController::class, 'syncLista']);
+
+        // Participant list (contains names) — requires login.
+        Route::get('participantes/{proceso}', [ParticipanteController::class, 'index']);
 
         // Participant self-lookup.
         Route::get('participantes/{proceso}/mi-posicion', [ParticipanteController::class, 'miPosicion']);
