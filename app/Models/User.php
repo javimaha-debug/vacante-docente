@@ -100,4 +100,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(TablonAnuncio::class);
     }
+
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
 }

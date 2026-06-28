@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import api from '../../lib/api';
 import { useDebounce } from '../../hooks/useDebounce';
+import PushToggle from './PushToggle';
 
 function Toggle({ checked, onChange, label }) {
     return (
@@ -210,6 +211,8 @@ export default function UserProfile() {
                     </div>
 
                     <Toggle checked={form.notificaciones_email} onChange={(v) => update('notificaciones_email', v)} label="Recibir notificaciones por email" />
+
+                    <PushToggle />
                 </div>
             </div>
 
