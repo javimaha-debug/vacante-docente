@@ -25,6 +25,7 @@ const CARACTERISTICAS = [['', 'Todas las características'], ...Object.entries(C
 export default function CentrosList() {
     const [filters, setFilters] = useState({ tipo: '', provincia: '', localidad: '', query: '', caracteristica: '' });
     const [page, setPage] = useState(1);
+    const [view, setView] = useState('grid'); // 'grid' | 'list'
     const debouncedQuery = useDebounce(filters.query, 400);
     const debouncedLocalidad = useDebounce(filters.localidad, 400);
 
@@ -62,7 +63,25 @@ export default function CentrosList() {
 
     return (
         <div className="mx-auto max-w-5xl">
-            <h1 className="mb-4 text-lg font-bold text-slate-800">Centros</h1>
+            <div className="mb-4 flex items-center justify-between">
+                <h1 className="text-lg font-bold text-slate-800">Centros</h1>
+                <div className="flex rounded-lg bg-slate-100 p-0.5">
+                    <button
+                        type="button"
+                        onClick={() => setView('grid')}
+                        className={`rounded-md px-3 py-1 text-xs font-semibold transition ${view === 'grid' ? 'bg-white text-brand-700 shadow' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                        ▦ Cuadrícula
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setView('list')}
+                        className={`rounded-md px-3 py-1 text-xs font-semibold transition ${view === 'list' ? 'bg-white text-brand-700 shadow' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                        ☰ Lista
+                    </button>
+                </div>
+            </div>
 
             <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-4">
                 <input
@@ -105,7 +124,7 @@ export default function CentrosList() {
                     No se encontraron centros con esos filtros. Si el directorio está vacío, ejecuta <code>php artisan centros:import</code>.
                 </p>
             ) : (
-                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <ul className={view === 'list' ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-1 gap-3 sm:grid-cols-2'}>
                     {centros.map((c) => (
                         <li key={c.codigo}>
                             <Link
