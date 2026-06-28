@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import api from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { useFeatures } from '../../hooks/useFeatures';
+import UpgradePrompt from '../shared/UpgradePrompt';
 
 const TABS = [
     { key: '', label: 'Todos' },
@@ -65,6 +67,8 @@ function ContactModal({ anuncio, onClose }) {
 
 export default function TablonList() {
     const { user } = useAuth();
+    const { can } = useFeatures();
+    const canPublish = can('tablon_completo');
     const [categoria, setCategoria] = useState('');
     const [contactAnuncio, setContactAnuncio] = useState(null);
 
@@ -85,7 +89,11 @@ export default function TablonList() {
                 <h1 className="text-lg font-bold text-slate-800">Tablón de anuncios</h1>
                 <div className="flex gap-2">
                     <Link to="/dashboard/tablon/mis-anuncios" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">Mis anuncios</Link>
-                    <Link to="/dashboard/tablon/nuevo" className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">+ Publicar</Link>
+                    {canPublish ? (
+                        <Link to="/dashboard/tablon/nuevo" className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">+ Publicar</Link>
+                    ) : (
+                        <UpgradePrompt variant="inline" message="Publicar en el tablón requiere un plan de pago." />
+                    )}
                 </div>
             </div>
 

@@ -77,4 +77,20 @@ return [
         'tenant' => env('MICROSOFT_TENANT', 'common'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Stripe (billing)
+    |--------------------------------------------------------------------------
+    |
+    | The webhook secret verifies the signature of incoming Stripe events. The
+    | secret key is used for any server-side Stripe API calls.
+    |
+    */
+
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
 ];

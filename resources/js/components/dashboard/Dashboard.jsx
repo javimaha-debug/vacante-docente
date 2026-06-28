@@ -1,19 +1,40 @@
-import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '../../hooks/useAuth';
+import api from '../../lib/api';
 import NotificationBell from './NotificationBell';
+import OnboardingWizard from '../onboarding/OnboardingWizard';
+import ImpersonationBanner from '../shared/ImpersonationBanner';
 
-const NAV = [
-    { to: '/dashboard', label: 'Inicio', end: true, icon: '🏠' },
-    { to: '/dashboard/perfil', label: 'Mi Perfil', icon: '👤' },
-    { to: '/dashboard/vacantes', label: 'Explorador Vacantes', icon: '🔎' },
-    { to: '/dashboard/lista', label: 'Mi Lista', icon: '📋' },
-    { to: '/dashboard/centros', label: 'Centros', icon: '🏫' },
-    { to: '/dashboard/tablon', label: 'Tablón', icon: '📌' },
+// Sidebar/nav items per active mode (Part 12).
+const NAV_BY_MODE = {
+    bolsa: [
+        { to: '/dashboard', label: 'Inicio', end: true, icon: '🏠' },
+        { to: '/dashboard/vacantes', label: 'Vacantes', icon: '🔎' },
+        { to: '/dashboard/lista', label: 'Mi Lista', icon: '📋' },
+        { to: '/dashboard/centros', label: 'Centros', icon: '🏫' },
+        { to: '/dashboard/tablon', label: 'Tablón', icon: '📌' },
+    ],
+    oposicion: [
+        { to: '/dashboard', label: 'Mi preparación', end: true, icon: '📚' },
+        { to: '/dashboard/normativa', label: 'Normativa', icon: '📖' },
+        { to: '/dashboard/convocatorias', label: 'Convocatorias', icon: '📣' },
+        { to: '/dashboard/asistente', label: 'Asistente IA', icon: '🤖' },
+    ],
+    docente: [
+        { to: '/dashboard', label: 'Mi aula', end: true, icon: '🍎' },
+        { to: '/dashboard/normativa', label: 'Normativa', icon: '📖' },
+        { to: '/dashboard/asistente', label: 'Asistente IA', icon: '🤖' },
+        { to: '/dashboard/recursos', label: 'Banco de recursos', icon: '🗃️' },
+    ],
+};
+
+const MODOS = [
+    { value: 'bolsa', label: 'Bolsa de interinidades', icon: '🗂️' },
+    { value: 'oposicion', label: 'Preparo oposición', icon: '📚' },
+    { value: 'docente', label: 'Docente en activo', icon: '🍎' },
 ];
-
-const ADMIN_NAV = [{ to: '/dashboard/admin/importaciones', label: 'Importaciones', icon: '⚙️' }];
 
 function NavItem({ item, onNavigate }) {
     return (
@@ -34,76 +55,158 @@ function NavItem({ item, onNavigate }) {
     );
 }
 
-export default function Dashboard() {
-    const { user, logout } = useAuth();
+function ModeSelector() {
+    const { user, refresh } = useAuth();
     const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+    const active = MODOS.find((m) => m.value === user?.modo_activo) ?? MODOS[0];
+
+    useClickOutside(ref, () => setOpen(false));
+
+    const change = async (modo) => {
+        setOpen(false);
+        if (modo === user?.modo_activo) return;
+        await api.put('/user/modo', { modo_activo: modo });
+        await refresh();
+    };
+
+    return (
+        <div ref={ref} className="relative">
+            <button
+                onClick={() => setOpen((v) => !v)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+                <span aria-hidden="true">{active.icon}</span>
+                <span className="hidden sm:block">{active.label}</span>
+                <span className="text-xs text-slate-400">▾</span>
+            </button>
+            {open && (
+                <div className="absolute left-0 z-40 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                    {MODOS.map((m) => (
+                        <button
+                            key={m.value}
+                            onClick={() => change(m.value)}
+                            className={clsx(
+                                'flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50',
+                                m.value === active.value ? 'font-semibold text-brand-700' : 'text-slate-600'
+                            )}
+                        >
+                            <span aria-hidden="true">{m.icon}</span>
+                            {m.label}
+                            {m.value === active.value && <span className="ml-auto text-brand-600">✓</span>}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function AvatarMenu() {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+    useClickOutside(ref, () => setOpen(false));
 
     const initials = (user?.name || user?.email || '?').slice(0, 1).toUpperCase();
-    const isAdmin = Boolean(user?.is_admin) || user?.id === 1;
-    const navItems = isAdmin ? [...NAV, ...ADMIN_NAV] : NAV;
+    const isAdmin = Boolean(user?.is_admin) || Boolean(user?.is_superadmin);
+
+    const go = (path) => { setOpen(false); navigate(path); };
+
+    return (
+        <div ref={ref} className="relative">
+            <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-slate-100">
+                {user?.avatar_url ? (
+                    <img src={user.avatar_url} alt="" className="h-8 w-8 rounded-full ring-1 ring-slate-200" referrerPolicy="no-referrer" />
+                ) : (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">{initials}</span>
+                )}
+                <span className="hidden text-sm font-medium text-slate-700 sm:block">{user?.name ?? 'Mi cuenta'}</span>
+                <span className="text-xs text-slate-400">▾</span>
+            </button>
+            {open && (
+                <div className="absolute right-0 z-40 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                    <div className="border-b border-slate-100 px-3 py-2">
+                        <p className="truncate text-sm font-semibold text-slate-800">{user?.name}</p>
+                        <p className="truncate text-xs text-slate-400">{user?.plan_label ?? 'Gratis'}</p>
+                    </div>
+                    <MenuItem onClick={() => go('/dashboard/perfil')} icon="👤">Mi Perfil</MenuItem>
+                    <MenuItem onClick={() => go('/dashboard/especialidades')} icon="🎓">Mis Especialidades</MenuItem>
+                    <MenuItem onClick={() => go('/dashboard/planes')} icon="✨">Planes</MenuItem>
+                    {isAdmin && <MenuItem onClick={() => go('/superadmin')} icon="🛡️">Panel admin</MenuItem>}
+                    <div className="my-1 border-t border-slate-100" />
+                    <MenuItem onClick={() => { setOpen(false); logout(); }} icon="🚪">Salir</MenuItem>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function MenuItem({ children, onClick, icon }) {
+    return (
+        <button onClick={onClick} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50">
+            <span aria-hidden="true">{icon}</span>
+            {children}
+        </button>
+    );
+}
+
+function useClickOutside(ref, handler) {
+    useEffect(() => {
+        const listener = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) handler();
+        };
+        document.addEventListener('mousedown', listener);
+        return () => document.removeEventListener('mousedown', listener);
+    }, [ref, handler]);
+}
+
+export default function Dashboard() {
+    const { user } = useAuth();
+    const [open, setOpen] = useState(false);
+
+    // Block the app behind onboarding until completed (cannot be dismissed).
+    if (user && user.onboarding_completed === false) {
+        return <OnboardingWizard />;
+    }
+
+    const modo = user?.modo_activo ?? 'bolsa';
+    const navItems = NAV_BY_MODE[modo] ?? NAV_BY_MODE.bolsa;
+    const isAdmin = Boolean(user?.is_admin) || Boolean(user?.is_superadmin);
+    const fullNav = isAdmin
+        ? [...navItems, { to: '/dashboard/admin/importaciones', label: 'Importaciones', icon: '⚙️' }]
+        : navItems;
 
     return (
         <div className="flex h-full flex-col">
-            {/* Top bar with horizontal navigation */}
+            <ImpersonationBanner />
             <header className="z-30 shrink-0 border-b border-slate-200 bg-white shadow-sm">
                 <div className="flex items-center gap-3 px-4 py-2.5">
-                    <button
-                        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
-                        onClick={() => setOpen((v) => !v)}
-                        aria-label="Menú"
-                    >
-                        ☰
-                    </button>
+                    <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden" onClick={() => setOpen((v) => !v)} aria-label="Menú">☰</button>
                     <span className="text-lg font-extrabold tracking-tight text-slate-900">
                         Vacante<span className="text-brand-600">Docente</span>
                     </span>
 
-                    {/* Horizontal menu (desktop) */}
+                    <div className="ml-1"><ModeSelector /></div>
+
                     <nav className="scroll-thin ml-2 hidden items-center gap-1 overflow-x-auto lg:flex">
-                        {navItems.map((item) => (
-                            <NavItem key={item.to} item={item} />
-                        ))}
+                        {fullNav.map((item) => <NavItem key={item.to} item={item} />)}
                     </nav>
 
                     <div className="ml-auto flex items-center gap-3">
                         <NotificationBell />
-                        <div className="flex items-center gap-2">
-                            {user?.avatar_url ? (
-                                <img
-                                    src={user.avatar_url}
-                                    alt=""
-                                    className="h-8 w-8 rounded-full ring-1 ring-slate-200"
-                                    referrerPolicy="no-referrer"
-                                />
-                            ) : (
-                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-                                    {initials}
-                                </span>
-                            )}
-                            <span className="hidden text-sm font-medium text-slate-700 sm:block">
-                                {user?.name ?? 'Mi cuenta'}
-                            </span>
-                        </div>
-                        <button
-                            onClick={logout}
-                            className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
-                        >
-                            Salir
-                        </button>
+                        <AvatarMenu />
                     </div>
                 </div>
 
-                {/* Collapsible menu (mobile/tablet) */}
                 {open && (
                     <nav className="grid grid-cols-2 gap-1 border-t border-slate-200 px-4 pb-3 pt-2 sm:grid-cols-3 lg:hidden">
-                        {navItems.map((item) => (
-                            <NavItem key={item.to} item={item} onNavigate={() => setOpen(false)} />
-                        ))}
+                        {fullNav.map((item) => <NavItem key={item.to} item={item} onNavigate={() => setOpen(false)} />)}
                     </nav>
                 )}
             </header>
 
-            {/* Main content — full width, fits the screen */}
             <main className="scroll-thin min-h-0 flex-1 overflow-y-auto bg-slate-100 p-4 sm:p-6">
                 <Outlet />
             </main>

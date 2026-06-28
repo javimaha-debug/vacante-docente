@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import UpgradePrompt from './shared/UpgradePrompt';
 
-export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onExport, viewMode, onViewModeChange, sidebar, filterCount = 0, children }) {
+export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onExport, exportLocked = false, viewMode, onViewModeChange, sidebar, filterCount = 0, children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
@@ -57,13 +58,17 @@ export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onE
                         <span className="hidden sm:inline">Cambiar especialidad</span>
                         <span className="sm:hidden">Cambiar</span>
                     </button>
-                    <button
-                        onClick={onExport}
-                        className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
-                    >
-                        <span className="hidden sm:inline">Exportar lista</span>
-                        <span className="sm:hidden">Exportar</span>
-                    </button>
+                    {exportLocked ? (
+                        <UpgradePrompt variant="inline" message="Exportar la lista requiere un plan de pago." />
+                    ) : (
+                        <button
+                            onClick={onExport}
+                            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+                        >
+                            <span className="hidden sm:inline">Exportar lista</span>
+                            <span className="sm:hidden">Exportar</span>
+                        </button>
+                    )}
                 </div>
             </header>
 

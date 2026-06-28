@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,6 +23,9 @@ Route::match(['get', 'post'], '/auth/{provider}/callback', [AuthController::clas
     ->whereIn('provider', ['google', 'microsoft'])
     ->name('oauth.callback');
 Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('auth.logout');
+
+// Stripe webhook: server-to-server POST, signature-verified, CSRF-exempt.
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 // Tablón reply landing: signed link (7-day expiry) from the contact email.
 // Validates the signature, then hands off to the SPA which renders the reply

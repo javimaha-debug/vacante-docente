@@ -21,6 +21,15 @@ import DashboardHome from './components/dashboard/DashboardHome';
 import UserProfile from './components/dashboard/UserProfile';
 import MisEspecialidades from './components/dashboard/MisEspecialidades';
 import AdminImportaciones from './components/dashboard/AdminImportaciones';
+import PlanesPage from './components/dashboard/PlanesPage';
+
+import AdminLayout from './components/superadmin/AdminLayout';
+import AdminDashboard from './components/superadmin/AdminDashboard';
+import AdminUsuarios from './components/superadmin/AdminUsuarios';
+import AdminUsuarioDetalle from './components/superadmin/AdminUsuarioDetalle';
+import AdminSuscripciones from './components/superadmin/AdminSuscripciones';
+import AdminMetricas from './components/superadmin/AdminMetricas';
+import AdminSistema from './components/superadmin/AdminSistema';
 import CentrosList from './components/centros/CentrosList';
 import CentroDetail from './components/centros/CentroDetail';
 import TablonList from './components/tablon/TablonList';
@@ -34,6 +43,7 @@ import { useCambios } from './hooks/useCambios';
 import { useDistances } from './hooks/useDistances';
 import { useListSync } from './hooks/useListSync';
 import { AuthContext, useAuth, useProvideAuth } from './hooks/useAuth';
+import { useFeatures } from './hooks/useFeatures';
 import { getSpecialtyId, setSpecialtyId, clearSpecialty, getProcesoId, setProcesoId, getStoredFilters, setStoredFilters } from './lib/session';
 import { DEFAULT_FILTERS, matchesFilters, statusEnabled, sortVacancies, countActiveFilters } from './lib/vacancyFilters';
 
@@ -64,6 +74,12 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
     }, []);
 
     const { isAuthenticated, user } = useAuth();
+    const { can } = useFeatures();
+    // Free plan caps the saved list at 30 vacancies; paid plans are unlimited.
+    const FREE_LIST_LIMIT = 30;
+    const canUnlimited = can('vacantes_ilimitadas');
+    const canExport = can('exportar_ovidoc');
+    const [limitHit, setLimitHit] = useState(false);
 
     const { list, listId, preferences, savePreferences, updateAddress, geocode } = useUserList(specialtyId);
     const distances = useDistances(listId);
@@ -196,10 +212,21 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
     const handleStatusChange = useCallback(
         (vacancyId, status) => {
             const existing = prefByVacancy.get(vacancyId);
+            // Free plan: cap the number of selected vacancies. Don't silently
+            // drop the action — surface the limit so the user can upgrade.
+            if (
+                status === 'selected'
+                && !canUnlimited
+                && existing?.status !== 'selected'
+                && selected.length >= FREE_LIST_LIMIT
+            ) {
+                setLimitHit(true);
+                return;
+            }
             const position = status === 'selected' ? selected.length + 1 : 0;
             persist([{ vacancy_id: vacancyId, status, position, notes: existing?.notes ?? null }]);
         },
-        [prefByVacancy, selected.length, persist]
+        [prefByVacancy, selected.length, persist, canUnlimited]
     );
 
     const handleReorder = useCallback(
@@ -322,6 +349,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
             vacancyCount={total}
             onChangeSpecialty={onChangeSpecialty}
             onExport={() => setExporting(true)}
+            exportLocked={!canExport}
             viewMode={focused ? undefined : viewMode}
             onViewModeChange={focused ? undefined : setViewMode}
             sidebar={focused ? focusedSidebar : sidebar}
@@ -370,6 +398,18 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
 
             {exporting && (
                 <ExportPanel selected={selected} specialty={list?.specialty} onClose={() => setExporting(false)} />
+            )}
+
+            {limitHit && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={() => setLimitHit(false)}>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <UpgradePrompt
+                            title={`Límite de ${FREE_LIST_LIMIT} vacantes`}
+                            message={`El plan Gratis permite guardar hasta ${FREE_LIST_LIMIT} vacantes. Mejora tu plan para una lista ilimitada.`}
+                        />
+                        <button onClick={() => setLimitHit(false)} className="mx-auto mt-3 block text-sm text-slate-500 hover:text-slate-700">Cerrar</button>
+                    </div>
+                </div>
             )}
         </Layout>
     );
@@ -456,6 +496,15 @@ function RequireAuth({ children }) {
     return children;
 }
 
+// Gate for the super-admin panel: must be authenticated AND admin/superadmin.
+function RequireSuperAdmin({ children }) {
+    const { isAuthenticated, loading, user } = useAuth();
+    if (loading) return <Spinner />;
+    if (!isAuthenticated) return <Navigate to="/" replace />;
+    if (!user?.is_admin && !user?.is_superadmin) return <Navigate to="/dashboard" replace />;
+    return children;
+}
+
 // Root: authenticated users go to the dashboard, everyone else sees login.
 function RootRoute() {
     const { isAuthenticated, loading } = useAuth();
@@ -480,6 +529,7 @@ function AppRoutes() {
                 <Route index element={<DashboardHome />} />
                 <Route path="perfil" element={<UserProfile />} />
                 <Route path="especialidades" element={<MisEspecialidades />} />
+                <Route path="planes" element={<PlanesPage />} />
                 <Route path="vacantes" element={<VacancyExplorer initialView="kanban" />} />
                 <Route path="lista" element={<VacancyExplorer initialView="list" focused />} />
                 <Route path="centros" element={<CentrosList />} />
@@ -488,7 +538,30 @@ function AppRoutes() {
                 <Route path="tablon/nuevo" element={<TablonForm />} />
                 <Route path="tablon/mis-anuncios" element={<MisAnuncios />} />
                 <Route path="admin/importaciones" element={<AdminImportaciones />} />
+                {/* Mode-specific sections not yet built (oposición / docente). */}
+                <Route path="normativa" element={<ComingSoon title="Normativa" />} />
+                <Route path="convocatorias" element={<ComingSoon title="Convocatorias" />} />
+                <Route path="asistente" element={<ComingSoon title="Asistente IA" />} />
+                <Route path="recursos" element={<ComingSoon title="Banco de recursos" />} />
             </Route>
+
+            {/* Super-admin panel: separate dark SPA at /superadmin/*. */}
+            <Route
+                path="/superadmin"
+                element={
+                    <RequireSuperAdmin>
+                        <AdminLayout />
+                    </RequireSuperAdmin>
+                }
+            >
+                <Route index element={<AdminDashboard />} />
+                <Route path="usuarios" element={<AdminUsuarios />} />
+                <Route path="usuarios/:id" element={<AdminUsuarioDetalle />} />
+                <Route path="suscripciones" element={<AdminSuscripciones />} />
+                <Route path="metricas" element={<AdminMetricas />} />
+                <Route path="sistema" element={<AdminSistema />} />
+            </Route>
+
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );

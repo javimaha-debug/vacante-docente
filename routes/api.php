@@ -15,6 +15,11 @@ use App\Http\Controllers\Api\TablonController;
 use App\Http\Controllers\Api\UserListController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\Api\VacancyController;
+use App\Http\Controllers\Api\SuperAdmin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Api\SuperAdmin\MetricasController as AdminMetricasController;
+use App\Http\Controllers\Api\SuperAdmin\SistemaController as AdminSistemaController;
+use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripcionesController;
+use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -65,6 +70,16 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
+    // Plans catalogue (public): drives the pricing / upgrade page.
+    Route::get('planes', function () {
+        return response()->json([
+            'data' => \App\Models\Plan::query()
+                ->where('activo', true)
+                ->orderBy('sort_order')
+                ->get(['codigo', 'nombre', 'descripcion', 'features', 'sort_order']),
+        ]);
+    });
+
     // GVA monitor (public): latest official notices.
     Route::get('gva/noticias', [GvaController::class, 'index']);
 
@@ -90,7 +105,8 @@ Route::prefix('v1')->group(function () {
     Route::get('push/vapid-key', [PushSubscriptionController::class, 'vapidKey']);
 
     // Authenticated teacher profile + dashboard (Sanctum bearer token).
-    Route::middleware('auth:sanctum')->group(function () {
+    // Every authenticated request refreshes the user's last_active_at stamp.
+    Route::middleware(['auth:sanctum', \App\Http\Middleware\UpdateLastActive::class])->group(function () {
         // In-app notifications inbox.
         Route::get('notificaciones', [NotificationController::class, 'index']);
         Route::post('notificaciones/leer/{id?}', [NotificationController::class, 'markRead']);
@@ -102,6 +118,10 @@ Route::prefix('v1')->group(function () {
         Route::get('user/me', [UserProfileController::class, 'me']);
         Route::get('user/profile', [UserProfileController::class, 'show']);
         Route::put('user/profile', [UserProfileController::class, 'update']);
+        Route::put('user/modo', [UserProfileController::class, 'updateModo']);
+        Route::put('user/onboarding', [UserProfileController::class, 'onboarding']);
+        // Exit an impersonation session (called with the impersonation token).
+        Route::post('user/stop-impersonate', [AdminUsuariosController::class, 'stopImpersonate']);
         Route::post('user/especialidades', [UserProfileController::class, 'storeEspecialidad']);
         Route::delete('user/especialidades/{specialty}', [UserProfileController::class, 'destroyEspecialidad']);
         Route::get('user/dashboard', [UserProfileController::class, 'dashboard']);
@@ -136,4 +156,29 @@ Route::prefix('v1')->group(function () {
         Route::post('admin/procesos', [GvaController::class, 'adminCrearProcesos']);
         Route::post('admin/importaciones/manual', [GvaController::class, 'adminImportarManual']);
     });
+
+    // SuperAdmin panel API: requires an admin/superadmin role, rate limited.
+    Route::prefix('superadmin')
+        ->middleware(['auth:sanctum', 'superadmin', 'throttle:120,1'])
+        ->group(function () {
+            Route::get('dashboard', [AdminDashboardController::class, 'index']);
+
+            Route::get('usuarios', [AdminUsuariosController::class, 'index']);
+            Route::get('usuarios/{usuario}', [AdminUsuariosController::class, 'show']);
+            Route::put('usuarios/{usuario}', [AdminUsuariosController::class, 'update']);
+            Route::put('usuarios/{usuario}/plan', [AdminUsuariosController::class, 'cambiarPlan']);
+            Route::post('usuarios/{usuario}/notas', [AdminUsuariosController::class, 'addNota']);
+            Route::post('usuarios/{usuario}/impersonate', [AdminUsuariosController::class, 'impersonate']);
+            Route::post('usuarios/{usuario}/suspender', [AdminUsuariosController::class, 'suspender']);
+
+            Route::get('suscripciones', [AdminSuscripcionesController::class, 'index']);
+
+            Route::get('metricas', [AdminMetricasController::class, 'index']);
+            Route::get('metricas/export', [AdminMetricasController::class, 'export']);
+
+            Route::get('sistema/status', [AdminSistemaController::class, 'status']);
+            Route::get('sistema/logs', [AdminSistemaController::class, 'logs']);
+            Route::post('sistema/cache-clear', [AdminSistemaController::class, 'cacheClear']);
+            Route::get('sistema/failed-jobs', [AdminSistemaController::class, 'failedJobs']);
+        });
 });

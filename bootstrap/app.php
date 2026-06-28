@@ -16,9 +16,17 @@ return Application::configure(basePath: dirname(__DIR__))
         // Public API routes are stateless (client-generated session_token);
         // authenticated routes use Sanctum bearer tokens (no session/CSRF).
         // The OAuth logout endpoint is a web route called with a bearer token,
-        // so it is exempt from CSRF verification.
+        // and the Stripe webhook is a server-to-server POST verified by its
+        // signature header, so both are exempt from CSRF verification.
         $middleware->validateCsrfTokens(except: [
             'auth/logout',
+            'stripe/webhook',
+        ]);
+
+        // Route middleware aliases for SaaS authorization.
+        $middleware->alias([
+            'superadmin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'plan' => \App\Http\Middleware\EnsurePlan::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
