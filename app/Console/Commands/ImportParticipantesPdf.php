@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Centro;
 use App\Models\ParticipanteProceso;
 use App\Models\Proceso;
 use App\Models\Specialty;
 use App\Models\User;
 use App\Models\UserEspecialidad;
+use App\Models\UserHistorial;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Process\Process;
@@ -481,6 +483,7 @@ class ImportParticipantesPdf extends Command
         $out = [
             'lloc_adjudicado' => null,
             'centro_nombre' => null,
+            'centro_codigo' => null,   // resolved for user_historial; not persisted to participantes_proceso
             'localitat' => null,
             'especialidad_codigo' => null,
             'jornada' => null,
@@ -500,6 +503,7 @@ class ImportParticipantesPdf extends Command
             // LOCALITAT(CODI) NOM CENTRE
             if (preg_match('/^(.+?)\((\d{4,8})\)\s*(.*)$/u', $col, $cm)) {
                 $out['localitat'] = trim($cm[1]);
+                $out['centro_codigo'] = trim($cm[2]);
                 $out['centro_nombre'] = trim($cm[3]) !== '' ? trim($cm[3]) : null;
 
                 continue;
@@ -587,11 +591,34 @@ class ImportParticipantesPdf extends Command
                 continue;
             }
 
+            // Resolve the adjudicated centre (by GVA code) once per row.
+            $centroId = null;
+            if (! empty($r['centro_codigo'])) {
+                $centroId = Centro::where('codigo', $r['centro_codigo'])->value('id');
+            }
+            $esAdjudicat = ($r['estado'] ?? null) === 'Adjudicat';
+
             foreach ($users as $user) {
                 UserEspecialidad::updateOrCreate(
                     ['user_id' => $user->id, 'specialty_id' => $specialtyId, 'anyo' => $proceso->anyo],
                     ['posicion_bolsa' => $r['posicion'], 'estado_bolsa' => $r['estado']],
                 );
+
+                // Record the year in the user's history (one row per
+                // user+especialidad+año). Adjudication details fill in when present.
+                UserHistorial::updateOrCreate(
+                    ['user_id' => $user->id, 'specialty_id' => $specialtyId, 'anyo' => $proceso->anyo],
+                    [
+                        'proceso_id' => $proceso->id,
+                        'posicion_definitiva' => $r['posicion'],
+                        'estado' => $r['estado'],
+                        'centro_adjudicado_id' => $centroId,
+                        'lloc_adjudicado' => $r['lloc_adjudicado'] ?? null,
+                        'jornada_adjudicada' => $r['jornada'] ?? null,
+                        'fecha_adjudicacion' => $esAdjudicat ? now()->toDateString() : null,
+                    ],
+                );
+
                 $updates++;
             }
         }
