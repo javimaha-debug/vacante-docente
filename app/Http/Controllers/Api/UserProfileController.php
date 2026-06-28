@@ -256,7 +256,7 @@ class UserProfileController extends Controller
             'items' => ['present', 'array'],
             'items.*.vacancy_id' => ['required', 'integer', 'exists:vacancies,id'],
             'items.*.position' => ['nullable', 'integer'],
-            'items.*.status' => ['nullable', 'in:selected,discarded,neutral'],
+            'items.*.status' => ['nullable', 'in:selected,discarded,neutral,revisar'],
             'items.*.notes' => ['nullable', 'string'],
         ]);
 

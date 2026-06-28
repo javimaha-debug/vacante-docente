@@ -147,6 +147,9 @@ export default function VacancyCard({
                     <StatusButton active={status === 'selected'} color="emerald" onClick={() => onStatusChange?.('selected')}>
                         ✓ Mi lista
                     </StatusButton>
+                    <StatusButton active={status === 'revisar'} color="amber" onClick={() => onStatusChange?.('revisar')}>
+                        ? A revisar
+                    </StatusButton>
                     <StatusButton active={status === 'neutral'} color="slate" onClick={() => onStatusChange?.('neutral')}>
                         ↺ Sin revisar
                     </StatusButton>
@@ -182,6 +185,7 @@ export default function VacancyCard({
 function StatusButton({ active, color, children, onClick }) {
     const palette = {
         emerald: active ? 'bg-emerald-600 text-white' : 'text-emerald-700 hover:bg-emerald-50',
+        amber: active ? 'bg-amber-500 text-white' : 'text-amber-700 hover:bg-amber-50',
         rose: active ? 'bg-rose-600 text-white' : 'text-rose-700 hover:bg-rose-50',
         slate: active ? 'bg-slate-700 text-white' : 'text-slate-600 hover:bg-slate-100',
     };

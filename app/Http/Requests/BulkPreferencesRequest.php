@@ -17,7 +17,7 @@ class BulkPreferencesRequest extends FormRequest
             'preferences' => ['present', 'array'],
             'preferences.*.vacancy_id' => ['required', 'integer', 'exists:vacancies,id'],
             'preferences.*.position' => ['sometimes', 'integer', 'min:0'],
-            'preferences.*.status' => ['required', 'in:selected,discarded,neutral'],
+            'preferences.*.status' => ['required', 'in:selected,discarded,neutral,revisar'],
             'preferences.*.notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ];
     }

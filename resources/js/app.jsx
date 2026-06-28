@@ -110,6 +110,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
     }, [preferences]);
 
     const selected = useMemo(() => preferences.filter((p) => p.status === 'selected'), [preferences]);
+    const revisar = useMemo(() => preferences.filter((p) => p.status === 'revisar'), [preferences]);
     const discarded = useMemo(() => preferences.filter((p) => p.status === 'discarded'), [preferences]);
     const neutral = useMemo(
         () => vacancies.filter((v) => (prefByVacancy.get(v.id)?.status ?? 'neutral') === 'neutral'),
@@ -157,6 +158,10 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
     const discardedShown = useMemo(
         () => (searchQ ? discarded.filter((p) => matchesVacancy(p.vacancy, searchQ)) : discarded),
         [discarded, searchQ]
+    );
+    const revisarShown = useMemo(
+        () => (searchQ ? revisar.filter((p) => matchesVacancy(p.vacancy, searchQ)) : revisar),
+        [revisar, searchQ]
     );
 
     const persist = useCallback(
@@ -264,7 +269,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
         [prefByVacancy, persist]
     );
 
-    const counts = { total, selected: selected.length, discarded: discarded.length };
+    const counts = { total, selected: selected.length, revisar: revisar.length, discarded: discarded.length };
 
     const sidebar = (
         <div className="space-y-5">
@@ -324,7 +329,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
     );
 
     const focusedContent = (
-        <div className="scroll-thin mx-auto h-full max-w-3xl space-y-3 overflow-y-auto pr-1">
+        <div className="scroll-thin h-full space-y-3 overflow-y-auto pr-1">
             <div className="flex items-baseline justify-between">
                 <h1 className="text-lg font-bold text-slate-800">Mi lista priorizada</h1>
                 <span className="text-sm text-slate-400">{selected.length} vacantes</span>
@@ -361,6 +366,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
                 <KanbanBoard
                     neutral={neutralSorted}
                     selected={selectedShown}
+                    revisar={revisarShown}
                     discarded={discardedShown}
                     home={home}
                     showDiscarded={showDiscarded}
@@ -374,6 +380,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
             ) : (
                 <ListView
                     selected={selectedShown}
+                    revisar={revisarShown}
                     neutral={neutralSorted}
                     home={home}
                     onStatusChange={handleStatusChange}
@@ -395,10 +402,11 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
 // Powerful working list: one compact row per vacancy in a single drag surface,
 // so candidates can be dragged up into "Mi lista" and reordered. Distance is
 // shown inline on every row.
-function ListView({ selected, neutral, home, onStatusChange, onNotesChange, onReorder, hasMore, onLoadMore, isLoadingMore }) {
+function ListView({ selected, revisar, neutral, home, onStatusChange, onNotesChange, onReorder, hasMore, onLoadMore, isLoadingMore }) {
     return (
         <ListBoard
             selected={selected}
+            revisar={revisar}
             neutral={neutral}
             home={home}
             onStatusChange={onStatusChange}

@@ -73,6 +73,24 @@ class PreferencesBulkTest extends TestCase
             ->assertJsonPath('data.0.status', 'selected');
     }
 
+    public function test_revisar_status_is_accepted_and_ordered(): void
+    {
+        ['list' => $list, 'vacancies' => $vacancies] = $this->scaffold();
+        [$a, $b] = $vacancies->all();
+
+        $this->withHeaders(['X-Session-Token' => 'tok-pref'])
+            ->putJson("/api/v1/user-lists/{$list->id}/preferences/bulk", [
+                'preferences' => [
+                    ['vacancy_id' => $b->id, 'status' => 'revisar', 'position' => 0],
+                    ['vacancy_id' => $a->id, 'status' => 'selected', 'position' => 1],
+                ],
+            ])->assertOk()
+            ->assertJsonCount(2, 'data')
+            // selected first, then revisar.
+            ->assertJsonPath('data.0.status', 'selected')
+            ->assertJsonPath('data.1.status', 'revisar');
+    }
+
     public function test_another_session_cannot_touch_a_list(): void
     {
         ['list' => $list] = $this->scaffold();

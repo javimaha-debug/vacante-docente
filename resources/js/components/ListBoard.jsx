@@ -18,7 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import VacancyRow from './VacancyRow';
 
-const STATUS_OF = { selected: 'selected', neutral: 'neutral' };
+const STATUS_OF = { selected: 'selected', revisar: 'revisar', neutral: 'neutral' };
 const INTERACTIVE = 'button, a, textarea, input, select, label';
 
 function guardListeners(listeners) {
@@ -77,6 +77,7 @@ function Section({ id, children }) {
 // priorizada" and drag a candidate row up into it (or back down).
 export default function ListBoard({
     selected,
+    revisar = [],
     neutral,
     home,
     onStatusChange,
@@ -93,11 +94,13 @@ export default function ListBoard({
     );
 
     const selectedIds = selected.map((i) => i.vacancy_id);
+    const revisarIds = revisar.map((i) => i.vacancy_id);
     const neutralIds = neutral.map((v) => v.id);
 
     const columnOf = (id) => {
         if (id in STATUS_OF) return id;
         if (selectedIds.includes(id)) return 'selected';
+        if (revisarIds.includes(id)) return 'revisar';
         if (neutralIds.includes(id)) return 'neutral';
         return null;
     };
@@ -123,7 +126,7 @@ export default function ListBoard({
 
     return (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-            <div className="scroll-thin mx-auto h-full max-w-4xl space-y-6 overflow-y-auto pr-1">
+            <div className="scroll-thin h-full space-y-6 overflow-y-auto pr-1">
                 <Section id="selected">
                     <h2 className="mb-2 text-sm font-bold text-slate-700">
                         Mi lista priorizada <span className="text-slate-400">({selected.length})</span>
@@ -153,6 +156,31 @@ export default function ListBoard({
                         )}
                 </SortableContext>
                 </Section>
+
+                {revisar.length > 0 && (
+                    <Section id="revisar">
+                        <h2 className="mb-2 text-sm font-bold text-slate-700">
+                            A revisar <span className="text-slate-400">({revisar.length})</span>
+                            <span className="ml-2 text-xs font-normal text-slate-400">dudas pendientes</span>
+                        </h2>
+                        <SortableContext items={revisarIds} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-1.5">
+                                {revisar.map((item) => (
+                                    <SortableRowItem
+                                        key={item.vacancy_id}
+                                        id={item.vacancy_id}
+                                        vacancy={item.vacancy}
+                                        status="revisar"
+                                        notes={item.notes}
+                                        home={home}
+                                        onStatusChange={(status) => onStatusChange(item.vacancy_id, status)}
+                                        onNotesChange={(notes) => onNotesChange(item.vacancy_id, notes)}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </Section>
+                )}
 
                 <Section id="neutral">
                     <h2 className="mb-2 text-sm font-bold text-slate-700">

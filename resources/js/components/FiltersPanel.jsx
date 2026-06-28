@@ -145,7 +145,8 @@ export default function FiltersPanel({ filters, setFilters, counts, showDiscarde
 
             <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
                 <span className="font-semibold text-slate-800">{counts.total}</span> vacantes ·{' '}
-                <span className="font-semibold text-emerald-600">{counts.selected}</span> seleccionadas ·{' '}
+                <span className="font-semibold text-emerald-600">{counts.selected}</span> en lista ·{' '}
+                <span className="font-semibold text-amber-600">{counts.revisar ?? 0}</span> a revisar ·{' '}
                 <span className="font-semibold text-rose-500">{counts.discarded}</span> descartadas
             </div>
         </div>
