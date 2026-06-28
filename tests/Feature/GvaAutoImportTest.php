@@ -113,6 +113,50 @@ class GvaAutoImportTest extends TestCase
         ])->assertOk()->assertJsonStructure(['resumen', 'import_estado']);
     }
 
+    public function test_admin_can_create_past_year_procesos(): void
+    {
+        $this->seed(\Database\Seeders\CcaaSeeder::class);
+        $this->seed(\Database\Seeders\ColectivoSeeder::class);
+
+        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        \Laravel\Sanctum\Sanctum::actingAs($admin);
+
+        $this->postJson('/api/v1/admin/procesos', ['anyo' => 2024])
+            ->assertOk()
+            ->assertJsonCount(6, 'data');
+
+        $this->assertSame(6, \App\Models\Proceso::where('anyo', 2024)->count());
+    }
+
+    public function test_admin_manual_import_queues_a_job(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $proceso = $this->makeProceso('INTERINO', 'SECUNDARIA', 'Interins Secundària 2024-2025', 2024);
+
+        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        \Laravel\Sanctum\Sanctum::actingAs($admin);
+
+        $this->postJson('/api/v1/admin/importaciones/manual', [
+            'url' => 'https://ceice.gva.es/documents/1/2/ini_2024_adj_int_lis_sec.pdf',
+            'tipo' => 'participantes',
+            'proceso_id' => $proceso->id,
+        ])->assertStatus(202)->assertJsonPath('queued', true);
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\ImportListadoManual::class);
+        $this->assertDatabaseHas('gva_noticias', ['url' => 'https://ceice.gva.es/documents/1/2/ini_2024_adj_int_lis_sec.pdf']);
+    }
+
+    public function test_admin_manual_import_requires_admin(): void
+    {
+        \App\Models\User::factory()->create(); // id=1 (admin) occupied
+        $plain = \App\Models\User::factory()->create(['is_admin' => false]);
+        \Laravel\Sanctum\Sanctum::actingAs($plain);
+
+        $this->postJson('/api/v1/admin/importaciones/manual', [
+            'url' => 'https://x/y.pdf', 'tipo' => 'continua',
+        ])->assertForbidden();
+    }
+
     public function test_monitor_auto_imports_and_notifies_admins(): void
     {
         Notification::fake();

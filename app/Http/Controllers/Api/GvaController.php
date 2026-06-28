@@ -50,6 +50,63 @@ class GvaController extends Controller
     }
 
     /**
+     * Create the procesos of a course (e.g. a past year) from the admin UI, so
+     * historical listings can then be imported into them.
+     */
+    public function adminCrearProcesos(Request $request): JsonResponse
+    {
+        if ($deny = $this->denyUnlessAdmin($request)) {
+            return $deny;
+        }
+
+        $data = $request->validate([
+            'anyo' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'estado' => ['sometimes', 'in:publicado,pendiente,cerrado'],
+        ]);
+
+        \Illuminate\Support\Facades\Artisan::call('procesos:create', [
+            'anyo' => $data['anyo'],
+            '--estado' => $data['estado'] ?? 'cerrado',
+        ]);
+
+        $procesos = Proceso::where('anyo', $data['anyo'])
+            ->with('colectivo:id,code,name,body')
+            ->orderBy('id')
+            ->get(['id', 'nombre', 'anyo', 'colectivo_id'])
+            ->map(fn (Proceso $p) => ['id' => $p->id, 'nombre' => $p->nombre]);
+
+        return response()->json(['data' => $procesos, 'output' => trim(\Illuminate\Support\Facades\Artisan::output())]);
+    }
+
+    /**
+     * Queue a manual/historical listing import from a URL into a chosen proceso.
+     * Heavy imports run in the background; the result shows in the list above.
+     */
+    public function adminImportarManual(Request $request): JsonResponse
+    {
+        if ($deny = $this->denyUnlessAdmin($request)) {
+            return $deny;
+        }
+
+        $data = $request->validate([
+            'url' => ['required', 'url', 'max:1000'],
+            'tipo' => ['required', 'in:vacantes,participantes,continua'],
+            'proceso_id' => ['required_if:tipo,vacantes,participantes', 'nullable', 'integer', 'exists:procesos,id'],
+        ]);
+
+        // Track it as a notice so its status appears in the admin list.
+        $noticia = GvaNoticia::firstOrCreate(
+            ['url' => $data['url']],
+            ['titulo' => 'Importación manual: '.basename(parse_url($data['url'], PHP_URL_PATH) ?: $data['url']), 'tipo' => 'PDF'],
+        );
+        $noticia->forceFill(['import_estado' => null, 'import_resumen' => 'En cola…'])->save();
+
+        \App\Jobs\ImportListadoManual::dispatch($noticia->id, $data['tipo'], $data['proceso_id'] ?? null);
+
+        return response()->json(['queued' => true, 'noticia_id' => $noticia->id], 202);
+    }
+
+    /**
      * Re-run the import for a notice. Optionally force a target proceso + kind
      * (for items the heuristic couldn't map automatically).
      */
