@@ -86,19 +86,71 @@ class ImportParticipantesPdf extends Command
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($proceso, $rows) {
+        // Diff vs the previous participant listing (keyed by person+especialidad)
+        // to flag new/modified entries and record an import summary.
+        $old = ParticipanteProceso::where('proceso_id', $proceso->id)
+            ->get(['nombre_gva', 'especialidad_codigo', 'posicion', 'estado', 'lloc_adjudicado'])
+            ->keyBy(fn ($p) => $this->diffKey((array) $p->getAttributes()))
+            ->map(fn ($p) => $this->signature((array) $p->getAttributes()))
+            ->all();
+        $isFirst = empty($old);
+
+        $now = now();
+        $newKeys = [];
+        $nuevos = $modificados = 0;
+        foreach ($rows as &$row) {
+            $key = $this->diffKey($row);
+            $newKeys[$key] = true;
+            $sig = $this->signature($row);
+
+            if ($isFirst) {
+                $row['cambio'] = null;
+            } elseif (! isset($old[$key])) {
+                $row['cambio'] = 'nuevo';
+                $nuevos++;
+            } elseif ($old[$key] !== $sig) {
+                $row['cambio'] = 'modificado';
+                $modificados++;
+            } else {
+                $row['cambio'] = null;
+            }
+            $row['cambio_en'] = $now;
+        }
+        unset($row);
+
+        $eliminados = $isFirst ? 0 : count(array_diff_key($old, $newKeys));
+
+        DB::transaction(function () use ($proceso, $rows, $now, $isFirst, $nuevos, $modificados, $eliminados) {
             ParticipanteProceso::where('proceso_id', $proceso->id)->delete();
             foreach (array_chunk($rows, 500) as $chunk) {
-                $now = now();
                 ParticipanteProceso::insert(array_map(fn ($r) => array_merge(
                     array_intersect_key($r, array_flip(self::DB_COLUMNS)),
-                    ['proceso_id' => $proceso->id, 'created_at' => $now, 'updated_at' => $now],
+                    [
+                        'proceso_id' => $proceso->id,
+                        'cambio' => $r['cambio'] ?? null,
+                        'cambio_en' => $r['cambio_en'] ?? null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ],
                 ), $chunk));
             }
+
+            \App\Models\ParticipanteImportacion::create([
+                'proceso_id' => $proceso->id,
+                'importado_en' => $now,
+                'total' => count($rows),
+                'nuevos' => $nuevos,
+                'modificados' => $modificados,
+                'eliminados' => $eliminados,
+                'es_primera' => $isFirst,
+            ]);
         });
 
         $matched = $this->matchToUsers($proceso, $rows);
         $this->info('Importadas '.count($rows)." filas; {$matched} actualizaciones en perfiles de usuario.");
+        if (! $isFirst) {
+            $this->info("Cambios vs listado anterior: {$nuevos} nuevos, {$modificados} modificados, {$eliminados} eliminados.");
+        }
 
         return self::SUCCESS;
     }
@@ -465,6 +517,31 @@ class ImportParticipantesPdf extends Command
     private function normalizeName(string $name): string
     {
         return preg_replace('/\s+/', ' ', trim($name));
+    }
+
+    /**
+     * Identity of a participant row across imports: person + especialidad.
+     *
+     * @param  array<string, mixed>  $r
+     */
+    private function diffKey(array $r): string
+    {
+        return mb_strtolower(trim((string) ($r['nombre_gva'] ?? ''))).'|'.($r['especialidad_codigo'] ?? '');
+    }
+
+    /**
+     * Stable content signature of a participant row (for change detection):
+     * position, status and any adjudication.
+     *
+     * @param  array<string, mixed>  $r
+     */
+    private function signature(array $r): string
+    {
+        return implode('|', [
+            (int) ($r['posicion'] ?? 0),
+            $r['estado'] ?? '',
+            $r['lloc_adjudicado'] ?? '',
+        ]);
     }
 
     /**
