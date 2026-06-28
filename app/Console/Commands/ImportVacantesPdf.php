@@ -65,10 +65,11 @@ class ImportVacantesPdf extends Command
         $unresolved = [];
 
         foreach ($parsed as $i => $r) {
-            // GVA section codes (201, 2A1, 128…) are a different numbering than
-            // our internal codes and collide across cuerpos, so resolve strictly
-            // by the section's specialty NAME, scoped to the proceso's cuerpo.
-            $specialty = $this->resolveSpecialtyByName($r['specialty_name'] ?? '', $cuerpo);
+            // The catalogue is now keyed by the real GVA section codes, so
+            // resolve by code first (exact, cuerpo-preferred) and fall back to
+            // the specialty NAME for any older/edge layouts.
+            $specialty = ($r['specialty_code'] ? $this->resolveSpecialty($r['specialty_code'], $cuerpo) : null)
+                ?? $this->resolveSpecialtyByName($r['specialty_name'] ?? '', $cuerpo);
 
             if (! $specialty) {
                 $unresolved[$r['specialty_code'].' '.($r['specialty_name'] ?? '')] = true;
