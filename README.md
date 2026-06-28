@@ -140,3 +140,23 @@ Flujo: al cargar se lee `localStorage` (`session_token`, `specialty_id`). Sin es
   y se guarda en `localStorage`.
 
 Configuración completa (Google, Microsoft, push web, monitor GVA): ver [`DEPLOYMENT.md`](DEPLOYMENT.md).
+
+## Administración
+
+### Promover un usuario a super-admin
+
+El acceso al panel de administración (`/superadmin`) se detecta por `role === 'superadmin'`
+(ver `App\Http\Middleware\EnsureSuperAdmin`). El campo `role` no es asignable en masa por
+seguridad, así que se establece con un comando dedicado:
+
+```bash
+php artisan admin:promote usuario@ejemplo.com
+```
+
+- El usuario debe existir previamente (haberse registrado por email o Google).
+- El comando es idempotente: si ya es super-admin, no hace nada.
+- En despliegues nuevos / producción, ejecútalo tras `php artisan migrate --force`:
+
+```bash
+php artisan admin:promote javimaha@gmail.com
+```
