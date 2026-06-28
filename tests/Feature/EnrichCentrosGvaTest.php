@@ -85,6 +85,35 @@ class EnrichCentrosGvaTest extends TestCase
         @unlink($csv);
     }
 
+    public function test_enrich_gva_updates_every_matching_centro(): void
+    {
+        // Regression: a previous chunkById + orderBy('codigo') combination only
+        // processed a subset. Every matching centro must be enriched.
+        $header = 'codigo;tipo_via;direccion;numero;codigo_postal;localidad;telefono;longitud;latitud;url_es;url_va';
+        $rows = [];
+        $codes = [];
+        for ($i = 1; $i <= 25; $i++) {
+            $code = sprintf('4600%04d', $i);
+            $codes[] = $code;
+            $rows[] = "\"{$code}\";\"CARRER\";\"X\";\"{$i}\";\"46001\";\"VALÈNCIA\";\"96100{$i}\";\"-0.3\";\"39.4\";\"https://gva.es/c/{$code}\";\"https://gva.es/va/{$code}\"";
+            Centro::create([
+                'ccaa_id' => $this->cv->id, 'codigo' => $code, 'nombre' => "C{$i}",
+                'tipo' => 'IES', 'localidad' => 'València', 'provincia' => 'València',
+            ]);
+        }
+        $path = tempnam(sys_get_temp_dir(), 'gva').'.csv';
+        file_put_contents($path, $header."\n".implode("\n", $rows)."\n");
+
+        $this->artisan('centros:enrich-gva', ['--file' => $path])
+            ->expectsOutputToContain('Actualizados: 25')
+            ->assertSuccessful();
+
+        $this->assertSame(0, Centro::whereIn('codigo', $codes)->whereNull('web')->count(),
+            'every matching centro should have its web populated');
+
+        @unlink($path);
+    }
+
     public function test_missing_csv_file_fails_cleanly(): void
     {
         $this->makeCentro();

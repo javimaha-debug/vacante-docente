@@ -63,7 +63,7 @@ class EnrichCentrosGva extends Command
         }
         $this->info(count($map).' centros en el CSV de la GVA.');
 
-        $query = Centro::query()->orderBy('codigo');
+        $query = Centro::query();
         if ($codigo = $this->option('codigo')) {
             $query->where('codigo', $codigo);
         }
@@ -73,7 +73,11 @@ class EnrichCentrosGva extends Command
                 ->orWhereNull('direccion_oficial'));
         }
 
-        $total = (clone $query)->count();
+        // Snapshot the target ids up front, then process in batches by id. This
+        // avoids chunkById pitfalls (cursor desync, or rows shifting out of the
+        // --only-missing filter as we write the very columns it filters on).
+        $ids = $query->pluck('id');
+        $total = $ids->count();
         if ($total === 0) {
             $this->info('No hay centros que enriquecer con esos filtros.');
 
@@ -82,30 +86,31 @@ class EnrichCentrosGva extends Command
 
         $bar = $this->output->createProgressBar($total);
         $updated = 0;
+        $unchanged = 0;
         $noMatch = 0;
 
-        $query->chunkById(200, function ($centros) use ($map, &$updated, &$noMatch, $bar) {
-            foreach ($centros as $centro) {
+        foreach ($ids->chunk(200) as $batch) {
+            foreach (Centro::whereIn('id', $batch)->get() as $centro) {
                 $row = $map[$centro->codigo] ?? $map[ltrim($centro->codigo, '0')] ?? null;
                 if (! $row) {
                     $noMatch++;
-                    $bar->advance();
-
-                    continue;
-                }
-
-                $attrs = $this->attributesFromRow($row, $centro);
-                if ($attrs) {
-                    $centro->fill($attrs)->save();
-                    $updated++;
+                } else {
+                    $attrs = $this->attributesFromRow($row, $centro);
+                    if ($attrs) {
+                        $centro->fill($attrs)->save();
+                        $updated++;
+                    } else {
+                        $unchanged++;
+                    }
                 }
                 $bar->advance();
             }
-        });
+        }
 
         $bar->finish();
         $this->newLine(2);
         $this->info("Actualizados: {$updated}");
+        $this->line("Sin cambios (sin datos nuevos): {$unchanged}");
         $this->line("Sin coincidencia en el CSV: {$noMatch}");
 
         return self::SUCCESS;
