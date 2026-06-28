@@ -18,6 +18,8 @@ class GoogleMapsService
 
     private const DISTANCE_MATRIX_URL = 'https://maps.googleapis.com/maps/api/distancematrix/json';
 
+    private const PLACES_AUTOCOMPLETE_URL = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
+
     public function __construct(
         private readonly ?string $apiKey = null,
     ) {}
@@ -101,6 +103,49 @@ class GoogleMapsService
                 'lat' => (float) ($result['geometry']['location']['lat'] ?? 0),
                 'lng' => (float) ($result['geometry']['location']['lng'] ?? 0),
             ])
+            ->all();
+    }
+
+    /**
+     * Real address autocomplete via the Places Autocomplete API — unlike the
+     * Geocoding API, this returns useful predictions for *partial* input (a
+     * half-typed street). Restricted to Spain. Throws when Places is not
+     * enabled/authorised so the caller can fall back to geocoding.
+     *
+     * @return array<int, array{formatted_address: string, place_id: string|null}>
+     */
+    public function autocompleteAddresses(string $input, int $limit = 5): array
+    {
+        $this->ensureConfigured();
+
+        $response = Http::timeout(10)->get(self::PLACES_AUTOCOMPLETE_URL, [
+            'input' => $input,
+            'components' => 'country:es',
+            'language' => 'es',
+            'key' => $this->apiKey,
+        ]);
+
+        $data = $response->json();
+        $status = $data['status'] ?? 'UNKNOWN_ERROR';
+
+        if ($status === 'ZERO_RESULTS') {
+            return [];
+        }
+
+        if (! $response->successful() || $status !== 'OK') {
+            // REQUEST_DENIED (Places API not enabled), OVER_QUERY_LIMIT, etc.
+            Log::warning('Places autocomplete failed', ['status' => $status]);
+            throw new RuntimeException('Places autocomplete failed: '.$status);
+        }
+
+        return collect($data['predictions'] ?? [])
+            ->take($limit)
+            ->map(fn (array $p) => [
+                'formatted_address' => $p['description'] ?? '',
+                'place_id' => $p['place_id'] ?? null,
+            ])
+            ->filter(fn (array $p) => $p['formatted_address'] !== '')
+            ->values()
             ->all();
     }
 
