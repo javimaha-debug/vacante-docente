@@ -80,6 +80,28 @@ class GvaAutoImportService
         /** @var Proceso $proceso */
         ['kind' => $kind, 'proceso' => $proceso] = $target;
 
+        return $this->runImport($noticia, $kind, $proceso);
+    }
+
+    /**
+     * Force-import a notice into a specific proceso (admin manual override when
+     * the automatic mapping couldn't resolve the target).
+     */
+    public function importInto(GvaNoticia $noticia, string $kind, Proceso $proceso): string
+    {
+        if (! in_array($kind, ['participantes', 'vacantes'], true)) {
+            $kind = $this->resolveKind($noticia->url.' '.$noticia->titulo) ?? 'participantes';
+        }
+
+        return $this->runImport($noticia, $kind, $proceso);
+    }
+
+    /**
+     * Download the notice's PDF, run the matching import command, and record the
+     * outcome on the notice.
+     */
+    private function runImport(GvaNoticia $noticia, string $kind, Proceso $proceso): string
+    {
         try {
             $path = $this->download($noticia->url);
         } catch (\Throwable $e) {

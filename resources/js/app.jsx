@@ -20,6 +20,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import DashboardHome from './components/dashboard/DashboardHome';
 import UserProfile from './components/dashboard/UserProfile';
 import MisEspecialidades from './components/dashboard/MisEspecialidades';
+import AdminImportaciones from './components/dashboard/AdminImportaciones';
 import CentrosList from './components/centros/CentrosList';
 import CentroDetail from './components/centros/CentroDetail';
 import TablonList from './components/tablon/TablonList';
@@ -476,6 +477,7 @@ function AppRoutes() {
                 <Route path="tablon" element={<TablonList />} />
                 <Route path="tablon/nuevo" element={<TablonForm />} />
                 <Route path="tablon/mis-anuncios" element={<MisAnuncios />} />
+                <Route path="admin/importaciones" element={<AdminImportaciones />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

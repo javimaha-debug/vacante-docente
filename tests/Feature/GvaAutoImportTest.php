@@ -74,6 +74,45 @@ class GvaAutoImportTest extends TestCase
         $this->assertNull($noticia->fresh()->importado_en);
     }
 
+    public function test_admin_importaciones_requires_admin_and_lists_pdfs(): void
+    {
+        GvaNoticia::create(['titulo' => 'Listado', 'url' => 'https://x/lis.pdf', 'tipo' => 'PDF', 'import_estado' => 'ok', 'import_resumen' => 'Participantes: 5']);
+        GvaNoticia::create(['titulo' => 'RSS', 'url' => 'https://x/rss', 'tipo' => 'RSS']);
+
+        \App\Models\User::factory()->create(); // occupy id=1 (id=1 is treated as admin)
+        $plain = \App\Models\User::factory()->create(['is_admin' => false]);
+        \Laravel\Sanctum\Sanctum::actingAs($plain);
+        $this->getJson('/api/v1/admin/gva-importaciones')->assertForbidden();
+
+        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        \Laravel\Sanctum\Sanctum::actingAs($admin);
+        $this->getJson('/api/v1/admin/gva-importaciones')
+            ->assertOk()
+            ->assertJsonCount(1, 'data') // only the PDF
+            ->assertJsonPath('data.0.import_estado', 'ok');
+    }
+
+    public function test_admin_reimport_into_specific_proceso(): void
+    {
+        Storage::fake('local');
+        $proceso = $this->makeProceso('INTERINO', 'MAESTROS', 'Interins Mestres 2026-2027');
+        $noticia = GvaNoticia::create([
+            'titulo' => 'Listado sin mapear', 'url' => 'https://ceice.gva.es/docs/lis.pdf', 'tipo' => 'PDF', 'import_estado' => 'sin_proceso',
+        ]);
+
+        Http::fake(['ceice.gva.es/*' => Http::response('%PDF-fake', 200)]);
+
+        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        \Laravel\Sanctum\Sanctum::actingAs($admin);
+
+        // Import is attempted into the chosen proceso (parse will fail without a
+        // real PDF, but the endpoint must accept the override and respond).
+        $this->postJson("/api/v1/admin/gva-importaciones/{$noticia->id}/reimportar", [
+            'proceso_id' => $proceso->id,
+            'kind' => 'participantes',
+        ])->assertOk()->assertJsonStructure(['resumen', 'import_estado']);
+    }
+
     public function test_monitor_auto_imports_and_notifies_admins(): void
     {
         Notification::fake();

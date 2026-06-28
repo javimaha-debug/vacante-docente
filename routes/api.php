@@ -121,5 +121,7 @@ Route::prefix('v1')->group(function () {
 
         // GVA admin review (id=1 or is_admin).
         Route::get('admin/gva-noticias', [GvaController::class, 'adminUnnotified']);
+        Route::get('admin/gva-importaciones', [GvaController::class, 'adminImportaciones']);
+        Route::post('admin/gva-importaciones/{noticia}/reimportar', [GvaController::class, 'adminReimport']);
     });
 });
