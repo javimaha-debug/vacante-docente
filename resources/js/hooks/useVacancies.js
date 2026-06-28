@@ -20,7 +20,7 @@ export function useVacancies(specialtyId, filters, procesoId = null) {
                 const params = { especialidad: specialtyId, session_token: sessionToken, page: pageParam, per_page: 1000 };
                 if (filters.provincia) params.provincia = filters.provincia;
                 if (filters.tiposCentro?.length) params.tipo_centro = filters.tiposCentro;
-                if (filters.search) params.localitat = filters.search;
+                // Text search is applied client-side across all columns/fields.
                 if (filters.reqLing) params.req_ling = 1;
                 if (filters.itinerante) params.itinerante = 1;
                 if (filters.tags?.length) params.tags = filters.tags;
@@ -36,7 +36,7 @@ export function useVacancies(specialtyId, filters, procesoId = null) {
             };
             if (filters.provincia) params.provincia = filters.provincia;
             if (filters.tiposCentro?.length) params.tipo_centro = filters.tiposCentro;
-            if (filters.search) params.search = filters.search;
+            // Text search is applied client-side across all columns/fields.
             if (filters.tags?.length) params.tags = filters.tags;
 
             const { data } = await api.get('/vacancies', { params });

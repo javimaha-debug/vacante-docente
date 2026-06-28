@@ -37,6 +37,29 @@ const queryClient = new QueryClient({
     defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
 });
 
+// Accent- and case-insensitive normalisation for client-side search.
+const normalizeStr = (s) =>
+    (s ?? '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+// Real-time search against every relevant field of a vacancy.
+function matchesVacancy(vacancy, q) {
+    if (!q) return true;
+    const hay = normalizeStr(
+        [
+            vacancy.centro_nombre,
+            vacancy.localidad,
+            vacancy.centro_codigo,
+            vacancy.provincia,
+            vacancy.tipo_centro,
+            vacancy.observ,
+            `#${vacancy.num}`,
+            vacancy.num,
+            (vacancy.observ_tags ?? []).join(' '),
+        ].join(' ')
+    );
+    return hay.includes(q);
+}
+
 const EMPTY_FILTERS = {
     search: '',
     provincia: '',
@@ -96,10 +119,12 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
     // Candidate list with the powerful filters applied client-side: a maximum
     // driving distance and the chosen ordering. (Province / type / req. ling. /
     // itinerant / search are already applied server-side.)
+    const searchQ = normalizeStr(filters.search);
+
     const neutralSorted = useMemo(() => {
         const drivingKm = (v) => v.distances?.driving_ida?.distance_km ?? v.distances?.driving_tornada?.distance_km ?? null;
 
-        let list = neutral;
+        let list = searchQ ? neutral.filter((v) => matchesVacancy(v, searchQ)) : neutral;
         const max = parseFloat(filters.maxDistance);
         if (!Number.isNaN(max)) {
             // Keep candidates without a computed distance visible — only drop
@@ -121,7 +146,18 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
         }[sort];
 
         return cmp ? [...list].sort(cmp) : list;
-    }, [neutral, filters.maxDistance, filters.sort]);
+    }, [neutral, filters.maxDistance, filters.sort, searchQ]);
+
+    // Search also filters "Mi lista" and "Descartadas" (display only — the full
+    // selected/discarded sets are kept for counts, sync, export and reorder).
+    const selectedShown = useMemo(
+        () => (searchQ ? selected.filter((p) => matchesVacancy(p.vacancy, searchQ)) : selected),
+        [selected, searchQ]
+    );
+    const discardedShown = useMemo(
+        () => (searchQ ? discarded.filter((p) => matchesVacancy(p.vacancy, searchQ)) : discarded),
+        [discarded, searchQ]
+    );
 
     const persist = useCallback(
         (rows) => savePreferences.mutate(rows),
@@ -161,6 +197,28 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
             }))
         );
     }, [selected, isAuthenticated, sync]);
+
+    // Preload the home address from the authenticated user's profile the first
+    // time the explorer opens with an empty list, so distances work without
+    // re-entering the address.
+    const homePreloadedRef = useRef(false);
+    useEffect(() => {
+        if (homePreloadedRef.current || !isAuthenticated || !listId || !list) return;
+        if (list.has_home) {
+            homePreloadedRef.current = true;
+            return;
+        }
+        const lat = user?.lat_origen;
+        const lng = user?.lng_origen;
+        if (lat != null && lng != null) {
+            homePreloadedRef.current = true;
+            updateAddress.mutate({
+                home_address: user?.direccion_origen ?? '',
+                home_lat: Number(lat),
+                home_lng: Number(lng),
+            });
+        }
+    }, [isAuthenticated, listId, list, user, updateAddress]);
 
     const handleStatusChange = useCallback(
         (vacancyId, status) => {
@@ -302,8 +360,8 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
             ) : viewMode === 'kanban' ? (
                 <KanbanBoard
                     neutral={neutralSorted}
-                    selected={selected}
-                    discarded={discarded}
+                    selected={selectedShown}
+                    discarded={discardedShown}
                     home={home}
                     showDiscarded={showDiscarded}
                     onStatusChange={handleStatusChange}
@@ -315,7 +373,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
                 />
             ) : (
                 <ListView
-                    selected={selected}
+                    selected={selectedShown}
                     neutral={neutralSorted}
                     home={home}
                     onStatusChange={handleStatusChange}
