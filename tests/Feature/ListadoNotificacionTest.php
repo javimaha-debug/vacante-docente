@@ -63,6 +63,22 @@ class ListadoNotificacionTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    public function test_notifies_users_removed_from_listing(): void
+    {
+        Notification::fake();
+        ['proceso' => $proceso] = $this->scaffold();
+
+        $removed = User::factory()->create(['nombre_gva' => 'PEREZ GOMEZ, ANA']);
+        $other = User::factory()->create(['nombre_gva' => 'OTRA PERSONA, X']);
+
+        $count = app(ListadoNotificacionService::class)
+            ->notifyEliminados($proceso, ['perez gomez, ana']);
+
+        $this->assertSame(1, $count);
+        Notification::assertSentTo($removed, \App\Notifications\EliminadoDeListado::class);
+        Notification::assertNotSentTo($other, \App\Notifications\EliminadoDeListado::class);
+    }
+
     public function test_inbox_lists_and_marks_read(): void
     {
         ['spec' => $spec, 'proceso' => $proceso] = $this->scaffold();
