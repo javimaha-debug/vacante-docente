@@ -45,6 +45,45 @@ class AdjudicacionContinuaTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_notify_adjudicados_only_notifies_linked_adjudicated_users(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $ana = User::factory()->create(['nombre_gva' => 'PEREZ GOMEZ, ANA']);
+        $juan = User::factory()->create(['nombre_gva' => 'GARCIA LOPEZ, JUAN']);
+
+        // Ana: adjudicada y enlazada → avisada.
+        AdjudicacionContinua::create(['fecha' => '2026-06-02', 'cuerpo' => 'SECUNDARIA', 'nombre_gva' => 'PEREZ GOMEZ, ANA', 'estado' => 'Adjudicat', 'centro_nombre' => 'IES LA FONT', 'user_id' => $ana->id]);
+        // Juan: enlazado pero desactivado → no avisado.
+        AdjudicacionContinua::create(['fecha' => '2026-06-02', 'cuerpo' => 'SECUNDARIA', 'nombre_gva' => 'GARCIA LOPEZ, JUAN', 'estado' => 'Desactivat', 'user_id' => $juan->id]);
+        // Adjudicado sin usuario enlazado → no genera aviso.
+        AdjudicacionContinua::create(['fecha' => '2026-06-02', 'cuerpo' => 'SECUNDARIA', 'nombre_gva' => 'OTRA, PERSONA', 'estado' => 'Adjudicat']);
+
+        $cmd = new ImportAdjudicacionContinua();
+        $m = new \ReflectionMethod($cmd, 'notifyAdjudicados');
+        $m->setAccessible(true);
+        $count = $m->invoke($cmd, Carbon::parse('2026-06-02'), 'SECUNDARIA');
+
+        $this->assertSame(1, $count);
+        \Illuminate\Support\Facades\Notification::assertSentTo($ana, \App\Notifications\AdjudicacionContinuaAsignada::class);
+        \Illuminate\Support\Facades\Notification::assertNotSentTo($juan, \App\Notifications\AdjudicacionContinuaAsignada::class);
+    }
+
+    public function test_monitor_detects_continua_pdfs_and_recency(): void
+    {
+        $job = new \App\Jobs\MonitorGvaJob();
+
+        $this->assertTrue($job->isContinuaPdf('https://ceice.gva.es/documents/1/2/260602_lis_sec.pdf'));
+        $this->assertTrue($job->isContinuaPdf('https://x/260602_lis_mae.pdf'));
+        $this->assertFalse($job->isContinuaPdf('https://x/ini_2025_adj_int_lis_sec.pdf'));
+
+        // Recency: a tanda from today is recent; one from a year ago is not.
+        $today = now()->format('ymd');
+        $this->assertTrue($job->isRecentContinua("https://x/{$today}_lis_sec.pdf"));
+        $old = now()->subYear()->format('ymd');
+        $this->assertFalse($job->isRecentContinua("https://x/{$old}_lis_sec.pdf"));
+    }
+
     public function test_command_resolves_fecha_and_cuerpo(): void
     {
         $cmd = new ImportAdjudicacionContinua();

@@ -318,6 +318,13 @@ php artisan adjudicaciones:import-continua ruta/260602_lis_mae.pdf --fecha=2026-
 Cada docente ve su histórico semanal en el panel («Mis adjudicaciones
 semanales»), emparejado por nombre GVA.
 
+**Automático**: el monitor diario también rastrea la página de *Resolució* de
+contínues y, con `GVA_AUTO_IMPORT=true`, importa las tandas **recientes**
+(fecha ≤ ~16 días) y **avisa** (campana/email/push) a los usuarios adjudicados.
+Las tandas antiguas quedan como aviso para importación manual (sin notificar).
+Para que salte los martes/jueves por la tarde, añade un cron extra que despache
+el job, p. ej.: `Schedule::job(new MonitorGvaJob())->twiceWeekly(2, 4, '15:00')`.
+
 ### Cargar histórico de años anteriores
 
 Para tener histórico de vacantes y adjudicaciones de cursos pasados, crea los
