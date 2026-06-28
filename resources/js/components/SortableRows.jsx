@@ -1,6 +1,7 @@
 import {
     DndContext,
-    PointerSensor,
+    MouseSensor,
+    TouchSensor,
     KeyboardSensor,
     closestCenter,
     useSensor,
@@ -16,6 +17,18 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import VacancyRow from './VacancyRow';
 
+// Pointer events on interactive children must not start a drag.
+const INTERACTIVE = 'button, a, textarea, input, select, label';
+function guardListeners(listeners) {
+    return {
+        ...listeners,
+        onPointerDown: (e) => {
+            if (e.target.closest?.(INTERACTIVE)) return;
+            listeners?.onPointerDown?.(e);
+        },
+    };
+}
+
 function SortableRow({ item, index, home, onStatusChange, onNotesChange }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: item.vacancy_id,
@@ -25,10 +38,17 @@ function SortableRow({ item, index, home, onStatusChange, onNotesChange }) {
         transform: CSS.Transform.toString(transform),
         transition,
         zIndex: isDragging ? 50 : undefined,
+        opacity: isDragging ? 0.5 : 1,
     };
 
     return (
-        <div ref={setNodeRef} style={style}>
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...guardListeners(listeners)}
+            className="cursor-grab active:cursor-grabbing"
+        >
             <VacancyRow
                 vacancy={item.vacancy}
                 status="selected"
@@ -37,7 +57,6 @@ function SortableRow({ item, index, home, onStatusChange, onNotesChange }) {
                 home={home}
                 onStatusChange={(status) => onStatusChange(item.vacancy_id, status)}
                 onNotesChange={(notes) => onNotesChange(item.vacancy_id, notes)}
-                dragHandleProps={{ ...attributes, ...listeners }}
                 isDragging={isDragging}
             />
         </div>
@@ -47,7 +66,8 @@ function SortableRow({ item, index, home, onStatusChange, onNotesChange }) {
 // Drag-and-drop list of compact rows used for the prioritised vacancy list.
 export default function SortableRows({ items, home, onReorder, onStatusChange, onNotesChange, emptyLabel }) {
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
