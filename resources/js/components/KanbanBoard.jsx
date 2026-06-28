@@ -21,7 +21,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
 import VacancyCard from './VacancyCard';
 
-const STATUS_OF = { neutral: 'neutral', selected: 'selected', discarded: 'discarded' };
+const STATUS_OF = { neutral: 'neutral', selected: 'selected', revisar: 'revisar', discarded: 'discarded' };
 
 // Pointer events on interactive children (buttons, links, notes) must NOT
 // start a drag, so their normal click/typing behaviour works; dragging from
@@ -97,6 +97,7 @@ function Column({ id, title, count, accent, children, footer }) {
 export default function KanbanBoard({
     neutral,
     selected,
+    revisar = [],
     discarded,
     home = null,
     showDiscarded,
@@ -119,6 +120,7 @@ export default function KanbanBoard({
 
     const neutralIds = neutral.map((v) => v.id);
     const selectedIds = selected.map((i) => i.vacancy_id);
+    const revisarIds = revisar.map((i) => i.vacancy_id);
     const discardedIds = discarded.map((i) => i.vacancy_id);
 
     // Which column a given id lives in. `over.id` can also be a column id when
@@ -127,6 +129,7 @@ export default function KanbanBoard({
         if (id in STATUS_OF) return id;
         if (neutralIds.includes(id)) return 'neutral';
         if (selectedIds.includes(id)) return 'selected';
+        if (revisarIds.includes(id)) return 'revisar';
         if (discardedIds.includes(id)) return 'discarded';
         return null;
     };
@@ -134,6 +137,7 @@ export default function KanbanBoard({
     const activeVacancy =
         neutral.find((v) => v.id === activeId) ||
         selected.find((i) => i.vacancy_id === activeId)?.vacancy ||
+        revisar.find((i) => i.vacancy_id === activeId)?.vacancy ||
         discarded.find((i) => i.vacancy_id === activeId)?.vacancy ||
         null;
 
@@ -170,7 +174,7 @@ export default function KanbanBoard({
             onDragCancel={() => setActiveId(null)}
             onDragEnd={handleDragEnd}
         >
-            <div className="grid h-full min-h-0 grid-cols-1 gap-3 lg:grid-cols-3">
+            <div className="grid h-full min-h-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {/* Sin revisar */}
                 <Column
                     id="neutral"
@@ -205,6 +209,30 @@ export default function KanbanBoard({
                                     status="neutral"
                                     home={home}
                                     onStatusChange={(status) => onStatusChange(v.id, status)}
+                                />
+                            ))
+                        )}
+                    </SortableContext>
+                </Column>
+
+                {/* A revisar */}
+                <Column id="revisar" title="A revisar" count={revisar.length} accent="bg-amber-500">
+                    <SortableContext items={revisarIds} strategy={verticalListSortingStrategy}>
+                        {revisar.length === 0 ? (
+                            <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-slate-400">
+                                Arrastra aquí las que tengas dudas, o pulsa «A revisar».
+                            </p>
+                        ) : (
+                            revisar.map((item) => (
+                                <SortableVacancyCard
+                                    key={item.vacancy_id}
+                                    id={item.vacancy_id}
+                                    vacancy={item.vacancy}
+                                    status="revisar"
+                                    notes={item.notes}
+                                    home={home}
+                                    onStatusChange={(status) => onStatusChange(item.vacancy_id, status)}
+                                    onNotesChange={(notes) => onNotesChange(item.vacancy_id, notes)}
                                 />
                             ))
                         )}
