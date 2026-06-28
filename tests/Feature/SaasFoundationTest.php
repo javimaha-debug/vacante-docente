@@ -53,20 +53,32 @@ class SaasFoundationTest extends TestCase
         $this->assertTrue($admin->fresh()->isSuperAdmin());
     }
 
-    public function test_feature_policy_resolves_aggregate_aliases(): void
+    public function test_feature_policy_open_access_grants_every_feature(): void
     {
+        // TEMPORARY open-access mode: gating is disabled, so every user has
+        // every feature regardless of plan.
         $policy = app(FeaturePolicy::class);
 
         $free = User::factory()->create();
         $this->assertTrue($policy->hasFeature($free, 'explorador_basico'));
-        $this->assertFalse($policy->hasFeature($free, 'filtros_avanzados'));
+        $this->assertTrue($policy->hasFeature($free, 'filtros_avanzados'));
+        $this->assertTrue($policy->hasFeature($free, 'banco_recursos'));
 
-        $todo = User::factory()->create();
-        $todo->forceFill(['plan' => 'todo_en_uno', 'plan_status' => 'active'])->save();
-        $todo = $todo->fresh();
-        $this->assertTrue($policy->hasFeature($todo, 'filtros_avanzados'));
-        $this->assertTrue($policy->hasFeature($todo, 'ia_ilimitada'));
-        $this->assertTrue($policy->hasFeature($todo, 'banco_recursos'));
+        foreach (FeaturePolicy::ALL_FEATURES as $feature) {
+            $this->assertTrue($policy->hasFeature($free, $feature), "Feature {$feature} should be open.");
+        }
+    }
+
+    public function test_feature_policy_resolution_logic_is_preserved(): void
+    {
+        // The plan → feature resolution (alias expansion) is kept intact so
+        // gating can be re-enabled later, even though hasFeature() bypasses it.
+        $policy = app(FeaturePolicy::class);
+
+        $this->assertContains('explorador_basico', $policy->resolveFeatures('free'));
+        $this->assertNotContains('filtros_avanzados', $policy->resolveFeatures('free'));
+        $this->assertContains('filtros_avanzados', $policy->resolveFeatures('todo_en_uno'));
+        $this->assertContains('banco_recursos', $policy->resolveFeatures('todo_en_uno'));
     }
 
     public function test_superadmin_has_every_feature(): void
@@ -89,7 +101,8 @@ class SaasFoundationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('plan', 'free')
             ->assertJsonPath('features.explorador_basico', true)
-            ->assertJsonPath('features.filtros_avanzados', false)
+            // Open access: gated features are also reported as granted.
+            ->assertJsonPath('features.filtros_avanzados', true)
             ->assertJsonPath('is_impersonated', false);
     }
 

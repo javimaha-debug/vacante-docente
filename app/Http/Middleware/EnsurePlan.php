@@ -16,6 +16,11 @@ class EnsurePlan
 {
     public function handle(Request $request, Closure $next, string ...$plans): Response
     {
+        // TEMPORARY: plan gating is disabled — all routes are open regardless of
+        // plan. The enforcement logic below is kept intact; remove this early
+        // return to re-enable plan restrictions.
+        return $next($request);
+
         $user = $request->user();
 
         if ($user && $user->isSuperAdmin()) {
