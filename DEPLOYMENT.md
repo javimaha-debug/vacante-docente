@@ -131,24 +131,33 @@ Europe/Madrid**. Necesita el cron de Laravel:
 
 ## 7. Datos: importaciones
 
-Coloca los ficheros en `storage/app/pdfs/gva/` (se crea sola; está fuera de git).
+Coloca los ficheros en `storage/app/private/pdfs/gva/` (el disco `local` de
+Laravel 12 tiene su raíz en `storage/app/private`; está fuera de git).
 
 ```bash
-# Directorio de centros — CSV de la GVA, o fallback local storage/app/pdfs/gva/centros.csv
-php artisan centros:import
-
 # Vacantes de suprimidos 2026-2027 (PDFs Secundaria + Mestres)
-#   storage/app/pdfs/gva/suprimits-secundaria-2026.pdf
-#   storage/app/pdfs/gva/suprimits-primaria-2026.pdf
+#   storage/app/private/pdfs/gva/suprimits-secundaria-2026.pdf
+#   storage/app/private/pdfs/gva/suprimits-primaria-2026.pdf
 php artisan vacantes:import-suprimidos-2026
 
+# Directorio de centros — listados ANPE (7 PDFs CENTRES_*_2026-27.pdf en el
+# mismo directorio): UECO, Educació Especial, Caràcter Singular, FPA, CRA,
+# Penitenciaris, Jornada Continuada. Marca tipo y características.
+php artisan centros:import-anpe
+
+# (Opcional) Directorio de centros desde CSV de la GVA o fallback local
+#   storage/app/private/pdfs/gva/centros.csv
+php artisan centros:import
+
 # Lista de participantes de un proceso
-php artisan participantes:import-pdf storage/app/pdfs/gva/participantes.pdf <proceso_id>
+php artisan participantes:import-pdf storage/app/private/pdfs/gva/participantes.pdf <proceso_id>
 ```
 
-> Los parsers de PDF requieren `pdftotext`. Sus formatos están validados con
-> datos simulados; al importar documentos reales, revisar el conteo por
-> especialidad y ajustar regex/alias si el formato difiere.
+> Los parsers de PDF requieren `pdftotext` (poppler-utils). Suprimidos y los
+> listados ANPE están validados contra los PDF reales 2026-2027; al importar
+> nuevas ediciones, revisa el conteo por especialidad/característica y ajusta
+> regex/alias si el formato cambia. La resolución de especialidad en suprimidos
+> es **por nombre** (los códigos de sección GVA no coinciden con los internos).
 
 ## 8. Comprobaciones post-despliegue
 

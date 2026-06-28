@@ -104,6 +104,55 @@ class ParticipantesTest extends TestCase
         $this->assertSame('Desactivat', $rows[1]['estado']);
     }
 
+    public function test_parser_mestres_expands_habilitations(): void
+    {
+        // Provisional maestros list: situació + habilitation columns. One row
+        // is emitted per (person × habilitation), mapped to internal codes.
+        $layout = <<<TXT
+           1    MARQUET SOLDEVILA, ROSA MARIA                 AMB SERVEIS       INF   PRI
+           2    LOPEZ MORA, ANA ISABEL                        SENSE SERVEIS           PRI   PT   AL
+        TXT;
+
+        $rows = (new ImportParticipantesPdf())->parseText($layout);
+
+        // 2 (INF, PRI) + 3 (PRI, PT, AL) = 5 rows.
+        $this->assertCount(5, $rows);
+
+        $rosa = array_values(array_filter($rows, fn ($r) => str_starts_with($r['nombre_gva'], 'MARQUET')));
+        $this->assertSame('AMB SERVEIS', $rosa[0]['estado']);
+        $this->assertEqualsCanonicalizing(['120', '121'], array_column($rosa, 'especialidad_codigo'));
+
+        $ana = array_values(array_filter($rows, fn ($r) => str_starts_with($r['nombre_gva'], 'LOPEZ')));
+        $this->assertSame('SENSE SERVEIS', $ana[0]['estado']);
+        $this->assertEqualsCanonicalizing(['121', '126', '125'], array_column($ana, 'especialidad_codigo'));
+        $this->assertSame(2, $ana[0]['posicion']);
+    }
+
+    public function test_parser_seccionado_groups_participants_by_specialty(): void
+    {
+        // Provisional sectioned list (secundaria/FP): "(CODI) NOM" headers, with
+        // positions restarting per section.
+        $layout = <<<TXT
+        (218) ORIENTACIÓ EDUCATIVA                                  Col·lectiu
+                        1 SERRANO ALMARCHA, MARIA JESUS              AMB SERVEIS
+                        2 GINER ALBIACH, JUAN                        AMB SERVEIS   (*)
+        (206) MATEMÀTIQUES
+                        1 PEREZ VIDAL, ANGEL MIGUEL                  SENSE SERVEIS
+        TXT;
+
+        $rows = (new ImportParticipantesPdf())->parseText($layout);
+
+        $this->assertCount(3, $rows);
+        $this->assertSame('218', $rows[0]['especialidad_codigo']);
+        $this->assertSame('ORIENTACIÓ EDUCATIVA', $rows[0]['especialidad_nombre']);
+        $this->assertSame('SERRANO ALMARCHA, MARIA JESUS', $rows[0]['nombre_gva']);
+        $this->assertSame('AMB SERVEIS', $rows[0]['estado']);
+        $this->assertSame(2, $rows[1]['posicion']);
+        $this->assertSame('206', $rows[2]['especialidad_codigo']);
+        $this->assertSame('SENSE SERVEIS', $rows[2]['estado']);
+        $this->assertSame(1, $rows[2]['posicion']);
+    }
+
     public function test_parser_handles_multiline_adjudication(): void
     {
         $layout = <<<TXT

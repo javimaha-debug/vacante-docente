@@ -8,12 +8,17 @@ export function useDistances(listId) {
     const queryClient = useQueryClient();
 
     const calculate = useMutation({
-        // Accepts either a mode string (legacy) or { mode, vacancyIds } so the
-        // explorer can compute distances for the full loaded/filtered list.
-        mutationFn: async (arg = 'all') => {
-            const { mode = 'all', vacancyIds = null } = typeof arg === 'string' ? { mode: arg } : arg;
-            const body = { mode };
-            if (vacancyIds?.length) body.vacancy_ids = vacancyIds;
+        // Accepts { modes, vacancyIds, depTime, retTime, force }. Computes
+        // outbound + return for each travel mode at the given times.
+        mutationFn: async (arg = {}) => {
+            const opts = typeof arg === 'string' ? { mode: arg } : arg;
+            const body = {};
+            if (opts.modes?.length) body.modes = opts.modes;
+            else body.mode = opts.mode ?? 'driving';
+            if (opts.vacancyIds?.length) body.vacancy_ids = opts.vacancyIds;
+            if (opts.depTime) body.dep_time = opts.depTime;
+            if (opts.retTime) body.ret_time = opts.retTime;
+            if (opts.force) body.force = true;
             const { data } = await api.post(`/user-lists/${listId}/calculate-distances`, body);
             return data;
         },

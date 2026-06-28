@@ -36,17 +36,20 @@ class DistanceAllVacanciesTest extends TestCase
     public function test_calculates_distances_for_explicit_vacancy_ids_without_selecting(): void
     {
         $this->app->instance(GoogleMapsService::class, new GoogleMapsService('test-key'));
+
+        // A 3×3 grid of OK elements satisfies both matrix shapes: outbound
+        // ("ida", 1 origin × N destinations → rows[0].elements[i]) and return
+        // ("tornada", N origins × 1 destination → rows[i].elements[0]).
+        $element = [
+            'status' => 'OK',
+            'duration' => ['value' => 600],
+            'duration_in_traffic' => ['value' => 660],
+            'distance' => ['value' => 12000],
+        ];
         Http::fake([
             'maps.googleapis.com/maps/api/distancematrix/*' => Http::response([
                 'status' => 'OK',
-                'rows' => [[
-                    'elements' => array_fill(0, 3, [
-                        'status' => 'OK',
-                        'duration' => ['value' => 600],
-                        'duration_in_traffic' => ['value' => 660],
-                        'distance' => ['value' => 12000],
-                    ]),
-                ]],
+                'rows' => array_fill(0, 3, ['elements' => array_fill(0, 3, $element)]),
             ]),
         ]);
 
@@ -68,8 +71,10 @@ class DistanceAllVacanciesTest extends TestCase
             // Everything fit under the per-request cap → nothing left to do.
             ->assertJsonPath('remaining', 0);
 
-        // All three were cached.
-        $this->assertSame(3, DistanceCache::where('mode', 'driving')->count());
+        // Driving produces both an outbound and a return leg, each cached
+        // under its own composite mode key for all three vacancies.
+        $this->assertSame(3, DistanceCache::where('mode', 'driving_ida')->count());
+        $this->assertSame(3, DistanceCache::where('mode', 'driving_tornada')->count());
         $this->assertEqualsWithDelta(12.0, (float) DistanceCache::first()->distance_km, 0.01);
     }
 

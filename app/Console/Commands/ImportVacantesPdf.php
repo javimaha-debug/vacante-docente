@@ -14,7 +14,6 @@ class ImportVacantesPdf extends Command
 {
     protected $signature = 'vacantes:import-pdf {path : Path to the GVA vacancies PDF}
                             {proceso_id : Proceso the vacancies belong to}
-                            {--format=orientacion : PDF layout — "orientacion" (specialty-section list) or "suprimidos" (per-row puesto)}
                             {--dry-run : Parse and report without writing to the database}';
 
     protected $description = 'Parse a GVA vacancies PDF and import its rows for a proceso.';
@@ -51,11 +50,10 @@ class ImportVacantesPdf extends Command
             return self::FAILURE;
         }
 
-        $format = (string) $this->option('format');
         $cuerpo = $proceso->colectivo?->body;
         $now = Carbon::now();
 
-        $parsed = $format === 'suprimidos' ? $this->parseSuprimidosText($text) : $this->parseText($text);
+        $parsed = $this->parseText($text);
 
         if (empty($parsed)) {
             $this->warn('No vacancy rows could be parsed from the PDF.');
@@ -67,14 +65,13 @@ class ImportVacantesPdf extends Command
         $unresolved = [];
 
         foreach ($parsed as $i => $r) {
-            // Orientación rows carry a specialty code; suprimidos rows carry a
-            // free-text puesto that we match against specialty names.
-            $specialty = $format === 'suprimidos'
-                ? $this->resolveSpecialtyByName($r['puesto'], $cuerpo)
-                : $this->resolveSpecialty($r['specialty_code'], $cuerpo);
+            // GVA section codes (201, 2A1, 128…) are a different numbering than
+            // our internal codes and collide across cuerpos, so resolve strictly
+            // by the section's specialty NAME, scoped to the proceso's cuerpo.
+            $specialty = $this->resolveSpecialtyByName($r['specialty_name'] ?? '', $cuerpo);
 
             if (! $specialty) {
-                $unresolved[$format === 'suprimidos' ? $r['puesto'] : $r['specialty_code']] = true;
+                $unresolved[$r['specialty_code'].' '.($r['specialty_name'] ?? '')] = true;
 
                 continue;
             }
@@ -171,7 +168,8 @@ class ImportVacantesPdf extends Command
     public function parseText(string $text): array
     {
         $rows = [];
-        $currentSpecialty = null;
+        $currentCode = null;
+        $currentName = null;
 
         foreach (preg_split('/\r\n|\r|\n/', $text) as $line) {
             $line = rtrim($line);
@@ -180,20 +178,25 @@ class ImportVacantesPdf extends Command
                 continue;
             }
 
-            // Specialty header, e.g. "218 - ORIENTACIÓ EDUCATIVA / ...".
-            if (preg_match('/^\s*([0-9]{3}|[0-9][A-Z][0-9]|[A-Z0-9]{2,4})\s*[-–]\s*(.+)$/u', $line, $m)
+            // Specialty header, e.g. "201 - FILOSOFIA / FILOSOFÍA" or
+            // "2A1 - INSTAL. ... / INSTAL. ...". No 8-digit code on these lines.
+            if (preg_match('/^\s*([0-9][A-Z0-9][0-9])\s*[-–]\s*(.+)$/u', $line, $m)
                 && ! preg_match('/\d{8}/', $line)) {
-                $currentSpecialty = $m[1];
+                $currentCode = $m[1];
+                // Header is "VALENCIÀ / CASTELLANO"; keep the Spanish part for
+                // name-based specialty resolution.
+                $parts = array_map('trim', explode('/', $m[2]));
+                $currentName = end($parts) ?: $m[2];
 
                 continue;
             }
 
-            // Data row: starts with NUM, contains an 8-digit centre code (CODI).
+            // Data row: NUM LLOC LOCALITAT CENTRE CODI(8) [ITIN ü] [OBSERVACIONS].
             if (! preg_match('/^\s*(\d+)\s+(\S+)\s+(.+?)\s+(\d{8})\b\s*(.*)$/u', $line, $m)) {
                 continue;
             }
 
-            [, $num, $lloc, $middle, $codi, $obs] = $m;
+            [, $num, $lloc, $middle, $codi, $rest] = $m;
 
             // LOCALITAT and CENTRE are layout-separated by 2+ spaces.
             $parts = preg_split('/\s{2,}/', trim($middle));
@@ -205,10 +208,14 @@ class ImportVacantesPdf extends Command
                 $centro = trim($middle);
             }
 
-            $obs = trim($obs);
+            // The ITIN column is a "ü" check mark; the remainder is observations.
+            $rest = trim($rest);
+            $itinerante = mb_strpos($rest, 'ü') !== false || (bool) preg_match('/itinerant/iu', $rest);
+            $obs = trim(str_replace('ü', '', $rest));
 
             $rows[] = [
-                'specialty_code' => $currentSpecialty,
+                'specialty_code' => $currentCode,
+                'specialty_name' => $currentName,
                 'num' => (int) $num,
                 'lloc' => $lloc,
                 'localidad' => $localidad,
@@ -217,7 +224,7 @@ class ImportVacantesPdf extends Command
                 'provincia' => $this->provinceFromCode($codi),
                 'tipo_centro' => $this->centerTypeFromName($centro),
                 'req_ling' => $this->detectReqLing($obs),
-                'itinerante' => (bool) preg_match('/itinerant/iu', $obs),
+                'itinerante' => $itinerante,
                 'observaciones' => $obs !== '' ? $obs : null,
             ];
         }
@@ -235,8 +242,8 @@ class ImportVacantesPdf extends Command
     {
         $upper = mb_strtoupper($nombre);
 
-        // Secondary / FP / language schools.
-        if (preg_match('/^(IES|CIPFP|CIFP|IFP|EOI|CEED|FPA|CFPA|EPA|CEPA)\b/u', $upper)) {
+        // Secondary / FP / language schools (match anywhere — e.g. "SECCIÓ DE L'IES …").
+        if (preg_match('/\b(IES|CIPFP|CIFP|IFP|EOI|CEED|FPA|CFPA|EPA|CEPA|INSTITUT)\b/u', $upper)) {
             return 'Secundaria';
         }
 
@@ -272,79 +279,8 @@ class ImportVacantesPdf extends Command
     }
 
     /**
-     * Parse the "suprimidos" layout, where each row is a displaced post:
-     *   LLOC  DESCRIPCIÓ PUESTO  CENTRE  LOCALITAT  [RL]  [OBSERVACIONS]
-     * Columns are separated by 2+ spaces (pdftotext -layout). There is no
-     * specialty section header — the puesto description identifies it per row.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function parseSuprimidosText(string $text): array
-    {
-        $rows = [];
-
-        foreach (preg_split('/\r\n|\r|\n/', $text) as $line) {
-            $line = rtrim($line);
-
-            // A data row begins with the lloc code (4+ digits).
-            if (! preg_match('/^\s*(\d{4,})\s{2,}(.+)$/u', $line, $m)) {
-                continue;
-            }
-
-            $lloc = $m[1];
-            $cols = preg_split('/\s{2,}/', trim($m[2]));
-
-            $puesto = trim($cols[0] ?? '');
-            $centro = trim($cols[1] ?? '');
-            $localitat = trim($cols[2] ?? '');
-
-            // Optional requisit lingüístic column (SI/SÍ/S/NO/N), then observations.
-            $idx = 3;
-            $rl = '';
-            if (isset($cols[3]) && preg_match('/^(s[íi]?|no?)$/iu', trim($cols[3]))) {
-                $rl = trim($cols[3]);
-                $idx = 4;
-            }
-            $obs = trim(implode(' ', array_slice($cols, $idx)));
-
-            if ($puesto === '') {
-                continue;
-            }
-
-            // A centre code may appear inside the centre/observations text.
-            $codi = null;
-            if (preg_match('/(\d{8})/', $centro.' '.$obs, $cm)) {
-                $codi = $cm[1];
-            }
-
-            $reqLing = (bool) preg_match('/^s/iu', $rl) || $this->detectReqLing($obs);
-
-            $rows[] = [
-                'lloc' => $lloc,
-                'puesto' => $puesto,
-                'centro' => $centro,
-                'localidad' => $localitat,
-                'codi' => $codi,
-                'provincia' => $codi ? $this->provinceFromCode($codi) : 'València',
-                'tipo_centro' => $this->centerTypeFromName($centro),
-                'req_ling' => $reqLing,
-                'itinerante' => (bool) preg_match('/itinerant/iu', $obs),
-                'observaciones' => $obs !== '' ? $obs : null,
-                'num' => null,
-            ];
-        }
-
-        return $rows;
-    }
-
-    /**
-     * Resolve a specialty from a free-text puesto description (Valencian or
-     * Spanish), preferring the proceso's cuerpo. Exact accent-insensitive match
-     * first, then a best fuzzy match above a similarity threshold.
-     */
-    /**
-     * Common Valencian puesto descriptions → GVA specialty code. Starting set;
-     * extend against the real suprimidos PDF as needed.
+     * Common Valencian specialty names → GVA specialty code, to bridge the gap
+     * between the PDF section codes and our internal codes. Extend as needed.
      */
     private const PUESTO_ALIASES = [
         'orientacio educativa' => '117',

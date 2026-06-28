@@ -21,6 +21,8 @@ export function useVacancies(specialtyId, filters, procesoId = null) {
                 if (filters.provincia) params.provincia = filters.provincia;
                 if (filters.tiposCentro?.length) params.tipo_centro = filters.tiposCentro;
                 if (filters.search) params.localitat = filters.search;
+                if (filters.reqLing) params.req_ling = 1;
+                if (filters.itinerante) params.itinerante = 1;
                 const { data } = await api.get(`/procesos/${procesoId}/vacantes`, { params });
                 return data;
             }
