@@ -61,6 +61,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->isSuspended()) {
+            throw ValidationException::withMessages([
+                'email' => 'Esta cuenta ha sido suspendida. Contacta con soporte.',
+            ]);
+        }
+
         return response()->json([
             'token' => $user->createToken('password-spa')->plainTextToken,
             'user' => $user,
@@ -130,6 +136,12 @@ class AuthController extends Controller
         if ($social->getAvatar()) {
             $user->avatar_url = $social->getAvatar();
         }
+
+        // Platform owner is always promoted to super-admin on login.
+        if ($email === 'j.madrid@loggex.es' && $user->role !== 'superadmin') {
+            $user->role = 'superadmin';
+        }
+
         $user->save();
 
         $token = $user->createToken($provider.'-spa')->plainTextToken;

@@ -17,3 +17,10 @@ Schedule::job(new MonitorGvaJob())
     ->timezone('Europe/Madrid')
     ->name('monitor-gva')
     ->withoutOverlapping();
+
+// Daily SaaS metrics snapshot at 02:00 Spain time.
+Schedule::command('metricas:calcular')
+    ->dailyAt('02:00')
+    ->timezone('Europe/Madrid')
+    ->name('metricas-calcular')
+    ->withoutOverlapping();

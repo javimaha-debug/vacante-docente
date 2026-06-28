@@ -79,6 +79,77 @@ class UserProfileController extends Controller
     }
 
     /**
+     * Switch the user's active mode (bolsa / oposicion / docente). Drives the
+     * sidebar and which tools are surfaced.
+     */
+    public function updateModo(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'modo_activo' => ['required', 'in:bolsa,oposicion,docente'],
+        ]);
+
+        $user = $request->user();
+        $user->modo_activo = $data['modo_activo'];
+        $user->save();
+
+        return response()->json($this->profilePayload($user->fresh()));
+    }
+
+    /**
+     * Persist the onboarding wizard answers and mark onboarding complete.
+     */
+    public function onboarding(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'modo_activo' => ['required', 'in:bolsa,oposicion,docente'],
+            'especialidades' => ['required', 'array', 'min:1'],
+            'especialidades.*' => ['integer', 'exists:specialties,id'],
+            'ccaa_id' => ['sometimes', 'nullable', 'integer', 'exists:ccaas,id'],
+            'ccaa_preferidas' => ['sometimes', 'nullable', 'array'],
+            'ccaa_preferidas.*' => ['integer'],
+            'direccion_origen' => ['sometimes', 'nullable', 'string', 'max:300'],
+            'lat_origen' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'lng_origen' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
+            'nombre_gva' => ['sometimes', 'nullable', 'string', 'max:200'],
+        ]);
+
+        $user = $request->user();
+        $anyo = (int) now()->year;
+
+        DB::transaction(function () use ($user, $data, $anyo) {
+            $user->modo_activo = $data['modo_activo'];
+            if (array_key_exists('ccaa_id', $data)) {
+                $user->ccaa_id = $data['ccaa_id'];
+            }
+            if (array_key_exists('ccaa_preferidas', $data)) {
+                $user->ccaa_preferidas = $data['ccaa_preferidas'];
+            }
+            if (array_key_exists('direccion_origen', $data)) {
+                $user->direccion_origen = $data['direccion_origen'];
+            }
+            if (array_key_exists('lat_origen', $data) && array_key_exists('lng_origen', $data)) {
+                $user->lat_origen = $data['lat_origen'];
+                $user->lng_origen = $data['lng_origen'];
+            }
+            if ($data['modo_activo'] === 'bolsa' && array_key_exists('nombre_gva', $data)) {
+                $user->nombre_gva = $data['nombre_gva'];
+            }
+            $user->onboarding_completed = true;
+            $user->save();
+
+            foreach ($data['especialidades'] as $specialtyId) {
+                UserEspecialidad::firstOrCreate([
+                    'user_id' => $user->id,
+                    'specialty_id' => $specialtyId,
+                    'anyo' => $anyo,
+                ]);
+            }
+        });
+
+        return response()->json($this->profilePayload($user->fresh()));
+    }
+
+    /**
      * Add (or update) a specialty bolsa entry for the user.
      */
     public function storeEspecialidad(Request $request): JsonResponse
@@ -482,6 +553,27 @@ class UserProfileController extends Controller
     }
 
     /**
+     * Resolve the current request's impersonation state from the cache. When a
+     * super-admin is impersonating, the impersonation token id is stored under
+     * "impersonation:{tokenId}" with the original admin's name.
+     *
+     * @return array{active:bool, by:?string}
+     */
+    private function impersonationState(): array
+    {
+        $tokenId = request()->user()?->currentAccessToken()?->id;
+
+        if ($tokenId) {
+            $payload = \Illuminate\Support\Facades\Cache::get('impersonation:'.$tokenId);
+            if ($payload) {
+                return ['active' => true, 'by' => $payload['admin_name'] ?? 'Administrador'];
+            }
+        }
+
+        return ['active' => false, 'by' => null];
+    }
+
+    /**
      * Build the canonical profile array used by show()/update().
      */
     private function profilePayload(User $user): array
@@ -501,6 +593,22 @@ class UserProfileController extends Controller
             'lat_origen' => $user->lat_origen,
             'lng_origen' => $user->lng_origen,
             'notificaciones_email' => (bool) $user->notificaciones_email,
+            // SaaS state consumed by the SPA (sidebar, gating, banners).
+            'role' => $user->role,
+            'modo_activo' => $user->modo_activo,
+            'ccaa_preferidas' => $user->ccaa_preferidas,
+            'onboarding_completed' => (bool) $user->onboarding_completed,
+            'plan' => $user->plan,
+            'plan_status' => $user->plan_status,
+            'plan_label' => $user->planLabel(),
+            'plan_status_label' => $user->planStatusLabel(),
+            'plan_expires_at' => $user->plan_expires_at?->toIso8601String(),
+            'is_paid' => $user->isPaid(),
+            'is_admin' => $user->isAdmin(),
+            'is_superadmin' => $user->isSuperAdmin(),
+            'features' => app(\App\Policies\FeaturePolicy::class)->featureMap($user),
+            'is_impersonated' => $this->impersonationState()['active'],
+            'impersonated_by' => $this->impersonationState()['by'],
             'especialidades' => $user->especialidades->map(fn (UserEspecialidad $e) => [
                 'specialty_id' => $e->specialty_id,
                 'specialty_name' => $e->specialty?->name,

@@ -16,6 +16,8 @@ class DatabaseSeeder extends Seeder
             ColectivoSeeder::class,
             SpecialtySeeder::class,
             VacancySeeder::class,
+            PlanesSeeder::class,
+            SuperAdminSeeder::class,
         ]);
     }
 }
