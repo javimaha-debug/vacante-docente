@@ -186,6 +186,49 @@ class ParticipantesTest extends TestCase
             ->assertJsonPath('has_changes', false);
     }
 
+    public function test_mi_posicion_returns_listado_date_from_latest_import(): void
+    {
+        $proceso = $this->makeProceso();
+        ParticipanteProceso::create(['proceso_id' => $proceso->id, 'posicion' => 7, 'nombre_gva' => 'PEREZ GOMEZ, ANA', 'estado' => 'Activat']);
+        \App\Models\ParticipanteImportacion::create([
+            'proceso_id' => $proceso->id, 'importado_en' => \Illuminate\Support\Carbon::parse('2026-06-20'),
+            'total' => 1, 'nuevos' => 0, 'modificados' => 0, 'eliminados' => 0, 'es_primera' => true,
+        ]);
+
+        $user = User::factory()->create(['nombre_gva' => 'PEREZ GOMEZ, ANA']);
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/v1/participantes/{$proceso->id}/mi-posicion")
+            ->assertOk()
+            ->assertJsonPath('found', true)
+            ->assertJsonPath('posicion', 7)
+            ->assertJsonPath('listado_fecha', '2026-06-20');
+    }
+
+    public function test_mi_posicion_prefers_row_matching_user_specialty(): void
+    {
+        $cv = Ccaa::create(['code' => 'CV', 'name' => 'CV', 'is_active' => true]);
+        $col = Colectivo::create(['ccaa_id' => $cv->id, 'code' => 'INTERINO', 'name' => 'Interins', 'body' => 'SECUNDARIA']);
+        $proceso = Proceso::create([
+            'ccaa_id' => $cv->id, 'colectivo_id' => $col->id, 'anyo' => 2026, 'curso' => '2026-2027',
+            'nombre' => 'Interins 2026-2027', 'estado' => 'publicado',
+        ]);
+        $mates = \App\Models\Specialty::create(['code' => '206', 'codigo' => '206', 'name' => 'Matemàtiques', 'body' => 'PES', 'education_level' => 'secundaria', 'cuerpo' => 'SECUNDARIA', 'ccaa_id' => $cv->id]);
+
+        // Same person appears in two specialty sections.
+        ParticipanteProceso::create(['proceso_id' => $proceso->id, 'posicion' => 3, 'nombre_gva' => 'PEREZ GOMEZ, ANA', 'estado' => 'Activat', 'especialidad_codigo' => '218']);
+        ParticipanteProceso::create(['proceso_id' => $proceso->id, 'posicion' => 11, 'nombre_gva' => 'PEREZ GOMEZ, ANA', 'estado' => 'Activat', 'especialidad_codigo' => '206']);
+
+        $user = User::factory()->create(['nombre_gva' => 'PEREZ GOMEZ, ANA']);
+        \App\Models\UserEspecialidad::create(['user_id' => $user->id, 'specialty_id' => $mates->id, 'anyo' => 2026]);
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/v1/participantes/{$proceso->id}/mi-posicion")
+            ->assertOk()
+            ->assertJsonPath('posicion', 11)
+            ->assertJsonPath('especialidad_codigo', '206');
+    }
+
     public function test_mi_posicion_exposes_cambio_flag(): void
     {
         $proceso = $this->makeProceso();

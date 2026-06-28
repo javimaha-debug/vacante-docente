@@ -84,7 +84,7 @@ function AddSpecialtyModal({ onClose, onAdd, existingIds }) {
     );
 }
 
-export default function MisEspecialidades() {
+export default function MisEspecialidades({ embedded = false }) {
     const queryClient = useQueryClient();
     const [modalOpen, setModalOpen] = useState(false);
 
@@ -135,12 +135,19 @@ export default function MisEspecialidades() {
     };
 
     return (
-        <div className="mx-auto max-w-3xl">
+        <div className={embedded ? '' : 'mx-auto max-w-3xl'}>
             <div className="mb-4 flex items-center justify-between">
-                <h1 className="text-lg font-bold text-slate-800">Mis Especialidades</h1>
+                {embedded ? (
+                    <div>
+                        <h2 className="text-base font-bold text-slate-800">Mis Especialidades</h2>
+                        <p className="text-xs text-slate-500">Las bolsas en las que estás inscrito. Tu posición se calcula sobre el último listado publicado.</p>
+                    </div>
+                ) : (
+                    <h1 className="text-lg font-bold text-slate-800">Mis Especialidades</h1>
+                )}
                 <button
                     onClick={() => setModalOpen(true)}
-                    className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+                    className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
                 >
                     + Añadir especialidad
                 </button>

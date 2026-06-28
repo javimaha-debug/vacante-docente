@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import api from '../../lib/api';
 import { useDebounce } from '../../hooks/useDebounce';
 import PushToggle from './PushToggle';
+import MisEspecialidades from './MisEspecialidades';
 
 function Toggle({ checked, onChange, label }) {
     return (
@@ -147,7 +148,8 @@ export default function UserProfile() {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-6">
+        <div className="mx-auto max-w-2xl space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
             <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
                 <h1 className="text-lg font-bold text-slate-800">Mi Perfil</h1>
                 <p className="mt-1 text-sm text-slate-500">Estos datos personalizan tu panel y los cálculos de distancia.</p>
@@ -224,5 +226,10 @@ export default function UserProfile() {
                 {mutation.isError && <span className="text-sm text-red-600">{mutation.error?.friendlyMessage}</span>}
             </div>
         </form>
+
+            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+                <MisEspecialidades embedded />
+            </section>
+        </div>
     );
 }

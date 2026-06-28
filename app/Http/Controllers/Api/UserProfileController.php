@@ -193,6 +193,11 @@ class UserProfileController extends Controller
             'ultima_posicion' => $ultimo?->posicion_definitiva,
         ];
 
+        // The most recent participant listing imported (scoped to the user's
+        // CCAA): the official position must be read from THIS listing, and the
+        // UI shows its date.
+        $procesoListado = $this->latestParticipantListing($user);
+
         return response()->json([
             'procesos_activos' => $procesosActivos,
             'mis_especialidades' => $misEspecialidades,
@@ -200,7 +205,34 @@ class UserProfileController extends Controller
             'mis_vacantes_favoritas' => [],
             'proximos_plazos' => $proximosPlazos,
             'resumen_historial' => $resumenHistorial,
+            'proceso_listado' => $procesoListado,
         ]);
+    }
+
+    /**
+     * The proceso whose participant list was imported most recently (scoped to
+     * the user's CCAA when set), with the import date. Used so the official
+     * position is always read from the latest available listing.
+     *
+     * @return array{id:int,nombre:string,fecha:string|null}|null
+     */
+    private function latestParticipantListing(User $user): ?array
+    {
+        $import = \App\Models\ParticipanteImportacion::query()
+            ->with('proceso:id,nombre,ccaa_id')
+            ->when($user->ccaa_id, fn ($q) => $q->whereHas('proceso', fn ($p) => $p->where('ccaa_id', $user->ccaa_id)))
+            ->orderByDesc('importado_en')
+            ->first();
+
+        if (! $import || ! $import->proceso) {
+            return null;
+        }
+
+        return [
+            'id' => $import->proceso->id,
+            'nombre' => $import->proceso->nombre,
+            'fecha' => $import->importado_en?->toDateString(),
+        ];
     }
 
     /**
