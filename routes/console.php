@@ -1,6 +1,5 @@
 <?php
 
-use App\Jobs\MonitorGvaJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -12,7 +11,9 @@ Artisan::command('inspire', function () {
 // GVA monitor: scan the DOGV RSS feed + adjudicaciones page once a day,
 // at 08:00 Spain time (Europe/Madrid). Laravel 12 registers scheduled work
 // here rather than in a Console\Kernel class.
-Schedule::job(new MonitorGvaJob())
+// Run the monitor inline (as a command) rather than queued, so it works with
+// just the scheduler cron — no separate queue worker required.
+Schedule::command('gva:monitor')
     ->dailyAt('08:00')
     ->timezone('Europe/Madrid')
     ->name('monitor-gva')

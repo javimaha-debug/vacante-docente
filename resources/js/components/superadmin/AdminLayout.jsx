@@ -9,6 +9,7 @@ const NAV = [
     { to: '/superadmin', label: 'Dashboard', end: true, icon: '📊' },
     { to: '/superadmin/usuarios', label: 'Usuarios', icon: '👥' },
     { to: '/superadmin/suscripciones', label: 'Suscripciones', icon: '💳' },
+    { to: '/superadmin/importaciones', label: 'Importaciones', icon: '🔄' },
     { to: '/superadmin/metricas', label: 'Métricas', icon: '📈' },
     { to: '/superadmin/sistema', label: 'Sistema', icon: '🛠️' },
 ];

@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\SuperAdmin\MetricasController as AdminMetricasContr
 use App\Http\Controllers\Api\SuperAdmin\SistemaController as AdminSistemaController;
 use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripcionesController;
 use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
+use App\Http\Controllers\Api\SuperAdmin\ImportacionesController as AdminImportacionesController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -175,6 +176,9 @@ Route::prefix('v1')->group(function () {
 
             Route::get('metricas', [AdminMetricasController::class, 'index']);
             Route::get('metricas/export', [AdminMetricasController::class, 'export']);
+
+            Route::get('importaciones/health', [AdminImportacionesController::class, 'health']);
+            Route::post('importaciones/run-monitor', [AdminImportacionesController::class, 'runMonitor']);
 
             Route::get('sistema/status', [AdminSistemaController::class, 'status']);
             Route::get('sistema/logs', [AdminSistemaController::class, 'logs']);
