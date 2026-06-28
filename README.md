@@ -1,11 +1,30 @@
 # VacanteDocente
 
-Organizador de vacantes para la adjudicación docente de la **Comunitat Valenciana** (curso 2025).
+Organizador de vacantes para la adjudicación docente de la **Comunitat Valenciana**.
 Permite explorar, filtrar, priorizar (kanban + arrastrar/soltar) y exportar las vacantes de una
-especialidad, además de calcular el tiempo de viaje desde tu domicilio a los centros seleccionados.
+especialidad, calcular el tiempo de viaje desde tu domicilio a los centros, consultar tu posición
+en bolsa sobre el último listado, y recibir avisos cuando un listado se actualiza.
 
-Construido con **Laravel 12** (API + SPA shell), **React 18 + Vite + Tailwind CSS v4** y **MySQL**.
+Construido con **Laravel 12** (API + SPA shell), **React 18 + Vite + Tailwind CSS v4** y **PostgreSQL**.
 Las llamadas a Google Maps se hacen **siempre desde el servidor**; la API key nunca llega al navegador.
+
+> **Despliegue en producción:** ver [`DEPLOYMENT.md`](DEPLOYMENT.md) — incluye auth, notificaciones,
+> push web, monitor GVA con importación automática y todas las variables de entorno.
+
+---
+
+## Funcionalidades
+
+- **Explorador** con filtros inteligentes combinables (provincia, tipo y características de centro,
+  requisit lingüístic, itinerant, observaciones, rango de distancia, tiempo de viaje, estado), kanban
+  y vista lista con arrastrar/soltar, y exportación.
+- **Distancias** (coche/público/a pie, ida y vuelta) desde tu domicilio, vía Google Maps server-side.
+- **Mi posición en bolsa** calculada sobre el último listado importado, con su fecha.
+- **Detección de cambios**: al reimportar un listado se resaltan las plazas/participantes nuevos o
+  modificados y se avisa por **campana in-app, email y push web**.
+- **Monitor GVA** diario que detecta y **auto-importa** los listados publicados, con vista de
+  administración para revisar/reimportar.
+- **Acceso** con email/contraseña, Google y (opcional) Microsoft.
 
 ---
 
@@ -13,10 +32,11 @@ Las llamadas a Google Maps se hacen **siempre desde el servidor**; la API key nu
 
 | Capa      | Tecnología                                                        |
 | --------- | ----------------------------------------------------------------- |
-| Backend   | Laravel 12, PHP 8.2+, MySQL                                        |
+| Backend   | Laravel 12, PHP 8.2+, PostgreSQL (SQLite en tests)                |
 | Frontend  | React 18, Vite 7, Tailwind CSS v4, @tanstack/react-query, @dnd-kit |
-| Mapas     | Google Geocoding API + Distance Matrix API (server-side)          |
-| Auth      | Ninguna (fase 1). Socialite + Google scaffolded para fase 2       |
+| Mapas     | Google Geocoding + Distance Matrix + Places (server-side)         |
+| Auth      | Sanctum (tokens) · email/contraseña + Socialite (Google, Microsoft) |
+| Avisos    | Notificaciones Laravel: database + mail + web push (minishlink/web-push) |
 
 ---
 
@@ -30,11 +50,11 @@ npm install
 # 2. Entorno
 cp .env.example .env
 php artisan key:generate
-#  → edita .env: credenciales MySQL y (opcional) GOOGLE_MAPS_API_KEY
+#  → edita .env: credenciales PostgreSQL y (opcional) GOOGLE_MAPS_API_KEY
 
 # 3. Base de datos
-mysql -uroot -e "CREATE DATABASE vacante_docente CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-php artisan migrate --seed       # crea esquema + siembra especialidades y 1036 vacantes
+createdb vacante_docente          # PostgreSQL (en tests se usa SQLite)
+php artisan migrate --seed       # crea esquema + siembra especialidades y vacantes
 
 # 4. Frontend
 npm run build                    # o `npm run dev` para HMR
@@ -106,11 +126,14 @@ Flujo: al cargar se lee `localStorage` (`session_token`, `specialty_id`). Sin es
 
 ---
 
-## Fase 2 — Google sign-in (scaffolded, desactivado)
+## Autenticación
 
-- `laravel/socialite` instalado; bloque `google` en `config/services.php`; claves `GOOGLE_CLIENT_*`
-  (comentadas) en `.env`.
-- `App\Http\Controllers\Auth\GoogleAuthController` con `redirect()`/`callback()` listos (comentados).
-- Rutas `/auth/google/*` comentadas en `routes/web.php`.
+- **Email/contraseña**: `POST /api/v1/auth/register` y `/auth/login` (rate limited) devuelven un
+  token Sanctum. Funciona sin configuración.
+- **Social (Socialite)**: `GET /auth/{provider}` → callback en `/auth/{provider}/callback`. Cada
+  proveedor (`google`, `microsoft`) se activa solo cuando tiene credenciales; `GET /api/v1/auth/providers`
+  indica al SPA qué botones mostrar.
+- El token se entrega al SPA vía `/dashboard?token=…` (OAuth) o en el cuerpo JSON (email/contraseña)
+  y se guarda en `localStorage`.
 
-Pasos para activarlo documentados en la cabecera de `GoogleAuthController`.
+Configuración completa (Google, Microsoft, push web, monitor GVA): ver [`DEPLOYMENT.md`](DEPLOYMENT.md).
