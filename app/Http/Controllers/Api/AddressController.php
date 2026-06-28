@@ -24,8 +24,16 @@ class AddressController extends Controller
             return response()->json(['data' => [], 'configured' => false]);
         }
 
+        // Prefer Places Autocomplete (works for partial input); fall back to the
+        // Geocoding API when Places is not enabled on the key.
+        try {
+            $suggestions = $this->maps->autocompleteAddresses($data['address']);
+        } catch (\RuntimeException $e) {
+            $suggestions = $this->maps->suggestAddresses($data['address']);
+        }
+
         return response()->json([
-            'data' => $this->maps->suggestAddresses($data['address']),
+            'data' => $suggestions,
             'configured' => true,
         ]);
     }

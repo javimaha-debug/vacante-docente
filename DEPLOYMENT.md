@@ -60,8 +60,11 @@ MAIL_FROM_NAME="${APP_NAME}"
 QUEUE_CONNECTION=database     # o redis
 ```
 
-> La `GOOGLE_MAPS_API_KEY` debe tener habilitadas **Geocoding API** y
-> **Distance Matrix API**.
+> La `GOOGLE_MAPS_API_KEY` debe tener habilitadas **Geocoding API**,
+> **Distance Matrix API** y **Places API**.
+> La **Places API** es la que da el autocompletado de dirección útil con texto
+> parcial; si no está habilitada, el buscador cae automáticamente al Geocoding
+> (que solo encuentra direcciones ya casi completas).
 
 ## 3. Build e instalación
 

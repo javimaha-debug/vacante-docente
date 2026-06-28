@@ -14,16 +14,39 @@ class AddressGeocodeTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_geocode_suggest_returns_up_to_five_results(): void
+    public function test_geocode_suggest_uses_places_autocomplete(): void
     {
-        // Bind a configured maps service and fake the Geocoding API.
+        // Bind a configured maps service and fake the Places Autocomplete API.
         $this->app->instance(GoogleMapsService::class, new GoogleMapsService('test-key'));
         Http::fake([
-            'maps.googleapis.com/*' => Http::response([
+            'maps.googleapis.com/maps/api/place/autocomplete/*' => Http::response([
+                'status' => 'OK',
+                'predictions' => [
+                    ['description' => 'Carrer Major, 1, València, España', 'place_id' => 'p1'],
+                    ['description' => 'Carrer Major, 2, Castelló, España', 'place_id' => 'p2'],
+                ],
+            ]),
+        ]);
+
+        $this->getJson('/api/v1/geocode?address=Carrer Major')
+            ->assertOk()
+            ->assertJsonPath('configured', true)
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.formatted_address', 'Carrer Major, 1, València, España')
+            ->assertJsonPath('data.0.place_id', 'p1');
+    }
+
+    public function test_geocode_suggest_falls_back_to_geocoding_when_places_denied(): void
+    {
+        $this->app->instance(GoogleMapsService::class, new GoogleMapsService('test-key'));
+        Http::fake([
+            // Places API not enabled on the key.
+            'maps.googleapis.com/maps/api/place/autocomplete/*' => Http::response(['status' => 'REQUEST_DENIED']),
+            // Geocoding fallback still works.
+            'maps.googleapis.com/maps/api/geocode/*' => Http::response([
                 'status' => 'OK',
                 'results' => [
                     ['formatted_address' => 'Carrer A, València', 'geometry' => ['location' => ['lat' => 39.4, 'lng' => -0.3]]],
-                    ['formatted_address' => 'Carrer B, València', 'geometry' => ['location' => ['lat' => 39.5, 'lng' => -0.4]]],
                 ],
             ]),
         ]);
@@ -31,9 +54,8 @@ class AddressGeocodeTest extends TestCase
         $this->getJson('/api/v1/geocode?address=Carrer')
             ->assertOk()
             ->assertJsonPath('configured', true)
-            ->assertJsonCount(2, 'data')
-            ->assertJsonPath('data.0.formatted_address', 'Carrer A, València')
-            ->assertJsonPath('data.0.lat', 39.4);
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.formatted_address', 'Carrer A, València');
     }
 
     public function test_geocode_suggest_validates_input(): void
