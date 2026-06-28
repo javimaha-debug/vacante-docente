@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { LogoHorizontalTeal } from '../brand/DoccentiaLogo';
 
 const PROVIDER_META = {
     google: { label: 'Google', icon: GoogleIcon },
@@ -58,9 +59,8 @@ export default function LoginPage() {
         <div className="flex min-h-full items-center justify-center bg-gradient-to-b from-brand-50 to-slate-100 px-4 py-12">
             <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200 sm:p-10">
                 <div className="text-center">
-                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-                        Vacante<span className="text-brand-600">Docente</span>
-                    </h1>
+                    <LogoHorizontalTeal className="mx-auto h-10 w-auto" />
+                    <h1 className="sr-only">Doccentia</h1>
                     <p className="mx-auto mt-3 max-w-xs text-sm text-slate-500">
                         Organiza tu petición de vacantes docentes
                     </p>

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '../../hooks/useAuth';
 import { AdminErrorBoundary } from './ui';
+import { LogoHorizontalWhite } from '../brand/DoccentiaLogo';
 
 const NAV = [
     { to: '/superadmin', label: 'Dashboard', end: true, icon: '📊' },
@@ -51,9 +52,10 @@ export default function AdminLayout() {
                 style={{ backgroundColor: '#0F172A' }}
             >
                 <div className="mb-6 flex items-center justify-between">
-                    <span className="text-lg font-extrabold tracking-tight">
-                        VD <span className="text-sky-400">Admin</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <LogoHorizontalWhite className="h-6 w-auto" />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-sky-400">Admin</span>
+                    </div>
                     <button className="text-slate-400 lg:hidden" onClick={() => setOpen(false)} aria-label="Cerrar menú">✕</button>
                 </div>
                 <nav className="space-y-1">

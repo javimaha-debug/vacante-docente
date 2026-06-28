@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Doccentia">
+  <rect width="100" height="100" rx="26" fill="#0E6E5E"/>
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+    <path d="M76.86 23.96 A34 34 0 1 0 76.86 76.04" stroke-width="13"/>
+    <path d="M64.65 38.51 A15 15 0 1 0 64.65 61.49" stroke-width="12"/>
+  </g>
+</svg>

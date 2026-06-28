@@ -105,7 +105,7 @@ function printPdf(rows, specialty) {
         <h1>Llista prioritzada de vacants</h1>
         <p class="sub">${escapeHtml(specialty?.name ?? '')} · ${rows.length} vacants · ${fecha}</p>
         ${tableHtml(rows)}
-        <p class="foot">Generat amb VacanteDocente · ${fecha}</p>
+        <p class="foot">Generat amb Doccentia · ${fecha}</p>
     </body></html>`;
     win.document.write(html);
     win.document.close();

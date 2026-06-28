@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { LogoHorizontalTeal } from '../brand/DoccentiaLogo';
 
 // Landing for the signed reply link from the contact email
 // (/tablon/responder/:contacto). The owner writes a reply that is emailed back
@@ -20,9 +21,8 @@ export default function TablonResponder() {
     const Shell = ({ children }) => (
         <div className="flex min-h-full items-center justify-center bg-slate-100 px-4 py-12">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <h1 className="text-lg font-bold text-slate-800">
-                    Responder · Vacante<span className="text-brand-600">Docente</span>
-                </h1>
+                <LogoHorizontalTeal className="h-7 w-auto" />
+                <h1 className="mt-2 text-lg font-bold text-slate-800">Responder anuncio</h1>
                 {children}
             </div>
         </div>

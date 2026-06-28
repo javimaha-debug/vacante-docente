@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -6,19 +7,65 @@
 @source '../**/*.{js,jsx}';
 
 @theme {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    /* Doccentia brand typography */
+    --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-heading: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
 
-    --color-brand-50: #eef5ff;
-    --color-brand-100: #d9e7ff;
-    --color-brand-200: #bcd6ff;
-    --color-brand-300: #8ebcff;
-    --color-brand-400: #5996ff;
-    --color-brand-500: #3170f6;
-    --color-brand-600: #1f52e3;
-    --color-brand-700: #1a40b8;
-    --color-brand-800: #1b3893;
-    --color-brand-900: #1c3375;
+    /* Brand scale (teal) — remapped so existing brand-* utilities adopt Doccentia teal */
+    --color-brand-50: #edf3f1;
+    --color-brand-100: #d6e4e0;
+    --color-brand-200: #b3ccc5;
+    --color-brand-300: #8fb7ad;
+    --color-brand-400: #5e9a8c;
+    --color-brand-500: #428476;
+    --color-brand-600: #0e6e5e;
+    --color-brand-700: #075044;
+    --color-brand-800: #03332b;
+    --color-brand-900: #011712;
+
+    /* Named brand tokens */
+    --color-brand: #0e6e5e;
+    --color-brand-hover: #075044;
+    --color-accent: #e8a23d;
+
+    /* Teal palette */
+    --color-teal-50: #edf3f1;
+    --color-teal-100: #d6e4e0;
+    --color-teal-200: #b3ccc5;
+    --color-teal-500: #428476;
+    --color-teal-600: #0e6e5e;
+    --color-teal-700: #075044;
+    --color-teal-800: #03332b;
+    --color-teal-900: #011712;
+
+    /* Amber accent palette */
+    --color-amber-50: #fcf0e3;
+    --color-amber-500: #e8a23d;
+    --color-amber-700: #a16f27;
+
+    /* Neutrals / surfaces */
+    --color-ink: #16201c;
+    --color-muted: #6c766f;
+    --color-line: #e6e8e3;
+    --color-cream: #f3f1ea;
+    --color-paper: #fafaf7;
+    --color-card: #ffffff;
+
+    /* Brand radii */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
+    --radius-2xl: 28px;
+    --radius-pill: 9999px;
+
+    /* Brand shadows */
+    --shadow-xs: 0 1px 2px 0 rgba(22, 32, 28, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(22, 32, 28, 0.08);
+    --shadow-md: 0 4px 14px -4px rgba(22, 32, 28, 0.1);
+    --shadow-lg: 0 16px 36px -14px rgba(22, 32, 28, 0.18);
+    --shadow-brand: 0 16px 36px -14px rgba(14, 110, 94, 0.45);
 }
 
 html,
