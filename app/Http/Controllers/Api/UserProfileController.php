@@ -183,7 +183,7 @@ class UserProfileController extends Controller
         }
         usort($proximosPlazos, fn ($a, $b) => strcmp($a['fecha'], $b['fecha']));
 
-        $historial = $user->historial()->with(['specialty', 'centroAdjudicado'])
+        $historial = $user->historial()->with(['specialty', 'centroAdjudicado', 'proceso'])
             ->orderByDesc('anyo')->get();
         $ultimo = $historial->first();
 
@@ -191,6 +191,35 @@ class UserProfileController extends Controller
             'cursos_trabajados' => $historial->pluck('anyo')->unique()->count(),
             'ultimo_centro' => $ultimo?->centroAdjudicado?->nombre,
             'ultima_posicion' => $ultimo?->posicion_definitiva,
+        ];
+
+        $historialDetallado = $historial->map(fn (\App\Models\UserHistorial $h) => [
+            'id' => $h->id,
+            'anyo' => $h->anyo,
+            'curso' => $h->proceso?->curso ?? ($h->anyo ? $h->anyo.'-'.($h->anyo + 1) : null),
+            'especialidad' => $h->specialty?->name,
+            'proceso' => $h->proceso?->nombre,
+            'estado' => $h->estado,
+            'posicion_provisional' => $h->posicion_provisional,
+            'posicion_definitiva' => $h->posicion_definitiva,
+            'centro' => $h->centroAdjudicado?->nombre,
+            'centro_codigo' => $h->centroAdjudicado?->codigo,
+            'localidad' => $h->centroAdjudicado?->localidad,
+            'lloc' => $h->lloc_adjudicado,
+            'jornada' => $h->jornada_adjudicada,
+            'fecha_adjudicacion' => $h->fecha_adjudicacion?->toDateString(),
+        ])->all();
+
+        $info = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'nombre_gva' => $user->nombre_gva,
+            'colectivo' => $user->colectivo?->name,
+            'cuerpo' => $user->colectivo?->body,
+            'ccaa' => $user->ccaa?->name,
+            'direccion_origen' => $user->direccion_origen,
+            'num_especialidades' => count($misEspecialidades),
+            'miembro_desde' => $user->created_at?->toDateString(),
         ];
 
         // The most recent participant listing imported (scoped to the user's
@@ -205,6 +234,8 @@ class UserProfileController extends Controller
             'mis_vacantes_favoritas' => [],
             'proximos_plazos' => $proximosPlazos,
             'resumen_historial' => $resumenHistorial,
+            'historial' => $historialDetallado,
+            'info' => $info,
             'proceso_listado' => $procesoListado,
         ]);
     }
