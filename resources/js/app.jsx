@@ -239,9 +239,10 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
                     colectivoBody={user?.colectivo?.body ?? null}
                 />
                 {isAuthenticated && (
-                    <p className="mt-2 text-xs font-medium text-slate-400">
+                    <p className="mt-2 text-xs font-medium text-slate-400" role="status" aria-live="polite">
                         {syncStatus === 'saving' && <span className="text-amber-600">Guardando…</span>}
                         {syncStatus === 'saved' && <span className="text-green-600">Guardado ✓</span>}
+                        {syncStatus === 'error' && <span className="text-rose-600">No se pudo guardar — reintenta</span>}
                         {syncStatus === 'idle' && <span>Tu lista se guarda en tu cuenta</span>}
                     </p>
                 )}
@@ -320,7 +321,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
             {focused ? (
                 focusedContent
             ) : isLoading ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-400">Cargando vacantes…</div>
+                <div role="status" className="flex h-full items-center justify-center text-sm text-slate-400">Cargando vacantes…</div>
             ) : (
                 <div className="flex h-full flex-col">
                     <CambiosBanner cambios={cambios} />

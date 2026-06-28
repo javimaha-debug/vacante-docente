@@ -46,7 +46,7 @@ export default function FiltersPanel({ filters, setFilters, counts, onClear }) {
         <div className="space-y-5">
             {/* Live match counter + clear */}
             <div className="flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2">
-                <span className="text-sm font-semibold text-brand-800">
+                <span className="text-sm font-semibold text-brand-800" role="status" aria-live="polite">
                     {counts.matching} {counts.matching === 1 ? 'vacante coincide' : 'vacantes coinciden'}
                 </span>
                 <button

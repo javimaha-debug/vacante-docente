@@ -25,7 +25,7 @@ export const TIPOS_CENTRO = ['Secundaria', 'Primaria/Infantil', 'Otro'];
 export const CARACTERISTICAS = ['CRA', 'Centre singular', 'CEE', 'FPA', 'CIPFP', 'UECO', 'Penitenciari', 'Jornada contínua'];
 export const ESTADOS = [
     { key: 'neutral', label: 'Sin revisar' },
-    { key: 'selected', label: 'En mi lista' },
+    { key: 'selected', label: 'Mi lista' },
     { key: 'revisar', label: 'A revisar' },
     { key: 'discarded', label: 'Descartada' },
 ];

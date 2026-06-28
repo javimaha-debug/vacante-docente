@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { modeSummary } from '../lib/distance';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 // Columns of the rich (2025-style) listing — the full set, not the reduced 2026
 // layout. Order here drives both the Excel export and the printable PDF.
@@ -114,6 +115,7 @@ function printPdf(rows, specialty) {
 
 export default function ExportPanel({ selected, specialty, onClose }) {
     const [copied, setCopied] = useState(null);
+    useEscapeKey(onClose);
     const rows = buildRows(selected);
 
     const llocList = rows.map((r) => r.lloc).join('\n');
@@ -134,17 +136,20 @@ export default function ExportPanel({ selected, specialty, onClose }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="export-title"
                 className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 <header className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
                     <div>
-                        <h2 className="text-base font-bold text-slate-900">Exportar mi lista</h2>
+                        <h2 id="export-title" className="text-base font-bold text-slate-900">Exportar mi lista</h2>
                         <p className="text-xs text-slate-500">
                             {rows.length} vacantes priorizadas · {specialty?.name}
                         </p>
                     </div>
-                    <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                    <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
                         ✕
                     </button>
                 </header>

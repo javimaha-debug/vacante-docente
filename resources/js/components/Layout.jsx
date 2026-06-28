@@ -41,7 +41,7 @@ export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onE
 
                 <div className="ml-auto flex items-center gap-2">
                     {onViewModeChange && (
-                        <div className="hidden rounded-lg bg-slate-100 p-0.5 sm:flex">
+                        <div className="flex rounded-lg bg-slate-100 p-0.5">
                             <ViewTab active={viewMode === 'kanban'} onClick={() => onViewModeChange('kanban')}>
                                 Kanban
                             </ViewTab>
@@ -54,13 +54,15 @@ export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onE
                         onClick={onChangeSpecialty}
                         className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
                     >
-                        Cambiar especialidad
+                        <span className="hidden sm:inline">Cambiar especialidad</span>
+                        <span className="sm:hidden">Cambiar</span>
                     </button>
                     <button
                         onClick={onExport}
                         className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
                     >
-                        Exportar lista
+                        <span className="hidden sm:inline">Exportar lista</span>
+                        <span className="sm:hidden">Exportar</span>
                     </button>
                 </div>
             </header>
