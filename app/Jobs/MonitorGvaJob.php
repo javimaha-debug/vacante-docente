@@ -46,7 +46,20 @@ class MonitorGvaJob implements ShouldQueue
         $pdfs = $this->fetchPdfNoticias();
         $continua = $this->fetchHtmlPdfNoticias(self::RESOLUCIO_URL);
 
-        $created = array_merge($this->persist($rss), $this->persist($pdfs), $this->persist($continua));
+        // Headless render the JS pages (inicio de curso + contínues), tagging
+        // each listing with its category. Falls back to nothing if the renderer
+        // is unavailable — the static sources above still run.
+        $rendered = array_merge(
+            $this->fetchRenderedNoticias((string) config('gva.pages.inicio'), 'inicio'),
+            $this->fetchRenderedNoticias((string) config('gva.pages.continua'), 'continua'),
+        );
+
+        $created = array_merge(
+            $this->persist($rss),
+            $this->persist($pdfs),
+            $this->persist($continua),
+            $this->persist($rendered),
+        );
 
         Log::info('MonitorGvaJob: '.count($created).' new GVA notice(s) stored.');
 
@@ -156,6 +169,48 @@ class MonitorGvaJob implements ShouldQueue
         }
 
         return $this->parsePdfLinks($response->body(), $url);
+    }
+
+    /**
+     * Render a JavaScript GVA page with a headless browser and build notices
+     * for the PDF links found, tagged with the given category.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchRenderedNoticias(string $url, string $categoria): array
+    {
+        if ($url === '') {
+            return [];
+        }
+
+        $links = app(\App\Services\GvaRenderService::class)->pdfLinks($url);
+        if ($links === null) {
+            Log::info('MonitorGvaJob: render unavailable, skipping', ['url' => $url]);
+
+            return [];
+        }
+
+        $noticias = [];
+        foreach ($links as $link) {
+            $href = mb_substr($link['url'], 0, 500);
+            $titulo = $link['titulo'] !== '' ? $link['titulo'] : basename(parse_url($href, PHP_URL_PATH) ?: $href);
+            $matched = $this->matchedKeywords($titulo);
+            if ($this->isParticipantPdf($href)) {
+                $matched[] = 'lista_participantes';
+            }
+
+            $noticias[] = [
+                'titulo' => mb_substr($titulo, 0, 300),
+                'url' => $href,
+                'fecha_publicacion' => null,
+                'tipo' => 'PDF',
+                'categoria' => $categoria,
+                'resumen' => null,
+                'keywords_matched' => array_values(array_unique($matched)),
+            ];
+        }
+
+        return $noticias;
     }
 
     /**
@@ -323,6 +378,7 @@ class MonitorGvaJob implements ShouldQueue
                 'url' => mb_substr($href, 0, 500),
                 'fecha_publicacion' => null,
                 'tipo' => 'PDF',
+                'categoria' => $this->isContinuaPdf($href) ? 'continua' : null,
                 'resumen' => null,
                 // notificado stays false (default) so admins review/import it.
                 'keywords_matched' => array_values(array_unique($matched)),
