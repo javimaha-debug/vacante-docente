@@ -217,6 +217,11 @@ class UserProfileControllerTest extends TestCase
             'proceso_id' => $proceso->id, 'importado_en' => \Illuminate\Support\Carbon::parse('2026-06-22'),
             'total' => 5, 'nuevos' => 0, 'modificados' => 0, 'eliminados' => 0, 'es_primera' => true,
         ]);
+        // A later re-import WITH changes → drives "modificaciones recientes".
+        \App\Models\ParticipanteImportacion::create([
+            'proceso_id' => $proceso->id, 'importado_en' => \Illuminate\Support\Carbon::parse('2026-06-25 09:00:00'),
+            'total' => 6, 'nuevos' => 2, 'modificados' => 1, 'eliminados' => 0, 'es_primera' => false,
+        ]);
 
         Sanctum::actingAs($user);
 
@@ -232,13 +237,19 @@ class UserProfileControllerTest extends TestCase
             ->assertJsonPath('resumen_historial.ultimo_centro', 'IES LA FONT')
             ->assertJsonPath('resumen_historial.ultima_posicion', 7)
             ->assertJsonPath('proceso_listado.id', $proceso->id)
-            ->assertJsonPath('proceso_listado.fecha', '2026-06-22')
+            ->assertJsonPath('proceso_listado.fecha', '2026-06-25')
             // Personal info + full history for the user dashboard.
             ->assertJsonPath('info.email', $user->email)
             ->assertJsonPath('info.num_especialidades', 1)
             ->assertJsonCount(1, 'historial')
             ->assertJsonPath('historial.0.centro', 'IES LA FONT')
             ->assertJsonPath('historial.0.posicion_definitiva', 7)
-            ->assertJsonPath('historial.0.estado', 'Adjudicat');
+            ->assertJsonPath('historial.0.estado', 'Adjudicat')
+            // Recent modifications + last-update date.
+            ->assertJsonCount(1, 'actualizaciones.items')
+            ->assertJsonPath('actualizaciones.items.0.tipo', 'participantes')
+            ->assertJsonPath('actualizaciones.items.0.nuevas', 2)
+            ->assertJsonPath('actualizaciones.items.0.modificadas', 1)
+            ->assertJsonPath('actualizaciones.ultima_actualizacion', fn ($v) => is_string($v) && str_starts_with($v, '2026-06-25'));
     }
 }

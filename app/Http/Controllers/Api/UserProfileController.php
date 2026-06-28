@@ -227,6 +227,10 @@ class UserProfileController extends Controller
         // UI shows its date.
         $procesoListado = $this->latestParticipantListing($user);
 
+        // Recent listing changes (vacancies + participants) with the date of the
+        // last update, so the dashboard can surface "qué ha cambiado y cuándo".
+        $actualizaciones = $this->recentUpdates($user);
+
         return response()->json([
             'procesos_activos' => $procesosActivos,
             'mis_especialidades' => $misEspecialidades,
@@ -237,6 +241,7 @@ class UserProfileController extends Controller
             'historial' => $historialDetallado,
             'info' => $info,
             'proceso_listado' => $procesoListado,
+            'actualizaciones' => $actualizaciones,
         ]);
     }
 
@@ -263,6 +268,62 @@ class UserProfileController extends Controller
             'id' => $import->proceso->id,
             'nombre' => $import->proceso->nombre,
             'fecha' => $import->importado_en?->toDateString(),
+        ];
+    }
+
+    /**
+     * Recent listing updates (vacancies + participants) that introduced changes,
+     * scoped to the user's CCAA, newest first, plus the overall last-update date.
+     *
+     * @return array{ultima_actualizacion:string|null, items:array<int,array<string,mixed>>}
+     */
+    private function recentUpdates(User $user): array
+    {
+        $scope = fn ($q) => $user->ccaa_id
+            ? $q->whereHas('proceso', fn ($p) => $p->where('ccaa_id', $user->ccaa_id))
+            : $q;
+
+        $vacantes = \App\Models\ProcesoImportacion::with('proceso:id,nombre')
+            ->where('es_primera', false)
+            ->where(fn ($q) => $q->where('nuevas', '>', 0)->orWhere('modificadas', '>', 0)->orWhere('eliminadas', '>', 0))
+            ->tap($scope)
+            ->orderByDesc('importado_en')
+            ->limit(10)
+            ->get()
+            ->map(fn ($i) => [
+                'tipo' => 'vacantes',
+                'proceso' => $i->proceso?->nombre,
+                'fecha' => $i->importado_en?->toIso8601String(),
+                'nuevas' => $i->nuevas,
+                'modificadas' => $i->modificadas,
+                'eliminadas' => $i->eliminadas,
+            ]);
+
+        $participantes = \App\Models\ParticipanteImportacion::with('proceso:id,nombre')
+            ->where('es_primera', false)
+            ->where(fn ($q) => $q->where('nuevos', '>', 0)->orWhere('modificados', '>', 0)->orWhere('eliminados', '>', 0))
+            ->tap($scope)
+            ->orderByDesc('importado_en')
+            ->limit(10)
+            ->get()
+            ->map(fn ($i) => [
+                'tipo' => 'participantes',
+                'proceso' => $i->proceso?->nombre,
+                'fecha' => $i->importado_en?->toIso8601String(),
+                'nuevas' => $i->nuevos,
+                'modificadas' => $i->modificados,
+                'eliminadas' => $i->eliminados,
+            ]);
+
+        $items = $vacantes->concat($participantes)
+            ->sortByDesc('fecha')
+            ->take(8)
+            ->values()
+            ->all();
+
+        return [
+            'ultima_actualizacion' => $items[0]['fecha'] ?? null,
+            'items' => $items,
         ];
     }
 
