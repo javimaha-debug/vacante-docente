@@ -33,7 +33,8 @@ Route::prefix('v1')->group(function () {
     // web routes (/auth/{provider}) so Socialite can redirect.
     Route::get('auth/providers', [\App\Http\Controllers\AuthController::class, 'providers']);
     Route::post('auth/register', [\App\Http\Controllers\AuthController::class, 'register'])->middleware('throttle:10,1');
-    Route::post('auth/login', [\App\Http\Controllers\AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('auth/login', [\App\Http\Controllers\AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('auth/exchange', [\App\Http\Controllers\AuthController::class, 'exchange'])->middleware('throttle:30,1');
 
     // Catalog
     Route::get('specialties', [SpecialtyController::class, 'index']);

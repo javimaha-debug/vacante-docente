@@ -702,10 +702,17 @@ class ImportParticipantesPdf extends Command
         // cuerpo when we know it.
         $bodies = self::CUERPO_BODIES[strtoupper((string) optional($proceso->colectivo)->body)] ?? null;
         $specialtyByCode = [];
+        $centroByCode = [];
+
+        // Preload all teachers keyed by lower-cased nombre_gva, so we resolve in
+        // memory instead of running a LOWER() full-table scan per row (a 30k-row
+        // list would otherwise hit `users` 30k times).
+        $usersByName = User::whereNotNull('nombre_gva')->get()
+            ->groupBy(fn ($u) => mb_strtolower(trim((string) $u->nombre_gva)));
 
         foreach ($rows as $r) {
-            $users = User::whereRaw('LOWER(nombre_gva) = ?', [mb_strtolower($r['nombre_gva'])])->get();
-            if ($users->isEmpty()) {
+            $users = $usersByName->get(mb_strtolower(trim((string) $r['nombre_gva'])));
+            if (! $users || $users->isEmpty()) {
                 continue;
             }
 
@@ -724,10 +731,11 @@ class ImportParticipantesPdf extends Command
                 continue;
             }
 
-            // Resolve the adjudicated centre (by GVA code) once per row.
+            // Resolve the adjudicated centre (by GVA code), memoised by code.
             $centroId = null;
             if (! empty($r['centro_codigo'])) {
-                $centroId = Centro::where('codigo', $r['centro_codigo'])->value('id');
+                $centroId = $centroByCode[$r['centro_codigo']] ??= (Centro::where('codigo', $r['centro_codigo'])->value('id') ?: 0);
+                $centroId = $centroId ?: null;
             }
             $esAdjudicat = ($r['estado'] ?? null) === 'Adjudicat';
 

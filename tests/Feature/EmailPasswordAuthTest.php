@@ -28,6 +28,17 @@ class EmailPasswordAuthTest extends TestCase
             ->getJson('/api/v1/user/me')->assertOk()->assertJsonPath('email', 'ana@example.com');
     }
 
+    public function test_register_cannot_grant_admin_via_mass_assignment(): void
+    {
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Hacker', 'email' => 'h@example.com',
+            'password' => 'secretpass1', 'password_confirmation' => 'secretpass1',
+            'is_admin' => true,
+        ])->assertCreated();
+
+        $this->assertFalse((bool) User::where('email', 'h@example.com')->value('is_admin'));
+    }
+
     public function test_register_validates_unique_email_and_password_confirmation(): void
     {
         User::factory()->create(['email' => 'taken@example.com']);

@@ -49,7 +49,9 @@ class GoogleOAuthTest extends TestCase
 
         $response = $this->get('/auth/google/callback');
 
-        $response->assertRedirectContains('/dashboard?token=');
+        // The callback hands over a single-use code, not the token itself.
+        $response->assertRedirectContains('/dashboard?code=');
+        $this->assertStringNotContainsString('token=', $response->headers->get('Location'));
 
         $user = User::where('email', 'teacher@example.com')->first();
         $this->assertNotNull($user);
@@ -58,6 +60,15 @@ class GoogleOAuthTest extends TestCase
         $this->assertNull($user->nombre_gva);
         $this->assertSame('es', $user->locale);
         $this->assertSame(1, $user->tokens()->count());
+
+        // The code exchanges for a working token exactly once.
+        $code = \Illuminate\Support\Str::after($response->headers->get('Location'), 'code=');
+        $this->postJson('/api/v1/auth/exchange', ['code' => $code])
+            ->assertOk()
+            ->assertJsonPath('user.email', 'teacher@example.com')
+            ->assertJsonStructure(['token', 'user']);
+        // Single-use: a second exchange fails.
+        $this->postJson('/api/v1/auth/exchange', ['code' => $code])->assertStatus(422);
     }
 
     public function test_callback_is_idempotent_for_existing_user_and_preserves_nombre_gva(): void
@@ -70,7 +81,7 @@ class GoogleOAuthTest extends TestCase
 
         $this->fakeGoogleUser('teacher@example.com', 'Ana Updated', 'https://photo/new.jpg');
 
-        $this->get('/auth/google/callback')->assertRedirectContains('/dashboard?token=');
+        $this->get('/auth/google/callback')->assertRedirectContains('/dashboard?code=');
 
         $existing->refresh();
         $this->assertSame(1, User::where('email', 'teacher@example.com')->count());

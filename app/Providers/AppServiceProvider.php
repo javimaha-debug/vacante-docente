@@ -37,6 +37,17 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
+        // Login: throttle by email+IP (5/min) and by IP (20/min) to slow down
+        // credential stuffing / brute force.
+        RateLimiter::for('login', function (Request $request) {
+            $email = (string) $request->input('email');
+
+            return [
+                Limit::perMinute(5)->by(mb_strtolower($email).'|'.$request->ip()),
+                Limit::perMinute(20)->by($request->ip()),
+            ];
+        });
+
         // Geocoding: 20 requests / minute / IP.
         RateLimiter::for('geocode', function (Request $request) {
             return Limit::perMinute(20)->by($request->ip());

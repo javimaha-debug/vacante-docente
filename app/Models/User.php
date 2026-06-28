@@ -35,7 +35,8 @@ class User extends Authenticatable
         'notificaciones_email',
         'avatar_url',
         'locale',
-        'is_admin',
+        // 'is_admin' is intentionally NOT mass-assignable (privilege escalation).
+        // Set it explicitly (forceFill / tinker / factory) when needed.
     ];
 
     /**
