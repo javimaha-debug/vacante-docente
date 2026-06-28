@@ -10,7 +10,7 @@ import FiltersPanel from './components/FiltersPanel';
 import HomeAddressPanel from './components/HomeAddressPanel';
 import KanbanBoard from './components/KanbanBoard';
 import SortableRows from './components/SortableRows';
-import VacancyRow from './components/VacancyRow';
+import ListBoard from './components/ListBoard';
 import ExportPanel from './components/ExportPanel';
 import ProcesoSelector from './components/ProcesoSelector';
 
@@ -392,57 +392,22 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
     );
 }
 
-// Powerful working list: one compact row per vacancy, with the prioritised
-// list (drag-and-drop to move a vacancy up/down) on top and the filtered/sorted
-// candidates below. Distance is shown inline on every row.
+// Powerful working list: one compact row per vacancy in a single drag surface,
+// so candidates can be dragged up into "Mi lista" and reordered. Distance is
+// shown inline on every row.
 function ListView({ selected, neutral, home, onStatusChange, onNotesChange, onReorder, hasMore, onLoadMore, isLoadingMore }) {
     return (
-        <div className="scroll-thin mx-auto h-full max-w-4xl space-y-6 overflow-y-auto pr-1">
-            <section>
-                <h2 className="mb-2 text-sm font-bold text-slate-700">
-                    Mi lista priorizada <span className="text-slate-400">({selected.length})</span>
-                    <span className="ml-2 text-xs font-normal text-slate-400">arrastra ⠿ para ordenar</span>
-                </h2>
-                <SortableRows
-                    items={selected}
-                    home={home}
-                    onReorder={onReorder}
-                    onStatusChange={onStatusChange}
-                    onNotesChange={onNotesChange}
-                />
-            </section>
-
-            <section>
-                <h2 className="mb-2 text-sm font-bold text-slate-700">
-                    Vacantes <span className="text-slate-400">({neutral.length})</span>
-                </h2>
-                <div className="space-y-1.5">
-                    {neutral.map((v) => (
-                        <VacancyRow
-                            key={v.id}
-                            vacancy={v}
-                            status="neutral"
-                            home={home}
-                            onStatusChange={(status) => onStatusChange(v.id, status)}
-                        />
-                    ))}
-                </div>
-                {neutral.length === 0 && (
-                    <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-slate-400">
-                        No hay vacantes con estos filtros.
-                    </p>
-                )}
-                {hasMore && (
-                    <button
-                        onClick={onLoadMore}
-                        disabled={isLoadingMore}
-                        className="mt-3 w-full rounded-lg bg-white px-3 py-2 text-sm font-semibold text-brand-600 ring-1 ring-slate-200 hover:bg-brand-50 disabled:opacity-60"
-                    >
-                        {isLoadingMore ? 'Cargando…' : 'Cargar más vacantes'}
-                    </button>
-                )}
-            </section>
-        </div>
+        <ListBoard
+            selected={selected}
+            neutral={neutral}
+            home={home}
+            onStatusChange={onStatusChange}
+            onNotesChange={onNotesChange}
+            onReorder={onReorder}
+            hasMore={hasMore}
+            onLoadMore={onLoadMore}
+            isLoadingMore={isLoadingMore}
+        />
     );
 }
 
