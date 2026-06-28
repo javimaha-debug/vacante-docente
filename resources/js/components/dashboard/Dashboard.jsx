@@ -13,6 +13,8 @@ const NAV = [
     { to: '/dashboard/tablon', label: 'Tablón', icon: '📌' },
 ];
 
+const ADMIN_NAV = [{ to: '/dashboard/admin/importaciones', label: 'Importaciones', icon: '⚙️' }];
+
 function NavItem({ item, onNavigate }) {
     return (
         <NavLink
@@ -37,6 +39,8 @@ export default function Dashboard() {
     const [open, setOpen] = useState(false);
 
     const initials = (user?.name || user?.email || '?').slice(0, 1).toUpperCase();
+    const isAdmin = Boolean(user?.is_admin) || user?.id === 1;
+    const navItems = isAdmin ? [...NAV, ...ADMIN_NAV] : NAV;
 
     return (
         <div className="flex h-full flex-col">
@@ -56,7 +60,7 @@ export default function Dashboard() {
 
                     {/* Horizontal menu (desktop) */}
                     <nav className="scroll-thin ml-2 hidden items-center gap-1 overflow-x-auto lg:flex">
-                        {NAV.map((item) => (
+                        {navItems.map((item) => (
                             <NavItem key={item.to} item={item} />
                         ))}
                     </nav>
@@ -92,7 +96,7 @@ export default function Dashboard() {
                 {/* Collapsible menu (mobile/tablet) */}
                 {open && (
                     <nav className="grid grid-cols-2 gap-1 border-t border-slate-200 px-4 pb-3 pt-2 sm:grid-cols-3 lg:hidden">
-                        {NAV.map((item) => (
+                        {navItems.map((item) => (
                             <NavItem key={item.to} item={item} onNavigate={() => setOpen(false)} />
                         ))}
                     </nav>
