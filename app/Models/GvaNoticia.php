@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GvaNoticia extends Model
 {
@@ -19,6 +20,10 @@ class GvaNoticia extends Model
         'resumen',
         'keywords_matched',
         'notificado',
+        'importado_en',
+        'import_estado',
+        'import_resumen',
+        'proceso_id',
     ];
 
     protected function casts(): array
@@ -27,6 +32,12 @@ class GvaNoticia extends Model
             'fecha_publicacion' => 'date',
             'keywords_matched' => 'array',
             'notificado' => 'boolean',
+            'importado_en' => 'datetime',
         ];
+    }
+
+    public function proceso(): BelongsTo
+    {
+        return $this->belongsTo(Proceso::class);
     }
 }

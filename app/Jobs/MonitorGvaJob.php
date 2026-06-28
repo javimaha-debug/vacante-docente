@@ -3,6 +3,9 @@
 namespace App\Jobs;
 
 use App\Models\GvaNoticia;
+use App\Models\User;
+use App\Notifications\ListadoImportadoAdmin;
+use App\Services\GvaAutoImportService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -11,6 +14,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class MonitorGvaJob implements ShouldQueue
 {
@@ -31,9 +35,43 @@ class MonitorGvaJob implements ShouldQueue
         $rss = $this->fetchRssNoticias();
         $pdfs = $this->fetchPdfNoticias();
 
-        $created = $this->persist($rss) + $this->persist($pdfs);
+        $created = array_merge($this->persist($rss), $this->persist($pdfs));
 
-        Log::info("MonitorGvaJob: {$created} new GVA notice(s) stored.");
+        Log::info('MonitorGvaJob: '.count($created).' new GVA notice(s) stored.');
+
+        if (config('gva.auto_import', true)) {
+            $this->autoImport($created);
+        }
+    }
+
+    /**
+     * Auto-import any newly detected listing PDFs and notify the admins.
+     *
+     * @param  array<int, GvaNoticia>  $created
+     */
+    private function autoImport(array $created): void
+    {
+        $service = app(GvaAutoImportService::class);
+        $importables = array_filter($created, fn (GvaNoticia $n) => $service->isImportable($n));
+
+        if (empty($importables)) {
+            return;
+        }
+
+        $admins = User::query()->where('is_admin', true)->orWhere('id', 1)->get();
+
+        foreach ($importables as $noticia) {
+            $service->import($noticia);
+
+            if ($admins->isNotEmpty()) {
+                Notification::send($admins, new ListadoImportadoAdmin($noticia->fresh()));
+            }
+
+            Log::info('MonitorGvaJob: auto-import', [
+                'url' => $noticia->url,
+                'estado' => $noticia->import_estado,
+            ]);
+        }
     }
 
     /**
@@ -196,19 +234,20 @@ class MonitorGvaJob implements ShouldQueue
     }
 
     /**
-     * Insert notices whose URL is not already stored. Returns the count created.
+     * Insert notices whose URL is not already stored. Returns the created models.
      *
      * @param  array<int, array<string, mixed>>  $noticias
+     * @return array<int, GvaNoticia>
      */
-    private function persist(array $noticias): int
+    private function persist(array $noticias): array
     {
-        $created = 0;
+        $created = [];
 
         foreach ($noticias as $n) {
             $noticia = GvaNoticia::firstOrCreate(['url' => $n['url']], $n);
 
             if ($noticia->wasRecentlyCreated) {
-                $created++;
+                $created[] = $noticia;
             }
         }
 
