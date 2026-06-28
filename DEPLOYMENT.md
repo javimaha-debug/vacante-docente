@@ -302,6 +302,28 @@ php artisan participantes:import-pdf storage/app/private/pdfs/gva/participantes.
 > avisos) aparece a partir de la **segunda** importación de cada listado (la
 > primera no tiene con qué comparar).
 
+### Cargar histórico de años anteriores
+
+Para tener histórico de vacantes y adjudicaciones de cursos pasados, crea los
+procesos de cada año (como `cerrado`) y luego importa sus PDFs:
+
+```bash
+# 1) Crea los 6 procesos (colectivos × cuerpos) de un curso pasado
+php artisan procesos:create 2024                 # curso 2024-2025, estado cerrado
+php artisan procesos:create 2023 --curso=2023-24 # etiqueta de curso personalizada
+
+# 2) Localiza los ids (php artisan tinker / GET /api/v1/procesos) e importa
+php artisan vacantes:import-pdf      ruta/vacants-2024.pdf       <proceso_id>
+php artisan participantes:import-pdf ruta/adjudicacions-2024.pdf <proceso_id>
+```
+
+- La importación de **participantes** rellena el histórico del usuario
+  (`user_historial`) por año, emparejando por **nombre GVA**; los **Adjudicat**
+  guardan centro, lloc y jornada (el centro se resuelve por su código, así que
+  conviene tener el directorio cargado con `centros:import-anpe`).
+- Como es la **primera** importación de cada proceso histórico, **no** dispara
+  notificaciones ni marca cambios (es_primera).
+
 ---
 
 ## 9. Funcionalidades del explorador y el perfil
