@@ -110,7 +110,7 @@ export default function OnboardingWizard() {
 function StepModo({ modo, setModo }) {
     return (
         <div>
-            <h2 className="text-lg font-bold text-slate-800">¿Cómo usarás VacanteDocente?</h2>
+            <h2 className="text-lg font-bold text-slate-800">¿Cómo usarás Doccentia?</h2>
             <p className="mt-1 text-sm text-slate-500">Puedes cambiarlo en cualquier momento.</p>
             <div className="mt-4 space-y-2">
                 {MODOS.map((m) => (
@@ -177,7 +177,7 @@ function StepCcaa() {
     return (
         <div>
             <h2 className="text-lg font-bold text-slate-800">Comunidad autónoma</h2>
-            <p className="mt-1 text-sm text-slate-500">VacanteDocente está disponible para la Comunitat Valenciana.</p>
+            <p className="mt-1 text-sm text-slate-500">Doccentia está disponible para la Comunitat Valenciana.</p>
             <div className="mt-4 flex items-center gap-3 rounded-xl border border-brand-500 bg-brand-50 p-3">
                 <span className="text-2xl" aria-hidden="true">🟠</span>
                 <span className="font-semibold text-slate-800">Comunitat Valenciana</span>
@@ -247,7 +247,7 @@ function StepResumen({ modo, especialidades, direccion, nombreGva }) {
     return (
         <div>
             <h2 className="text-lg font-bold text-slate-800">¡Todo listo!</h2>
-            <p className="mt-1 text-sm text-slate-500">Revisa tus datos y empieza a usar VacanteDocente.</p>
+            <p className="mt-1 text-sm text-slate-500">Revisa tus datos y empieza a usar Doccentia.</p>
             <dl className="mt-4 space-y-2 text-sm">
                 <Row label="Modo" value={modoLabel} />
                 <Row label="Especialidades" value={`${especialidades.length} seleccionada${especialidades.length === 1 ? '' : 's'}`} />

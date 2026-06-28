@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import api from '../lib/api';
+import { LogoHorizontalTeal } from './brand/DoccentiaLogo';
 
 const TABS = [
     { key: 'maestros', label: 'Maestros' },
@@ -29,9 +30,8 @@ export default function SpecialtySelector({ onSelect, isSelecting }) {
                     <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">
                         Comunitat Valenciana · Curso 2025
                     </div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-                        Vacante<span className="text-brand-600">Docente</span>
-                    </h1>
+                    <LogoHorizontalTeal className="mx-auto h-10 w-auto sm:h-12" />
+                    <h1 className="sr-only">Doccentia</h1>
                     <p className="mx-auto mt-3 max-w-xl text-sm text-slate-500">
                         Organiza, filtra y prioriza las vacantes de la adjudicación docente. Empieza eligiendo tu
                         especialidad.

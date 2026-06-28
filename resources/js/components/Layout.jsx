@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import UpgradePrompt from './shared/UpgradePrompt';
+import { LogoHorizontalTeal } from './brand/DoccentiaLogo';
 
 export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onExport, exportLocked = false, viewMode, onViewModeChange, sidebar, filterCount = 0, children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -25,9 +26,7 @@ export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onE
                 </button>
 
                 <div className="flex items-center gap-2">
-                    <span className="text-lg font-extrabold tracking-tight text-slate-900">
-                        Vacante<span className="text-brand-600">Docente</span>
-                    </span>
+                    <LogoHorizontalTeal className="h-8 w-auto" />
                 </div>
 
                 {specialty && (

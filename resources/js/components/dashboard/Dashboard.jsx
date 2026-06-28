@@ -6,6 +6,7 @@ import api from '../../lib/api';
 import NotificationBell from './NotificationBell';
 import OnboardingWizard from '../onboarding/OnboardingWizard';
 import ImpersonationBanner from '../shared/ImpersonationBanner';
+import { LogoHorizontalTeal } from '../brand/DoccentiaLogo';
 
 // Sidebar/nav items per active mode (Part 12).
 const NAV_BY_MODE = {
@@ -207,9 +208,7 @@ export default function Dashboard() {
             <header className="z-30 shrink-0 border-b border-slate-200 bg-white shadow-sm">
                 <div className="flex items-center gap-3 px-4 py-2.5">
                     <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden" onClick={() => setOpen((v) => !v)} aria-label="Menú">☰</button>
-                    <span className="text-lg font-extrabold tracking-tight text-slate-900">
-                        Vacante<span className="text-brand-600">Docente</span>
-                    </span>
+                    <LogoHorizontalTeal className="h-8 w-auto" />
 
                     <div className="ml-1"><ModeSelector /></div>
 
