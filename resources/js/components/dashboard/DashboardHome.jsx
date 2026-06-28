@@ -150,6 +150,7 @@ export default function DashboardHome() {
     const resumen = data?.resumen_historial ?? {};
     const info = data?.info ?? {};
     const historial = data?.historial ?? [];
+    const actualizaciones = data?.actualizaciones ?? { items: [] };
     const novedades = (noticias?.data ?? []).slice(0, 5);
     // Read the official position from the LATEST participant listing; fall back
     // to a published proceso if no listing has been imported yet.
@@ -181,19 +182,33 @@ export default function DashboardHome() {
                 {especialidades.length === 0 ? (
                     <Empty>Aún no has añadido especialidades.</Empty>
                 ) : (
-                    <ul className="space-y-3">
-                        {especialidades.map((e) => (
-                            <li key={`${e.specialty_id}-${e.anyo}`} className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-slate-700">{e.specialty_name}</p>
-                                    <p className="text-xs text-slate-400">Curso {e.anyo}</p>
-                                </div>
-                                <span className="text-2xl font-extrabold tabular-nums text-brand-600">
-                                    {e.posicion_bolsa ?? '—'}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
+                    <>
+                        <ul className="space-y-3">
+                            {especialidades.map((e) => (
+                                <li key={`${e.specialty_id}-${e.anyo}`} className="flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium text-slate-700">{e.specialty_name}</p>
+                                        <p className="text-xs text-slate-400">Curso {e.anyo}</p>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                        {e.estado_bolsa && (
+                                            <span className={clsx('rounded-full px-2 py-0.5 text-[11px] font-bold', ESTADO_BOLSA_STYLES[e.estado_bolsa] ?? 'bg-slate-100 text-slate-600')}>
+                                                {e.estado_bolsa}
+                                            </span>
+                                        )}
+                                        <span className="text-2xl font-extrabold tabular-nums text-brand-600">
+                                            {e.posicion_bolsa ?? '—'}
+                                        </span>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                        {procesoListado?.fecha && (
+                            <p className="mt-3 border-t border-slate-100 pt-2 text-[11px] text-slate-400">
+                                Según el listado del {formatListadoDate(procesoListado.fecha)}
+                            </p>
+                        )}
+                    </>
                 )}
             </Card>
 
@@ -237,6 +252,8 @@ export default function DashboardHome() {
                 <p className="text-3xl font-extrabold tabular-nums text-slate-800">{favoritas.length}</p>
                 <p className="mt-1 text-sm text-slate-400">vacantes en tu lista priorizada</p>
             </Card>
+
+            <ActualizacionesCard actualizaciones={actualizaciones} />
 
             <Card
                 title="Últimas novedades GVA"
@@ -284,6 +301,59 @@ const ESTADO_HISTORIAL_STYLES = {
     Activat: 'bg-green-100 text-green-700',
     Desactivat: 'bg-slate-100 text-slate-600',
 };
+
+function formatUpdateDateTime(iso) {
+    if (!iso) return null;
+    try {
+        return new Date(iso).toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return null;
+    }
+}
+
+// Recent listing changes (vacancies + participants) with the last-update date.
+function ActualizacionesCard({ actualizaciones }) {
+    const items = actualizaciones?.items ?? [];
+    const ultima = formatUpdateDateTime(actualizaciones?.ultima_actualizacion);
+
+    const parts = (it) => {
+        const out = [];
+        if (it.nuevas > 0) out.push(`${it.nuevas} nuevas`);
+        if (it.modificadas > 0) out.push(`${it.modificadas} modificadas`);
+        if (it.eliminadas > 0) out.push(`${it.eliminadas} eliminadas`);
+        return out.join(' · ');
+    };
+
+    return (
+        <Card title="Modificaciones recientes">
+            {ultima && (
+                <p className="mb-2 text-xs text-slate-500">
+                    Última actualización: <span className="font-semibold text-slate-700">{ultima}</span>
+                </p>
+            )}
+            {items.length === 0 ? (
+                <Empty>Sin cambios recientes en los listados.</Empty>
+            ) : (
+                <ul className="space-y-2">
+                    {items.map((it, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm">
+                            <span className={clsx('mt-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase', it.tipo === 'participantes' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700')}>
+                                {it.tipo === 'participantes' ? 'Bolsa' : 'Vacantes'}
+                            </span>
+                            <div className="min-w-0">
+                                <p className="truncate text-slate-700" title={it.proceso}>{it.proceso}</p>
+                                <p className="text-xs text-slate-500">
+                                    {parts(it)}
+                                    {it.fecha && <span className="text-slate-400"> · {formatListadoDate(it.fecha)}</span>}
+                                </p>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </Card>
+    );
+}
 
 // Personal info summary card (full width).
 function InfoCard({ info }) {
