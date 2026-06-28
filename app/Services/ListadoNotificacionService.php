@@ -78,4 +78,29 @@ class ListadoNotificacionService
 
         return $users->count();
     }
+
+    /**
+     * Notify the registered users whose entry was removed from a listing on
+     * re-import (matched by lower-cased nombre_gva).
+     *
+     * @param  array<int, string>  $removedLowerNames
+     */
+    public function notifyEliminados(Proceso $proceso, array $removedLowerNames): int
+    {
+        $names = array_values(array_unique(array_filter($removedLowerNames)));
+        if (empty($names)) {
+            return 0;
+        }
+
+        $users = User::whereNotNull('nombre_gva')->get()
+            ->filter(fn (User $u) => in_array(mb_strtolower(trim((string) $u->nombre_gva)), $names, true));
+
+        if ($users->isEmpty()) {
+            return 0;
+        }
+
+        Notification::send($users, new \App\Notifications\EliminadoDeListado($proceso));
+
+        return $users->count();
+    }
 }

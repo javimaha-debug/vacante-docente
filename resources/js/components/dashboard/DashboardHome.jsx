@@ -132,7 +132,20 @@ export default function DashboardHome() {
     });
 
     if (isLoading) {
-        return <div className="flex h-40 items-center justify-center text-sm text-slate-400">Cargando…</div>;
+        return (
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2" role="status" aria-label="Cargando panel">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="animate-pulse rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+                        <div className="mb-4 h-4 w-1/3 rounded bg-slate-200" />
+                        <div className="space-y-2">
+                            <div className="h-3 w-full rounded bg-slate-100" />
+                            <div className="h-3 w-5/6 rounded bg-slate-100" />
+                            <div className="h-3 w-2/3 rounded bg-slate-100" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
     }
 
     if (isError) {

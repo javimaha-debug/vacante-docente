@@ -135,7 +135,10 @@ class ImportParticipantesPdf extends Command
         }
         unset($row);
 
-        $eliminados = $isFirst ? 0 : count(array_diff_key($old, $newKeys));
+        $removedKeys = $isFirst ? [] : array_keys(array_diff_key($old, $newKeys));
+        $eliminados = count($removedKeys);
+        // diffKey = "lower(nombre)|especialidad_codigo" → recover the names.
+        $removedNames = array_map(fn ($k) => substr($k, 0, strrpos($k, '|') ?: 0) ?: $k, $removedKeys);
 
         DB::transaction(function () use ($proceso, $rows, $now, $isFirst, $nuevos, $modificados, $eliminados) {
             ParticipanteProceso::where('proceso_id', $proceso->id)->delete();
@@ -168,9 +171,11 @@ class ImportParticipantesPdf extends Command
         if (! $isFirst) {
             $this->info("Cambios vs listado anterior: {$nuevos} nuevos, {$modificados} modificados, {$eliminados} eliminados.");
 
-            $notified = app(\App\Services\ListadoNotificacionService::class)->notifyParticipantes($proceso, [
+            $service = app(\App\Services\ListadoNotificacionService::class);
+            $notified = $service->notifyParticipantes($proceso, [
                 'nuevos' => $nuevos, 'modificados' => $modificados, 'eliminados' => $eliminados,
             ]);
+            $notified += $service->notifyEliminados($proceso, $removedNames);
             if ($notified > 0) {
                 $this->info("Notificados {$notified} usuarios afectados.");
             }

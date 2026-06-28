@@ -98,7 +98,7 @@ export default function VacancyRow({
                             {driving.km != null && <div className="text-[11px] text-slate-400">{driving.km} km</div>}
                         </>
                     ) : (
-                        <div className="text-[11px] text-slate-300">sin calcular</div>
+                        <div className="text-[11px] text-slate-500">sin calcular</div>
                     )}
                 </div>
 
@@ -174,7 +174,7 @@ export default function VacancyRow({
                             </span>
                         );
                     })}
-                    {driving?.trafficNote && <span className="text-slate-300">· {driving.trafficNote}</span>}
+                    {driving?.trafficNote && <span className="text-slate-400">· {driving.trafficNote}</span>}
                 </div>
             )}
 
