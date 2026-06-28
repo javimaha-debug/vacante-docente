@@ -8,7 +8,9 @@ use App\Models\UserList;
 use App\Models\Vacancy;
 use App\Services\DistanceCacheRepository;
 use App\Services\GoogleMapsService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class DistanceController extends Controller
@@ -112,6 +114,14 @@ class DistanceController extends Controller
                     ];
                     $stored = $this->cache->store($vacancy->id, $homeLat, $homeLng, $key, $payload);
                     $entries[$vacancy->id][$key] = $this->cache->payload($stored);
+                }
+            } catch (QueryException $e) {
+                // DB-level failure (e.g. a leftover CHECK constraint) — log the
+                // detail but show the user something readable, not raw SQL.
+                Log::error('Distance cache write failed', ['error' => $e->getMessage(), 'mode' => $key]);
+                $apiError = 'No se pudieron guardar los tiempos calculados. Inténtalo de nuevo en unos minutos.';
+                foreach ($toProcess as $vacancy) {
+                    $entries[$vacancy->id][$key] = null;
                 }
             } catch (RuntimeException $e) {
                 $apiError = $e->getMessage();
