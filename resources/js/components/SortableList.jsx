@@ -16,7 +16,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import VacancyCard from './VacancyCard';
 
-function SortableCard({ item, index, onStatusChange, onNotesChange }) {
+function SortableCard({ item, index, home, onStatusChange, onNotesChange }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: item.vacancy_id,
     });
@@ -34,6 +34,7 @@ function SortableCard({ item, index, onStatusChange, onNotesChange }) {
                 status="selected"
                 position={index + 1}
                 notes={item.notes ?? ''}
+                home={home}
                 onStatusChange={(status) => onStatusChange(item.vacancy_id, status)}
                 onNotesChange={(notes) => onNotesChange(item.vacancy_id, notes)}
                 dragHandleProps={{ ...attributes, ...listeners }}
@@ -43,7 +44,7 @@ function SortableCard({ item, index, onStatusChange, onNotesChange }) {
     );
 }
 
-export default function SortableList({ items, onReorder, onStatusChange, onNotesChange, emptyLabel }) {
+export default function SortableList({ items, home, onReorder, onStatusChange, onNotesChange, emptyLabel }) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -78,6 +79,7 @@ export default function SortableList({ items, onReorder, onStatusChange, onNotes
                             key={item.vacancy_id}
                             item={item}
                             index={index}
+                            home={home}
                             onStatusChange={onStatusChange}
                             onNotesChange={onNotesChange}
                         />

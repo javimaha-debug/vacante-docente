@@ -16,7 +16,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import VacancyRow from './VacancyRow';
 
-function SortableRow({ item, index, onStatusChange, onNotesChange }) {
+function SortableRow({ item, index, home, onStatusChange, onNotesChange }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: item.vacancy_id,
     });
@@ -34,6 +34,7 @@ function SortableRow({ item, index, onStatusChange, onNotesChange }) {
                 status="selected"
                 position={index + 1}
                 notes={item.notes ?? ''}
+                home={home}
                 onStatusChange={(status) => onStatusChange(item.vacancy_id, status)}
                 onNotesChange={(notes) => onNotesChange(item.vacancy_id, notes)}
                 dragHandleProps={{ ...attributes, ...listeners }}
@@ -44,7 +45,7 @@ function SortableRow({ item, index, onStatusChange, onNotesChange }) {
 }
 
 // Drag-and-drop list of compact rows used for the prioritised vacancy list.
-export default function SortableRows({ items, onReorder, onStatusChange, onNotesChange, emptyLabel }) {
+export default function SortableRows({ items, home, onReorder, onStatusChange, onNotesChange, emptyLabel }) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -76,6 +77,7 @@ export default function SortableRows({ items, onReorder, onStatusChange, onNotes
                     {items.map((item, index) => (
                         <SortableRow
                             key={item.vacancy_id}
+                            home={home}
                             item={item}
                             index={index}
                             onStatusChange={onStatusChange}

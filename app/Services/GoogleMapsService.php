@@ -232,6 +232,66 @@ class GoogleMapsService
     }
 
     /**
+     * Direction-aware batch matrix: outbound ("ida", home → centre) or return
+     * ("tornada", centre → home) for a given mode and departure time.
+     * Up to 25 vacancies per Distance Matrix request.
+     *
+     * @param  \Illuminate\Support\Collection<int, Vacancy>|array<int, Vacancy>  $vacancies
+     * @return array<int, array{duration_minutes: int|null, distance_km: float|null, traffic_note: string|null}>
+     */
+    public function travelMatrix(float $homeLat, float $homeLng, $vacancies, string $mode, string $direction, ?int $departureTs): array
+    {
+        $this->ensureConfigured();
+
+        $vacancies = collect($vacancies)->values();
+        $home = sprintf('%F,%F', $homeLat, $homeLng);
+        $isReturn = $direction === 'tornada';
+        $out = [];
+
+        foreach ($vacancies->chunk(25) as $chunk) {
+            $chunk = $chunk->values();
+            $centres = $chunk->map(fn (Vacancy $v) => $this->destinationFor($v))->implode('|');
+
+            $params = [
+                'origins' => $isReturn ? $centres : $home,
+                'destinations' => $isReturn ? $home : $centres,
+                'mode' => $mode,
+                'language' => 'es',
+                'region' => 'es',
+                'units' => 'metric',
+                'key' => $this->apiKey,
+            ];
+
+            if ($departureTs && ($mode === 'driving' || $mode === 'transit')) {
+                $params['departure_time'] = $departureTs;
+                if ($mode === 'driving') {
+                    $params['traffic_model'] = 'best_guess';
+                }
+            }
+
+            $response = Http::timeout(30)->get(self::DISTANCE_MATRIX_URL, $params);
+            $data = $response->json();
+            $status = $data['status'] ?? 'UNKNOWN_ERROR';
+
+            if (! $response->successful() || $status !== 'OK') {
+                Log::warning('Distance Matrix matrix failed', ['status' => $status, 'mode' => $mode, 'dir' => $direction]);
+                throw new RuntimeException('Distance Matrix failed: '.$status);
+            }
+
+            foreach ($chunk as $i => $vacancy) {
+                // ida: one origin (home), N destinations → rows[0].elements[i].
+                // tornada: N origins (centres), one destination → rows[i].elements[0].
+                $element = $isReturn
+                    ? ($data['rows'][$i]['elements'][0] ?? null)
+                    : ($data['rows'][0]['elements'][$i] ?? null);
+                $out[$vacancy->id] = $this->parseElement($element, $mode);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Normalise a single Distance Matrix element into our payload shape.
      *
      * @param  array<string, mixed>|null  $element
@@ -289,6 +349,19 @@ class GoogleMapsService
         return Carbon::now()
             ->next(Carbon::MONDAY)
             ->setTime(8, 0, 0);
+    }
+
+    /**
+     * Next Monday at HH:MM (defaults to 08:00) — a representative school day in
+     * the future, used as the traffic-aware departure time.
+     */
+    public function nextMondayAt(?string $time): Carbon
+    {
+        [$h, $m] = array_pad(explode(':', (string) $time), 2, '0');
+
+        return Carbon::now()
+            ->next(Carbon::MONDAY)
+            ->setTime((int) $h ?: 8, (int) $m, 0);
     }
 
     private function ensureConfigured(): void
