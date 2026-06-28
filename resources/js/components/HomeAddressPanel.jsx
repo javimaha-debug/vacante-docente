@@ -47,6 +47,15 @@ export default function HomeAddressPanel({ list, geocode, distances, vacancyIds 
     const vacancyIdsRef = useRef(vacancyIds);
     vacancyIdsRef.current = vacancyIds;
 
+    // Reflect the address once it arrives on the list (e.g. preloaded from the
+    // user's profile) without clobbering what the user is typing.
+    useEffect(() => {
+        if (list?.home_address && !address) {
+            setAddress(list.home_address);
+            setPicked(true);
+        }
+    }, [list?.home_address]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const { data: suggest } = useQuery({
         queryKey: ['geocode', debounced],
         enabled: Boolean(debounced && debounced.length >= 3 && !picked),
@@ -67,6 +76,7 @@ export default function HomeAddressPanel({ list, geocode, distances, vacancyIds 
             let remaining = total;
             let last = Infinity;
             let guard = 0;
+            let apiError = null;
             do {
                 setMessage(`Calculando tiempos… ${total - remaining}/${total}`);
                 const res = await distances.calculate.mutateAsync({
@@ -79,12 +89,23 @@ export default function HomeAddressPanel({ list, geocode, distances, vacancyIds 
                     // legs that are still pending instead of redoing the first chunk.
                     force: guard === 0,
                 });
+                if (res.error) apiError = res.error;
                 remaining = res.remaining ?? 0;
                 if (remaining >= last) break;
                 last = remaining;
             } while (remaining > 0 && ++guard < 60);
-            setStatus('done');
-            setMessage(null);
+
+            // Report honestly: a green "done" only when Google actually answered.
+            if (apiError) {
+                setStatus('error');
+                setMessage(
+                    'No se pudieron calcular los tiempos. Revisa que la Distance Matrix API esté habilitada en Google Cloud (' +
+                        apiError + ').'
+                );
+            } else {
+                setStatus('done');
+                setMessage(null);
+            }
         } catch (err) {
             setStatus('error');
             setMessage(err.friendlyMessage ?? 'No se pudieron calcular los tiempos.');
