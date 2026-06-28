@@ -242,6 +242,48 @@ class ParticipantesTest extends TestCase
             ->assertJsonPath('cambio', 'modificado');
     }
 
+    public function test_parser_captures_centre_code_in_adjudication(): void
+    {
+        $rows = (new ImportParticipantesPdf())->parseText(self::LAYOUT);
+
+        $this->assertSame('46011223', $rows[2]['centro_codigo']);
+    }
+
+    public function test_matching_writes_user_historial_for_adjudicated(): void
+    {
+        $cv = Ccaa::create(['code' => 'CV', 'name' => 'CV', 'is_active' => true]);
+        $col = Colectivo::create(['ccaa_id' => $cv->id, 'code' => 'INTERINO', 'name' => 'Interins', 'body' => 'SECUNDARIA']);
+        $spec = \App\Models\Specialty::create(['code' => '218', 'codigo' => '218', 'name' => 'Orientació', 'body' => 'Profesores de Enseñanza Secundaria', 'education_level' => 'secundaria', 'ccaa_id' => $cv->id]);
+        $proceso = Proceso::create([
+            'ccaa_id' => $cv->id, 'colectivo_id' => $col->id, 'anyo' => 2026, 'curso' => '2026-2027',
+            'nombre' => 'Interins 2026-2027', 'estado' => 'publicado',
+        ]);
+        $centro = \App\Models\Centro::create(['ccaa_id' => $cv->id, 'codigo' => '46011223', 'nombre' => 'IES LA FONT', 'tipo' => 'IES', 'localidad' => 'València', 'provincia' => 'València']);
+        $user = User::factory()->create(['nombre_gva' => 'MARTINEZ RUIZ, LAURA']);
+
+        $rows = [[
+            'posicion' => 3, 'nombre_gva' => 'MARTINEZ RUIZ, LAURA', 'estado' => 'Adjudicat',
+            'lloc_adjudicado' => '896238', 'centro_nombre' => 'IES LA FONT', 'centro_codigo' => '46011223',
+            'localitat' => 'València', 'especialidad_codigo' => '218', 'jornada' => 'Jornada completa',
+        ]];
+
+        // matchToUsers is private; exercise it directly.
+        $cmd = new ImportParticipantesPdf();
+        $m = new \ReflectionMethod($cmd, 'matchToUsers');
+        $m->setAccessible(true);
+        $updates = $m->invoke($cmd, $proceso, $rows);
+
+        $this->assertSame(1, $updates);
+        $this->assertDatabaseHas('user_especialidades', [
+            'user_id' => $user->id, 'specialty_id' => $spec->id, 'anyo' => 2026, 'posicion_bolsa' => 3, 'estado_bolsa' => 'Adjudicat',
+        ]);
+        $this->assertDatabaseHas('user_historial', [
+            'user_id' => $user->id, 'specialty_id' => $spec->id, 'anyo' => 2026,
+            'estado' => 'Adjudicat', 'centro_adjudicado_id' => $centro->id,
+            'lloc_adjudicado' => '896238', 'jornada_adjudicada' => 'Jornada completa',
+        ]);
+    }
+
     public function test_parser_handles_multiline_adjudication(): void
     {
         $layout = <<<TXT
