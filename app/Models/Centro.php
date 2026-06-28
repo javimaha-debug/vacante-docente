@@ -21,6 +21,7 @@ class Centro extends Model
         'localidad',
         'provincia',
         'direccion',
+        'direccion_oficial',
         'telefono',
         'email',
         'web',

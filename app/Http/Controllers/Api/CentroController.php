@@ -143,6 +143,7 @@ class CentroController extends Controller
         return response()->json([
             'centro' => $this->cardArray($centro, false) + [
                 'direccion' => $centro->direccion,
+                'direccion_oficial' => $centro->direccion_oficial,
                 'telefono' => $centro->telefono,
                 'email' => $centro->email,
                 'web' => $centro->web,

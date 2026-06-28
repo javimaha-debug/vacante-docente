@@ -70,6 +70,33 @@ class GvaCentrosService
     }
 
     /**
+     * Fetch just the official contact data for a centro code, shaped for the
+     * `centros:enrich-gva` command: web, telefono, email and the official
+     * postal address (mapped to `direccion_oficial`). Returns null when the
+     * directory has no record for the code.
+     *
+     * @return array{web?: string, telefono?: string, email?: string, direccion_oficial?: string}|null
+     */
+    public function contactData(string $codigo): ?array
+    {
+        $json = $this->fetchDetalle($codigo);
+        if ($json === null) {
+            return null;
+        }
+
+        $attrs = $this->mapAttributes($json);
+
+        $contact = array_filter([
+            'web' => $attrs['web'] ?? null,
+            'telefono' => $attrs['telefono'] ?? null,
+            'email' => $attrs['email'] ?? null,
+            'direccion_oficial' => $attrs['direccion'] ?? null,
+        ], fn ($v) => filled($v));
+
+        return $contact;
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function fetchDetalle(string $codigo): ?array

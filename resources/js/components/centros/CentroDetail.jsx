@@ -6,6 +6,13 @@ import { useAuth } from '../../hooks/useAuth';
 
 const CURSO = '2025-2026';
 
+// GVA web values sometimes omit the scheme (e.g. "www.centro.es"); ensure the
+// link is absolute so it doesn't resolve relative to the SPA.
+function normalizeUrl(url) {
+    if (!url) return url;
+    return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
 function Stars({ value }) {
     const full = Math.round(value || 0);
     return <span className="text-amber-500">{'★'.repeat(full)}{'☆'.repeat(Math.max(0, 5 - full))}</span>;
@@ -62,11 +69,22 @@ export default function CentroDetail() {
                     <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-700">{centro.tipo}</span>
                 </div>
                 <dl className="mt-3 grid grid-cols-1 gap-1 text-sm text-slate-600 sm:grid-cols-2">
-                    {centro.direccion && <div>📍 {centro.direccion}</div>}
-                    {centro.telefono && <div>📞 {centro.telefono}</div>}
-                    {centro.email && <div>✉️ {centro.email}</div>}
-                    {centro.web && <div>🌐 <a href={centro.web} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">Web</a></div>}
+                    {(centro.direccion_oficial || centro.direccion) && <div>📍 {centro.direccion_oficial || centro.direccion}</div>}
+                    {centro.telefono && <div>📞 <a href={`tel:${centro.telefono}`} className="text-brand-600 hover:underline">{centro.telefono}</a></div>}
+                    {centro.email && <div>✉️ <a href={`mailto:${centro.email}`} className="text-brand-600 hover:underline">{centro.email}</a></div>}
+                    {centro.web && <div>🌐 <a href={normalizeUrl(centro.web)} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">Página web</a></div>}
                 </dl>
+
+                {centro.web && (
+                    <a
+                        href={normalizeUrl(centro.web)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                    >
+                        🌐 Ir a web oficial
+                    </a>
+                )}
 
                 {hasCoords && (
                     <iframe
