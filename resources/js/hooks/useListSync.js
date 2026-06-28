@@ -44,7 +44,9 @@ export function useListSync({ specialtyId, procesoId, enabled }) {
                     clearTimeout(savedTimer.current);
                     savedTimer.current = setTimeout(() => setStatus('idle'), 2000);
                 } catch {
-                    setStatus('idle');
+                    // Surface the failure instead of silently reverting to idle
+                    // (the user must know their list didn't save).
+                    setStatus('error');
                 }
             }, 500);
         },

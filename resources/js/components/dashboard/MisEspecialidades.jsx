@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import api from '../../lib/api';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 const CURRENT_YEAR = 2026;
 
@@ -22,6 +23,7 @@ function EstadoBadge({ estado }) {
 
 function AddSpecialtyModal({ onClose, onAdd, existingIds }) {
     const [search, setSearch] = useState('');
+    useEscapeKey(onClose);
 
     const { data, isLoading } = useQuery({
         queryKey: ['specialties'],
@@ -42,11 +44,14 @@ function AddSpecialtyModal({ onClose, onAdd, existingIds }) {
     return (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="add-specialty-title"
                 className="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="border-b border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-800">Añadir especialidad</h3>
+                    <h3 id="add-specialty-title" className="text-sm font-bold text-slate-800">Añadir especialidad</h3>
                     <input
                         autoFocus
                         type="text"
@@ -174,9 +179,13 @@ export default function MisEspecialidades({ embedded = false }) {
                                 <div className="flex items-center gap-2">
                                     <EstadoBadge estado={esp.estado_bolsa} />
                                     <button
-                                        onClick={() => remove.mutate(esp.specialty_id)}
+                                        onClick={() => {
+                                            if (window.confirm(`¿Eliminar la especialidad «${esp.specialty_name}»? Se perderá su posición registrada.`)) {
+                                                remove.mutate(esp.specialty_id);
+                                            }
+                                        }}
                                         className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                                        aria-label="Eliminar"
+                                        aria-label={`Eliminar ${esp.specialty_name}`}
                                     >
                                         ✕
                                     </button>

@@ -197,6 +197,7 @@ function StatusButton({ active, color, children, onClick }) {
         <button
             type="button"
             onClick={onClick}
+            aria-pressed={active}
             className={clsx('rounded-md px-2 py-1 text-[11px] font-semibold transition', palette[color])}
         >
             {children}

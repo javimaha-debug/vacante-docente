@@ -268,7 +268,7 @@ export default function KanbanBoard({
                 <Column id="discarded" title="Descartadas" count={discarded.length} accent="bg-rose-400">
                     {!showDiscarded ? (
                         <p className="px-2 py-6 text-center text-xs text-slate-400">
-                            Activa «Mostrar descartadas» en los filtros para verlas.
+                            Marca «Descartada» en «Estado en mi lista» (filtros) para verlas.
                         </p>
                     ) : (
                         <SortableContext items={discardedIds} strategy={verticalListSortingStrategy}>

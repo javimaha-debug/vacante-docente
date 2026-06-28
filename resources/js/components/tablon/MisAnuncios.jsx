@@ -50,7 +50,7 @@ export default function MisAnuncios() {
                                 <span className={clsx('rounded-full px-2 py-0.5 text-xs font-bold', BADGES[a.categoria])}>{a.categoria}</span>
                                 <div className="flex items-center gap-2">
                                     <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-700">{a.contactos_count} contactos</span>
-                                    <button onClick={() => del.mutate(a.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label="Eliminar">✕</button>
+                                    <button onClick={() => { if (window.confirm('¿Eliminar este anuncio? Se borrarán también sus contactos.')) del.mutate(a.id); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label="Eliminar anuncio">✕</button>
                                 </div>
                             </div>
                             <p className="mt-2 text-sm font-semibold text-slate-800">{a.titulo}</p>

@@ -201,6 +201,7 @@ function ActionButton({ active, activeClass, idleClass, title, onClick, children
             type="button"
             title={title}
             aria-label={title}
+            aria-pressed={active}
             onClick={onClick}
             className={clsx('rounded-md p-1.5 transition', active ? activeClass : idleClass)}
         >
