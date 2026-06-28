@@ -88,6 +88,51 @@ export default function FiltersPanel({ filters, setFilters, counts, showDiscarde
                 </div>
             </div>
 
+            <div>
+                <Label>Características</Label>
+                <div className="space-y-1">
+                    <Checkbox
+                        label="Requisit lingüístic"
+                        checked={Boolean(filters.reqLing)}
+                        onChange={() => setFilters((f) => ({ ...f, reqLing: !f.reqLing }))}
+                    />
+                    <Checkbox
+                        label="Itinerant"
+                        checked={Boolean(filters.itinerante)}
+                        onChange={() => setFilters((f) => ({ ...f, itinerante: !f.itinerante }))}
+                    />
+                </div>
+            </div>
+
+            <div>
+                <Label>Distancia máxima (km)</Label>
+                <input
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    value={filters.maxDistance ?? ''}
+                    onChange={(e) => setFilters((f) => ({ ...f, maxDistance: e.target.value }))}
+                    placeholder="Sin límite"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-200"
+                />
+                <p className="mt-1 text-[11px] text-slate-400">Calcula las distancias primero (arriba).</p>
+            </div>
+
+            <div>
+                <Label>Ordenar por</Label>
+                <select
+                    value={filters.sort ?? 'priority'}
+                    onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-200"
+                >
+                    <option value="priority">Mi prioridad</option>
+                    <option value="distance">Distancia (más cerca)</option>
+                    <option value="num">Número de vacante</option>
+                    <option value="localidad">Localidad (A-Z)</option>
+                    <option value="centro">Centro (A-Z)</option>
+                </select>
+            </div>
+
             <label className="flex cursor-pointer items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
                 Mostrar descartadas
                 <input

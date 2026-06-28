@@ -9,8 +9,8 @@ import SpecialtySelector from './components/SpecialtySelector';
 import FiltersPanel from './components/FiltersPanel';
 import HomeAddressPanel from './components/HomeAddressPanel';
 import KanbanBoard from './components/KanbanBoard';
-import SortableList from './components/SortableList';
-import VacancyCard from './components/VacancyCard';
+import SortableRows from './components/SortableRows';
+import VacancyRow from './components/VacancyRow';
 import ExportPanel from './components/ExportPanel';
 import ProcesoSelector from './components/ProcesoSelector';
 
@@ -37,7 +37,16 @@ const queryClient = new QueryClient({
     defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
 });
 
-const EMPTY_FILTERS = { search: '', provincia: '', tiposCentro: [], tags: [] };
+const EMPTY_FILTERS = {
+    search: '',
+    provincia: '',
+    tiposCentro: [],
+    tags: [],
+    reqLing: false,
+    itinerante: false,
+    maxDistance: '',
+    sort: 'priority',
+};
 
 function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
     const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -45,7 +54,6 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
     const [viewMode, setViewMode] = useState(initialView);
     const [exporting, setExporting] = useState(false);
     const [procesoId, setProcesoIdState] = useState(getProcesoId);
-    const [sortBy, setSortBy] = useState('default'); // 'default' | 'distance'
     const notesTimers = useRef({});
     const hydratedRef = useRef(false);
 
@@ -85,17 +93,33 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
         [vacancies, prefByVacancy]
     );
 
-    // Optional ordering by driving distance (falls back to duration), so the
-    // list can be organized by proximity. Vacancies without a computed
-    // distance sink to the bottom.
+    // Candidate list with the powerful filters applied client-side: a maximum
+    // driving distance and the chosen ordering. (Province / type / req. ling. /
+    // itinerant / search are already applied server-side.)
     const neutralSorted = useMemo(() => {
-        if (sortBy !== 'distance') return neutral;
-        const metric = (v) => {
-            const d = v.distances?.driving;
-            return d?.distance_km ?? (d?.duration_minutes != null ? d.duration_minutes / 10 : Infinity);
-        };
-        return [...neutral].sort((a, b) => metric(a) - metric(b));
-    }, [neutral, sortBy]);
+        const drivingKm = (v) => v.distances?.driving?.distance_km ?? null;
+
+        let list = neutral;
+        const max = parseFloat(filters.maxDistance);
+        if (!Number.isNaN(max)) {
+            list = list.filter((v) => {
+                const km = drivingKm(v);
+                return km != null && km <= max;
+            });
+        }
+
+        const sort = filters.sort ?? 'priority';
+        if (sort === 'priority') return list;
+
+        const cmp = {
+            distance: (a, b) => (drivingKm(a) ?? Infinity) - (drivingKm(b) ?? Infinity),
+            num: (a, b) => (a.num ?? 0) - (b.num ?? 0),
+            localidad: (a, b) => (a.localidad ?? '').localeCompare(b.localidad ?? ''),
+            centro: (a, b) => (a.centro_nombre ?? '').localeCompare(b.centro_nombre ?? ''),
+        }[sort];
+
+        return cmp ? [...list].sort(cmp) : list;
+    }, [neutral, filters.maxDistance, filters.sort]);
 
     const persist = useCallback(
         (rows) => savePreferences.mutate(rows),
@@ -190,17 +214,6 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
                     onChange={handleProcesoChange}
                     colectivoBody={user?.colectivo?.body ?? null}
                 />
-                <div className="mt-2 flex items-center gap-2">
-                    <label className="text-xs font-semibold text-slate-500">Ordenar</label>
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm focus:border-brand-400 focus:ring-brand-400"
-                    >
-                        <option value="default">Por defecto</option>
-                        <option value="distance">Por distancia</option>
-                    </select>
-                </div>
                 {isAuthenticated && (
                     <p className="mt-2 text-xs font-medium text-slate-400">
                         {syncStatus === 'saving' && <span className="text-amber-600">Guardando…</span>}
@@ -270,14 +283,18 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
     );
 }
 
+// Powerful working list: one compact row per vacancy, with the prioritised
+// list (drag-and-drop to move a vacancy up/down) on top and the filtered/sorted
+// candidates below. Distance is shown inline on every row.
 function ListView({ selected, neutral, onStatusChange, onNotesChange, onReorder, hasMore, onLoadMore, isLoadingMore }) {
     return (
-        <div className="scroll-thin mx-auto h-full max-w-3xl space-y-6 overflow-y-auto pr-1">
+        <div className="scroll-thin mx-auto h-full max-w-4xl space-y-6 overflow-y-auto pr-1">
             <section>
                 <h2 className="mb-2 text-sm font-bold text-slate-700">
                     Mi lista priorizada <span className="text-slate-400">({selected.length})</span>
+                    <span className="ml-2 text-xs font-normal text-slate-400">arrastra ⠿ para ordenar</span>
                 </h2>
-                <SortableList
+                <SortableRows
                     items={selected}
                     onReorder={onReorder}
                     onStatusChange={onStatusChange}
@@ -287,11 +304,11 @@ function ListView({ selected, neutral, onStatusChange, onNotesChange, onReorder,
 
             <section>
                 <h2 className="mb-2 text-sm font-bold text-slate-700">
-                    Todas las vacantes <span className="text-slate-400">({neutral.length})</span>
+                    Vacantes <span className="text-slate-400">({neutral.length})</span>
                 </h2>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                     {neutral.map((v) => (
-                        <VacancyCard
+                        <VacancyRow
                             key={v.id}
                             vacancy={v}
                             status="neutral"
@@ -299,6 +316,11 @@ function ListView({ selected, neutral, onStatusChange, onNotesChange, onReorder,
                         />
                     ))}
                 </div>
+                {neutral.length === 0 && (
+                    <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-slate-400">
+                        No hay vacantes con estos filtros.
+                    </p>
+                )}
                 {hasMore && (
                     <button
                         onClick={onLoadMore}
