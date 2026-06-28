@@ -226,7 +226,9 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban' }) {
                 list={list}
                 geocode={geocode}
                 distances={distances}
-                vacancyIds={vacancies.map((v) => v.id)}
+                // Only compute travel times for the vacancies in "Mi lista" —
+                // far fewer Google calls than the whole loaded set.
+                vacancyIds={selected.map((p) => p.vacancy_id)}
             />
             <FiltersPanel
                 filters={filters}

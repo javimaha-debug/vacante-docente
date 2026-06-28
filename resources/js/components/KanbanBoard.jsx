@@ -1,11 +1,64 @@
-import { useState } from 'react';
 import clsx from 'clsx';
+import {
+    DndContext,
+    DragOverlay,
+    KeyboardSensor,
+    PointerSensor,
+    closestCorners,
+    useSensor,
+    useSensors,
+    useDroppable,
+} from '@dnd-kit/core';
+import {
+    SortableContext,
+    arrayMove,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useState } from 'react';
 import VacancyCard from './VacancyCard';
-import SortableList from './SortableList';
 
-function Column({ title, count, accent, children, footer }) {
+const STATUS_OF = { neutral: 'neutral', selected: 'selected', discarded: 'discarded' };
+
+// A card that can be dragged (by its ⠿ handle) between columns and reordered
+// within "Mi lista". The handle keeps the ✓/✕/notes buttons fully clickable.
+function SortableVacancyCard({ id, vacancy, status, position, notes, home, onStatusChange, onNotesChange }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : undefined,
+        opacity: isDragging ? 0.5 : 1,
+    };
     return (
-        <div className="flex min-h-0 flex-col rounded-xl bg-slate-50/80 ring-1 ring-slate-200">
+        <div ref={setNodeRef} style={style}>
+            <VacancyCard
+                vacancy={vacancy}
+                status={status}
+                position={position}
+                notes={notes ?? ''}
+                home={home}
+                onStatusChange={onStatusChange}
+                onNotesChange={onNotesChange}
+                dragHandleProps={{ ...attributes, ...listeners }}
+                isDragging={isDragging}
+            />
+        </div>
+    );
+}
+
+function Column({ id, title, count, accent, children, footer }) {
+    const { setNodeRef, isOver } = useDroppable({ id });
+    return (
+        <div
+            ref={setNodeRef}
+            className={clsx(
+                'flex min-h-0 flex-col rounded-xl bg-slate-50/80 ring-1 transition',
+                isOver ? 'bg-brand-50/40 ring-2 ring-brand-300' : 'ring-slate-200'
+            )}
+        >
             <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
                 <div className="flex items-center gap-2">
                     <span className={clsx('h-2.5 w-2.5 rounded-full', accent)} />
@@ -34,85 +87,166 @@ export default function KanbanBoard({
     onLoadMore,
     isLoadingMore,
 }) {
-    const [discardedOpen, setDiscardedOpen] = useState(false);
+    const [activeId, setActiveId] = useState(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const neutralIds = neutral.map((v) => v.id);
+    const selectedIds = selected.map((i) => i.vacancy_id);
+    const discardedIds = discarded.map((i) => i.vacancy_id);
+
+    // Which column a given id lives in. `over.id` can also be a column id when
+    // hovering an empty area of a column.
+    const columnOf = (id) => {
+        if (id in STATUS_OF) return id;
+        if (neutralIds.includes(id)) return 'neutral';
+        if (selectedIds.includes(id)) return 'selected';
+        if (discardedIds.includes(id)) return 'discarded';
+        return null;
+    };
+
+    const activeVacancy =
+        neutral.find((v) => v.id === activeId) ||
+        selected.find((i) => i.vacancy_id === activeId)?.vacancy ||
+        discarded.find((i) => i.vacancy_id === activeId)?.vacancy ||
+        null;
+
+    const handleDragEnd = (event) => {
+        setActiveId(null);
+        const { active, over } = event;
+        if (!over) return;
+
+        const from = columnOf(active.id);
+        const to = columnOf(over.id);
+        if (!from || !to) return;
+
+        if (from !== to) {
+            // Dropped on a different column → change the vacancy's status.
+            onStatusChange(active.id, to);
+            return;
+        }
+
+        // Same column: only "Mi lista" supports manual reordering.
+        if (to === 'selected' && active.id !== over.id && over.id !== 'selected') {
+            const oldIndex = selectedIds.indexOf(active.id);
+            const newIndex = selectedIds.indexOf(over.id);
+            if (oldIndex !== -1 && newIndex !== -1) {
+                onReorder(arrayMove(selectedIds, oldIndex, newIndex));
+            }
+        }
+    };
 
     return (
-        <div className="grid h-full min-h-0 grid-cols-1 gap-3 lg:grid-cols-3">
-            {/* Sin revisar */}
-            <Column
-                title="Sin revisar"
-                count={neutral.length}
-                accent="bg-slate-400"
-                footer={
-                    hasMore && (
-                        <div className="border-t border-slate-200 p-2">
-                            <button
-                                onClick={onLoadMore}
-                                disabled={isLoadingMore}
-                                className="w-full rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-brand-600 ring-1 ring-slate-200 hover:bg-brand-50 disabled:opacity-60"
-                            >
-                                {isLoadingMore ? 'Cargando…' : 'Cargar más'}
-                            </button>
-                        </div>
-                    )
-                }
-            >
-                {neutral.length === 0 ? (
-                    <p className="px-2 py-6 text-center text-xs text-slate-400">No hay vacantes con estos filtros.</p>
-                ) : (
-                    neutral.map((v) => (
-                        <VacancyCard
-                            key={v.id}
-                            vacancy={v}
-                            status="neutral"
-                            home={home}
-                            onStatusChange={(status) => onStatusChange(v.id, status)}
-                        />
-                    ))
-                )}
-            </Column>
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={(e) => setActiveId(e.active.id)}
+            onDragCancel={() => setActiveId(null)}
+            onDragEnd={handleDragEnd}
+        >
+            <div className="grid h-full min-h-0 grid-cols-1 gap-3 lg:grid-cols-3">
+                {/* Sin revisar */}
+                <Column
+                    id="neutral"
+                    title="Sin revisar"
+                    count={neutral.length}
+                    accent="bg-slate-400"
+                    footer={
+                        hasMore && (
+                            <div className="border-t border-slate-200 p-2">
+                                <button
+                                    onClick={onLoadMore}
+                                    disabled={isLoadingMore}
+                                    className="w-full rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-brand-600 ring-1 ring-slate-200 hover:bg-brand-50 disabled:opacity-60"
+                                >
+                                    {isLoadingMore ? 'Cargando…' : 'Cargar más'}
+                                </button>
+                            </div>
+                        )
+                    }
+                >
+                    <SortableContext items={neutralIds} strategy={verticalListSortingStrategy}>
+                        {neutral.length === 0 ? (
+                            <p className="px-2 py-6 text-center text-xs text-slate-400">
+                                No hay vacantes con estos filtros.
+                            </p>
+                        ) : (
+                            neutral.map((v) => (
+                                <SortableVacancyCard
+                                    key={v.id}
+                                    id={v.id}
+                                    vacancy={v}
+                                    status="neutral"
+                                    home={home}
+                                    onStatusChange={(status) => onStatusChange(v.id, status)}
+                                />
+                            ))
+                        )}
+                    </SortableContext>
+                </Column>
 
-            {/* Mi lista (sortable) */}
-            <Column title="Mi lista" count={selected.length} accent="bg-emerald-500">
-                <SortableList
-                    items={selected}
-                    home={home}
-                    onReorder={onReorder}
-                    onStatusChange={onStatusChange}
-                    onNotesChange={onNotesChange}
-                    emptyLabel="Arrastra aquí o pulsa ✓ Mi lista en una vacante."
-                />
-            </Column>
-
-            {/* Descartadas (collapsible) */}
-            <Column title="Descartadas" count={discarded.length} accent="bg-rose-400">
-                {!showDiscarded ? (
-                    <p className="px-2 py-6 text-center text-xs text-slate-400">
-                        Activa «Mostrar descartadas» en los filtros para verlas.
-                    </p>
-                ) : (
-                    <>
-                        <button
-                            onClick={() => setDiscardedOpen((v) => !v)}
-                            className="mb-1 w-full rounded-lg bg-white px-3 py-1.5 text-left text-xs font-semibold text-slate-500 ring-1 ring-slate-200"
-                        >
-                            {discardedOpen ? '▾ Ocultar' : '▸ Mostrar'} {discarded.length} descartadas
-                        </button>
-                        {discardedOpen &&
-                            discarded.map((item) => (
-                                <VacancyCard
+                {/* Mi lista (sortable + droppable) */}
+                <Column id="selected" title="Mi lista" count={selected.length} accent="bg-emerald-500">
+                    <SortableContext items={selectedIds} strategy={verticalListSortingStrategy}>
+                        {selected.length === 0 ? (
+                            <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-slate-400">
+                                Arrastra una vacante aquí (icono ⠿) o pulsa ✓ Mi lista.
+                            </p>
+                        ) : (
+                            selected.map((item, index) => (
+                                <SortableVacancyCard
                                     key={item.vacancy_id}
+                                    id={item.vacancy_id}
                                     vacancy={item.vacancy}
-                                    status="discarded"
-                                    notes={item.notes ?? ''}
+                                    status="selected"
+                                    position={index + 1}
+                                    notes={item.notes}
                                     home={home}
                                     onStatusChange={(status) => onStatusChange(item.vacancy_id, status)}
                                     onNotesChange={(notes) => onNotesChange(item.vacancy_id, notes)}
                                 />
-                            ))}
-                    </>
-                )}
-            </Column>
-        </div>
+                            ))
+                        )}
+                    </SortableContext>
+                </Column>
+
+                {/* Descartadas */}
+                <Column id="discarded" title="Descartadas" count={discarded.length} accent="bg-rose-400">
+                    {!showDiscarded ? (
+                        <p className="px-2 py-6 text-center text-xs text-slate-400">
+                            Activa «Mostrar descartadas» en los filtros para verlas.
+                        </p>
+                    ) : (
+                        <SortableContext items={discardedIds} strategy={verticalListSortingStrategy}>
+                            {discarded.length === 0 ? (
+                                <p className="px-2 py-6 text-center text-xs text-slate-400">
+                                    Arrastra una vacante aquí o pulsa ✕ Descartar.
+                                </p>
+                            ) : (
+                                discarded.map((item) => (
+                                    <SortableVacancyCard
+                                        key={item.vacancy_id}
+                                        id={item.vacancy_id}
+                                        vacancy={item.vacancy}
+                                        status="discarded"
+                                        notes={item.notes}
+                                        home={home}
+                                        onStatusChange={(status) => onStatusChange(item.vacancy_id, status)}
+                                        onNotesChange={(notes) => onNotesChange(item.vacancy_id, notes)}
+                                    />
+                                ))
+                            )}
+                        </SortableContext>
+                    )}
+                </Column>
+            </div>
+
+            <DragOverlay>
+                {activeVacancy ? <VacancyCard vacancy={activeVacancy} status="neutral" home={home} isDragging /> : null}
+            </DragOverlay>
+        </DndContext>
     );
 }
