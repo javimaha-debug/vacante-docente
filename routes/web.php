@@ -16,10 +16,10 @@ use Illuminate\Support\Facades\Route;
 // Social OAuth (Laravel Socialite + Sanctum token issued to the SPA). Generic
 // across providers; each is only usable when its credentials are configured.
 Route::get('/auth/{provider}', [AuthController::class, 'redirect'])
-    ->whereIn('provider', ['google', 'microsoft', 'apple'])
+    ->whereIn('provider', ['google', 'microsoft'])
     ->name('oauth.redirect');
 Route::match(['get', 'post'], '/auth/{provider}/callback', [AuthController::class, 'callback'])
-    ->whereIn('provider', ['google', 'microsoft', 'apple'])
+    ->whereIn('provider', ['google', 'microsoft'])
     ->name('oauth.callback');
 Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('auth.logout');
 

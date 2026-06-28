@@ -15,7 +15,7 @@ use Laravel\Socialite\Facades\Socialite;
 class AuthController extends Controller
 {
     /** OAuth providers the app can use (enabled individually via config). */
-    private const PROVIDERS = ['google', 'microsoft', 'apple'];
+    private const PROVIDERS = ['google', 'microsoft'];
 
     /**
      * Register a new account with email + password and issue a Sanctum token.

@@ -5,7 +5,6 @@ import { useAuth } from '../../hooks/useAuth';
 const PROVIDER_META = {
     google: { label: 'Google', icon: GoogleIcon },
     microsoft: { label: 'Microsoft', icon: MicrosoftIcon },
-    apple: { label: 'Apple', icon: AppleIcon },
 };
 
 export default function LoginPage() {
@@ -182,10 +181,3 @@ function MicrosoftIcon() {
     );
 }
 
-function AppleIcon() {
-    return (
-        <svg className="h-5 w-5" viewBox="0 0 384 512" aria-hidden="true">
-            <path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zM256.6 93.6c30.6-36.3 27.8-69.4 26.9-81.4-26.9 1.6-58 18.4-75.7 39.1-19.5 22.2-30.9 49.7-28.5 78.7 29.1 2.2 55.7-12.8 77.3-36.4z" />
-        </svg>
-    );
-}
