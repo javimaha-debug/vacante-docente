@@ -133,5 +133,7 @@ Route::prefix('v1')->group(function () {
         Route::get('admin/gva-noticias', [GvaController::class, 'adminUnnotified']);
         Route::get('admin/gva-importaciones', [GvaController::class, 'adminImportaciones']);
         Route::post('admin/gva-importaciones/{noticia}/reimportar', [GvaController::class, 'adminReimport']);
+        Route::post('admin/procesos', [GvaController::class, 'adminCrearProcesos']);
+        Route::post('admin/importaciones/manual', [GvaController::class, 'adminImportarManual']);
     });
 });

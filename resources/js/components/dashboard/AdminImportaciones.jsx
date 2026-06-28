@@ -25,6 +25,90 @@ function formatDate(iso) {
     }
 }
 
+// Manual / historical import: create past-year procesos and queue a listing
+// import from a URL (the GVA document link) into a chosen proceso.
+function ManualImportForm({ procesos }) {
+    const queryClient = useQueryClient();
+    const [tipo, setTipo] = useState('participantes');
+    const [procesoId, setProcesoId] = useState('');
+    const [url, setUrl] = useState('');
+    const [anyo, setAnyo] = useState('');
+
+    const crearProcesos = useMutation({
+        mutationFn: async () => (await api.post('/admin/procesos', { anyo: Number(anyo) })).data,
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['procesos-admin'] }),
+    });
+
+    const importar = useMutation({
+        mutationFn: async () => (await api.post('/admin/importaciones/manual', {
+            url: url.trim(),
+            tipo,
+            proceso_id: tipo === 'continua' ? null : Number(procesoId),
+        })).data,
+        onSuccess: () => {
+            setUrl('');
+            queryClient.invalidateQueries({ queryKey: ['admin-importaciones'] });
+        },
+    });
+
+    const needsProceso = tipo !== 'continua';
+    const canSubmit = url.trim() && (!needsProceso || procesoId) && !importar.isPending;
+
+    return (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-bold text-slate-800">Importar histórico / por URL</h2>
+            <p className="mt-1 text-xs text-slate-500">
+                Para ver tu posición y adjudicaciones de años anteriores: crea el curso, pega el enlace del PDF
+                oficial de la GVA y se importará en segundo plano. Las listas de <b>participantes</b> y
+                <b> contínues</b> son las que rellenan tu histórico.
+            </p>
+
+            {/* Crear procesos de un curso pasado */}
+            <div className="mt-3 flex flex-wrap items-end gap-2 border-b border-slate-100 pb-3">
+                <label className="text-xs font-medium text-slate-500">
+                    Crear curso
+                    <input type="number" value={anyo} onChange={(e) => setAnyo(e.target.value)} placeholder="2024"
+                        className="mt-1 w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
+                </label>
+                <button type="button" disabled={!anyo || crearProcesos.isPending}
+                    onClick={() => crearProcesos.mutate()}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">
+                    {crearProcesos.isPending ? 'Creando…' : 'Crear procesos del curso'}
+                </button>
+                {crearProcesos.isSuccess && <span className="text-xs text-emerald-600">✓ Procesos listos</span>}
+            </div>
+
+            {/* Importar listado */}
+            <div className="mt-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
+                        <option value="participantes">Participantes</option>
+                        <option value="continua">Adjudicació contínua</option>
+                        <option value="vacantes">Vacantes</option>
+                    </select>
+                    {needsProceso && (
+                        <select value={procesoId} onChange={(e) => setProcesoId(e.target.value)} className="min-w-[12rem] flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
+                            <option value="">Elegir proceso…</option>
+                            {procesos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                        </select>
+                    )}
+                </div>
+                <input type="url" value={url} onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://ceice.gva.es/documents/…/listado.pdf"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                <div className="flex items-center gap-2">
+                    <button type="button" disabled={!canSubmit} onClick={() => importar.mutate()}
+                        className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50">
+                        {importar.isPending ? 'Encolando…' : 'Importar'}
+                    </button>
+                    {importar.isSuccess && <span className="text-xs text-emerald-600">✓ En cola — verás el resultado abajo en unos minutos</span>}
+                    {importar.isError && <span className="text-xs text-rose-600">{importar.error?.friendlyMessage ?? 'No se pudo encolar.'}</span>}
+                </div>
+            </div>
+        </section>
+    );
+}
+
 function ReimportRow({ noticia, procesos }) {
     const queryClient = useQueryClient();
     const [procesoId, setProcesoId] = useState('');
@@ -121,6 +205,8 @@ export default function AdminImportaciones() {
                     los que no se pudieron asociar a un proceso puedes importarlos a mano.
                 </p>
             </div>
+
+            <ManualImportForm procesos={procesos} />
 
             {isLoading ? (
                 <p className="text-sm text-slate-400">Cargando…</p>
