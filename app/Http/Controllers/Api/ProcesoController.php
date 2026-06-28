@@ -56,6 +56,8 @@ class ProcesoController extends Controller
             'localitat' => ['sometimes', 'nullable', 'string', 'max:200'],
             'tipo_centro' => ['sometimes', 'array'],
             'tipo_centro.*' => ['in:Secundaria,Primaria/Infantil,Otro'],
+            'tags' => ['sometimes', 'array'],
+            'tags.*' => ['string', 'max:50'],
             'observaciones' => ['sometimes', 'nullable', 'string', 'max:200'],
             'req_ling' => ['sometimes', 'boolean'],
             'itinerante' => ['sometimes', 'boolean'],
@@ -63,7 +65,7 @@ class ProcesoController extends Controller
             'session_token' => ['sometimes', 'nullable', 'string', 'max:64'],
         ]);
 
-        $query = $proceso->vacancies()->getQuery();
+        $query = $proceso->vacancies()->getQuery()->with('centro:codigo,caracteristicas');
 
         if (! empty($validated['especialidad'])) {
             $query->where('specialty_id', $validated['especialidad']);
@@ -76,6 +78,9 @@ class ProcesoController extends Controller
         }
         if (! empty($validated['tipo_centro'])) {
             $query->whereIn('tipo_centro', $validated['tipo_centro']);
+        }
+        foreach ($validated['tags'] ?? [] as $tag) {
+            $query->withTag($tag);
         }
         if (! empty($validated['observaciones'])) {
             $term = '%'.$validated['observaciones'].'%';
