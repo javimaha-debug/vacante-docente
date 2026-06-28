@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import api from '../../lib/api';
 import { useDebounce } from '../../hooks/useDebounce';
 
+// GVA web values sometimes omit the scheme; make the link absolute.
+const normalizeUrl = (url) => (!url ? url : (/^https?:\/\//i.test(url) ? url : `https://${url}`));
+
 const TIPOS = ['', 'CEIP', 'IES', 'CEE', 'CIPFP', 'CRA', 'EI', 'CEP', 'CIFP', 'EOI', 'FPA', 'Otro'];
 const PROVINCIAS = ['', 'Alacant', 'Castelló', 'València'];
 
@@ -129,7 +132,20 @@ export default function CentrosList() {
                                     </div>
                                 )}
                                 <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-                                    <span>{c.telefono ?? ''}</span>
+                                    <span className="flex items-center gap-2">
+                                        {c.telefono ?? ''}
+                                        {c.web && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(normalizeUrl(c.web), '_blank', 'noopener'); }}
+                                                title="Ir a la web oficial"
+                                                aria-label="Ir a la web oficial"
+                                                className="text-brand-600 hover:text-brand-700"
+                                            >
+                                                🌐
+                                            </button>
+                                        )}
+                                    </span>
                                     {c.distance_km != null && <span className="font-semibold text-brand-600">{c.distance_km} km</span>}
                                 </div>
                             </Link>
