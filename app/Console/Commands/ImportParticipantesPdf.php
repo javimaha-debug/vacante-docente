@@ -11,6 +11,8 @@ use App\Models\UserEspecialidad;
 use App\Models\UserHistorial;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 
 class ImportParticipantesPdf extends Command
@@ -58,6 +60,15 @@ class ImportParticipantesPdf extends Command
     public function handle(): int
     {
         $path = (string) $this->argument('pdf_path');
+
+        // Allow importing straight from a GVA URL (downloads it first).
+        if (preg_match('#^https?://#i', $path)) {
+            $path = $this->downloadPdf($path);
+            if ($path === null) {
+                return self::FAILURE;
+            }
+        }
+
         $proceso = Proceso::find((int) $this->argument('proceso_id'));
 
         if (! is_file($path)) {
@@ -164,6 +175,35 @@ class ImportParticipantesPdf extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * Download a remote PDF to the local disk and return its absolute path.
+     */
+    private function downloadPdf(string $url): ?string
+    {
+        $this->info("Descargando {$url} …");
+        try {
+            $response = Http::timeout(120)->get($url);
+        } catch (\Throwable $e) {
+            $this->error('No se pudo descargar el PDF: '.$e->getMessage());
+
+            return null;
+        }
+        if (! $response->successful()) {
+            $this->error('La descarga devolvió HTTP '.$response->status());
+
+            return null;
+        }
+
+        $name = basename(parse_url($url, PHP_URL_PATH) ?: 'listado.pdf');
+        if (! str_ends_with(mb_strtolower($name), '.pdf')) {
+            $name .= '.pdf';
+        }
+        $relative = 'pdfs/gva/auto/'.$name;
+        Storage::disk('local')->put($relative, $response->body());
+
+        return Storage::disk('local')->path($relative);
+    }
+
     private function extractText(string $path): ?string
     {
         $process = new Process(['pdftotext', '-layout', '-enc', 'UTF-8', $path, '-']);
@@ -235,7 +275,100 @@ class ImportParticipantesPdf extends Command
                 : $this->parseMestres($text);
         }
 
+        // Start-of-course adjudication listing: "CODI NOM" section headers and a
+        // standalone Activat/Desactivat line per person (the legacy list instead
+        // carries the status inline on the same row).
+        if (preg_match('/^[ \t]*(Activat|Desactivat)[ \t]*$/mu', $text)) {
+            return $this->parseAdjudicacioInici($text);
+        }
+
         return $this->parseAdjudicacions($text);
+    }
+
+    /**
+     * Start-of-course adjudication listing (GVA "ADJUDICACIÓ ... INICI DE CURS"):
+     *
+     *   3A1 CUINA I PASTISSERIA                         <- specialty section
+     *   5  VIZCAINO SANCHIS, GEMMA   Petición: 2 ...
+     *        898526 SANT VICENT(03010442)CIPFP CANASTELL <- adjudication detail
+     *        3A1 / CUINA I PASTISSERIA
+     *      Jornada completa        VACANT       Adjudicat
+     *   6  LAFUENTE BASTIDA, MARIA ELENA
+     *                                           Desactivat
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function parseAdjudicacioInici(string $text): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $text);
+        $rows = [];
+        $code = null;
+        $name = null;
+        $current = null;
+
+        $flush = function () use (&$current, &$rows) {
+            if ($current !== null) {
+                $rows[] = $current;
+                $current = null;
+            }
+        };
+
+        foreach ($lines as $line) {
+            $t = trim($line);
+            if ($t === '') {
+                continue;
+            }
+
+            // Participant row: position + "APELLIDOS, NOM" (comma present).
+            if (preg_match('/^(\d+)\s+(\p{Lu}.+?,\s*\p{Lu}.+?)(\s{2,}.*)?$/u', $line, $m)) {
+                $flush();
+                // Drop trailing annotations the layout appends to the name
+                // ("( Esp: 334 )", "Petició:", "Voluntària", "Forçosa").
+                $nombre = preg_split('/\s{2,}|\s+\(|\s+Petici|\s+Voluntè/u', $m[2].' ')[0];
+                $nombre = preg_replace('/\s+(Voluntari|Voluntàri|For[çc]os).*/iu', '', $nombre);
+                $current = $this->emptyRow((int) $m[1], $nombre, '');
+                $current['especialidad_codigo'] = $code;
+                $current['especialidad_nombre'] = $name;
+
+                continue;
+            }
+
+            // Specialty section header: "CODI NOM" (no comma, code 2-4 chars).
+            if (! str_contains($t, ',') && preg_match('/^([0-9][0-9A-Z]{1,3})\s+(\p{Lu}[\p{L}0-9·\'.\/\- ]+)$/u', $t, $m)
+                && ! preg_match('/\b(Activat|Desactivat|Adjudicat)\b/u', $t)) {
+                $flush();
+                $code = $m[1];
+                $name = trim($m[2]);
+
+                continue;
+            }
+
+            if ($current === null) {
+                continue;
+            }
+
+            // Adjudication detail: LLOC LOCALITAT(CODI) CENTRE.
+            if (preg_match('/^\s*(\d{4,8})\s+(.+?)\((\d{4,8})\)\s*(.*)$/u', $line, $m)) {
+                $current['lloc_adjudicado'] = trim($m[1]);
+                $current['localitat'] = trim($m[2]);
+                $current['centro_codigo'] = trim($m[3]);
+                $current['centro_nombre'] = trim($m[4]) !== '' ? trim($m[4]) : null;
+
+                continue;
+            }
+
+            // Status line (standalone or with jornada/VACANT around it).
+            if (preg_match('/\b(Activat|Desactivat|Adjudicat|Activado|Desactivado|Adjudicado)\b/u', $line, $m)) {
+                $current['estado'] = $this->normalizeEstado($m[1]);
+                if (preg_match('/jornada[^A-Z]*/iu', $line, $jm)) {
+                    $current['jornada'] = trim($jm[0]);
+                }
+            }
+        }
+
+        $flush();
+
+        return array_values(array_filter($rows, fn ($r) => $r['especialidad_codigo'] !== null));
     }
 
     private function emptyRow(int $posicion, string $nombre, string $estado): array

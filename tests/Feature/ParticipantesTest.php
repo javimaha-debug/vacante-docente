@@ -242,6 +242,54 @@ class ParticipantesTest extends TestCase
             ->assertJsonPath('cambio', 'modificado');
     }
 
+    public function test_parser_inici_de_curs_adjudicacio_format(): void
+    {
+        // GVA "ADJUDICACIÓ ... INICI DE CURS": "CODI NOM" section headers and a
+        // standalone status line per person; adjudications carry a detail block.
+        $layout = <<<TXT
+        ADJUDICACIÓ DE PERSONAL DOCENT INICI DE CURS 2025/2026
+
+        3A1 CUINA I PASTISSERIA
+
+        1     MASIA VALLES, ELISABET
+
+                                                                Desactivat
+
+        5     VIZCAINO SANCHIS, GEMMA                Petición:   2   Voluntaria
+
+                 898526 SANT VICENT DEL RASPEIG(03010442)CIPFP CANASTELL
+                        3A1 / CUINA I PASTISSERIA
+               Jornada completa                       VACANT          Adjudicat
+
+        206 MATEMÀTIQUES
+
+        1     PEREZ VIDAL, ANGEL MIGUEL                                Voluntaria
+
+                                                                Activat
+        TXT;
+
+        $rows = (new ImportParticipantesPdf())->parseText($layout);
+
+        $this->assertCount(3, $rows);
+
+        $this->assertSame('3A1', $rows[0]['especialidad_codigo']);
+        $this->assertSame('MASIA VALLES, ELISABET', $rows[0]['nombre_gva']);
+        $this->assertSame('Desactivat', $rows[0]['estado']);
+
+        // The adjudicated row keeps its position, status and adjudication detail.
+        $adj = $rows[1];
+        $this->assertSame('VIZCAINO SANCHIS, GEMMA', $adj['nombre_gva']);
+        $this->assertSame('Adjudicat', $adj['estado']);
+        $this->assertSame('898526', $adj['lloc_adjudicado']);
+        $this->assertSame('03010442', $adj['centro_codigo']);
+        $this->assertStringContainsString('CANASTELL', $adj['centro_nombre']);
+
+        // New section, position restarts, status normalised.
+        $this->assertSame('206', $rows[2]['especialidad_codigo']);
+        $this->assertSame('Activat', $rows[2]['estado']);
+        $this->assertSame(1, $rows[2]['posicion']);
+    }
+
     public function test_parser_captures_centre_code_in_adjudication(): void
     {
         $rows = (new ImportParticipantesPdf())->parseText(self::LAYOUT);
