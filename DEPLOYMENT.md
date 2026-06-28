@@ -302,6 +302,22 @@ php artisan participantes:import-pdf storage/app/private/pdfs/gva/participantes.
 > avisos) aparece a partir de la **segunda** importación de cada listado (la
 > primera no tiene con qué comparar).
 
+### Adjudicaciones contínues (semanales)
+
+Las adjudicaciones contínues (martes/jueves) se publican en la GVA como
+`YYMMDD_lis_sec.pdf` / `YYMMDD_lis_mae.pdf`. Se importan conservando el
+histórico por fecha (cada tanda se guarda; no se sobreescribe):
+
+```bash
+# Acepta URL directa; deduce fecha (del título "DIA dd/mm/aaaa" o del nombre)
+# y cuerpo (de _sec/_mae). Re-ejecutable por (fecha, cuerpo).
+php artisan adjudicaciones:import-continua "https://ceice.gva.es/documents/162909733/410063968/260602_lis_sec.pdf"
+php artisan adjudicaciones:import-continua ruta/260602_lis_mae.pdf --fecha=2026-06-02 --cuerpo=MAESTROS
+```
+
+Cada docente ve su histórico semanal en el panel («Mis adjudicaciones
+semanales»), emparejado por nombre GVA.
+
 ### Cargar histórico de años anteriores
 
 Para tener histórico de vacantes y adjudicaciones de cursos pasados, crea los
