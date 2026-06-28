@@ -12,15 +12,23 @@ export default function ProcesoSelector({ value, onChange, colectivoBody = null 
 
     const procesos = data?.data ?? [];
 
+    // The explorer shows plazas (vacantes). Interim ("interins") procesos hold
+    // the participant bolsa, not plazas, so only offer procesos that actually
+    // have vacancies (fall back to all if none are loaded yet).
+    const withPlazas = procesos.filter((p) => (p.vacancies_count ?? 0) > 0);
+    const options = withPlazas.length ? withPlazas : procesos;
+
     useEffect(() => {
-        if (value || procesos.length === 0) return;
-        const publicados = procesos.filter((p) => p.estado === 'publicado');
+        if (options.length === 0) return;
+        // Keep the current selection only if it points to a proceso with plazas;
+        // otherwise (e.g. a remembered interins proceso) pick a valid default.
+        if (value && options.some((p) => p.id === value)) return;
+        const publicados = options.filter((p) => p.estado === 'publicado');
+        const pool = publicados.length ? publicados : options;
         const preferred =
-            (colectivoBody && publicados.find((p) => p.colectivo?.body === colectivoBody)) ||
-            publicados[0] ||
-            procesos[0];
+            (colectivoBody && pool.find((p) => p.colectivo?.body === colectivoBody)) || pool[0];
         if (preferred) onChange(preferred.id);
-    }, [procesos, value, colectivoBody, onChange]);
+    }, [options, value, colectivoBody, onChange]);
 
     if (procesos.length === 0) return null;
 
