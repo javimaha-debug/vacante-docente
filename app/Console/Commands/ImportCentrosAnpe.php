@@ -12,6 +12,7 @@ class ImportCentrosAnpe extends Command
 {
     protected $signature = 'centros:import-anpe
                             {--dir=pdfs/gva : Storage directory holding the ANPE PDFs}
+                            {--enrich : After importing, enrich new centros from the GVA official API}
                             {--dry-run : Parse and report without writing}';
 
     protected $description = 'Import the 7 ANPE centre listings (UECO, CEE, singular, FPA, CRA, penitenciaris, jornada continuada) into centros, marking type and special characteristics.';
@@ -110,6 +111,13 @@ class ImportCentrosAnpe extends Command
 
         if ($this->option('dry-run')) {
             $this->line('Dry run — nada escrito.');
+
+            return self::SUCCESS;
+        }
+
+        if ($this->option('enrich')) {
+            $this->newLine();
+            $this->call('centros:enrich', ['--only-missing' => true]);
         }
 
         return self::SUCCESS;
