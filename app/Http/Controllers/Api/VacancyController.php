@@ -32,6 +32,7 @@ class VacancyController extends Controller
         $year = (int) ($validated['year'] ?? 2025);
 
         $query = Vacancy::query()
+            ->with('centro:codigo,caracteristicas')
             ->where('specialty_id', $validated['specialty_id'])
             ->where('year', $year);
 
@@ -51,13 +52,10 @@ class VacancyController extends Controller
             });
         }
 
-        // Tags: req_ling is a column; the rest live in observ_tags JSON.
+        // Tags: CRA / Centre singular resolve from the centre's characteristics,
+        // req. lingüístic from a column, the rest from observ_tags (see scope).
         foreach ($validated['tags'] ?? [] as $tag) {
-            if ($tag === 'Req. lingüístico' || $tag === 'req_ling') {
-                $query->where('req_ling', true);
-            } else {
-                $query->whereJsonContains('observ_tags', $tag);
-            }
+            $query->withTag($tag);
         }
 
         $perPage = (int) ($validated['per_page'] ?? 100);

@@ -23,6 +23,7 @@ export function useVacancies(specialtyId, filters, procesoId = null) {
                 if (filters.search) params.localitat = filters.search;
                 if (filters.reqLing) params.req_ling = 1;
                 if (filters.itinerante) params.itinerante = 1;
+                if (filters.tags?.length) params.tags = filters.tags;
                 const { data } = await api.get(`/procesos/${procesoId}/vacantes`, { params });
                 return data;
             }

@@ -64,6 +64,42 @@ class Vacancy extends Model
         return $this->belongsTo(Ccaa::class);
     }
 
+    /** The centre this vacancy belongs to (matched by GVA code). */
+    public function centro(): BelongsTo
+    {
+        return $this->belongsTo(Centro::class, 'centro_codigo', 'codigo');
+    }
+
+    /**
+     * Filter by an explorer "etiqueta". CRA / Centre singular come from the
+     * centre's ANPE characteristics (joined by centro_codigo); req. lingüístic
+     * is a column; the rest match the vacancy's observ_tags JSON. Matching uses
+     * portable LIKE on the JSON text so it works on PostgreSQL and SQLite.
+     */
+    public function scopeWithTag($query, string $tag)
+    {
+        return match ($tag) {
+            'Req. lingüístico', 'req_ling' => $query->where(
+                fn ($q) => $q->where('req_ling', true)->orWhere('requisito_linguistico', true)
+            ),
+            'CRA' => $this->scopeInCentreWith($query, 'CRA'),
+            'Centre singular' => $this->scopeInCentreWith($query, 'SINGULAR'),
+            'Difícil provisión' => $query->where(
+                fn ($q) => $q->where('observ', 'like', '%dif%provisi%')->orWhere('observaciones', 'like', '%dif%provisi%')
+            ),
+            default => $query->where('observ_tags', 'like', '%"'.$tag.'"%'),
+        };
+    }
+
+    /** Vacancies whose centre carries the given ANPE characteristic. */
+    private function scopeInCentreWith($query, string $caracteristica)
+    {
+        return $query->whereIn('centro_codigo', function ($sub) use ($caracteristica) {
+            $sub->select('codigo')->from('centros')
+                ->where('caracteristicas', 'like', '%"'.$caracteristica.'"%');
+        });
+    }
+
     public function preferences(): HasMany
     {
         return $this->hasMany(UserVacancyPreference::class);
