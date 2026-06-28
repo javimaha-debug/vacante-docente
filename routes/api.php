@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\GeocodeController;
 use App\Http\Controllers\Api\GvaController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ParticipanteController;
+use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\PreferenceController;
 use App\Http\Controllers\Api\ProcesoController;
 use App\Http\Controllers\Api\SpecialtyController;
@@ -79,11 +80,18 @@ Route::prefix('v1')->group(function () {
     // Address autocomplete (public, rate limited like geocode).
     Route::get('geocode', [AddressController::class, 'suggest'])->middleware('throttle:geocode');
 
+    // Web push: VAPID public key (public so the SPA can check availability).
+    Route::get('push/vapid-key', [PushSubscriptionController::class, 'vapidKey']);
+
     // Authenticated teacher profile + dashboard (Sanctum bearer token).
     Route::middleware('auth:sanctum')->group(function () {
         // In-app notifications inbox.
         Route::get('notificaciones', [NotificationController::class, 'index']);
         Route::post('notificaciones/leer/{id?}', [NotificationController::class, 'markRead']);
+
+        // Web push subscription management.
+        Route::post('push/subscribe', [PushSubscriptionController::class, 'store']);
+        Route::post('push/unsubscribe', [PushSubscriptionController::class, 'destroy']);
 
         Route::get('user/me', [UserProfileController::class, 'me']);
         Route::get('user/profile', [UserProfileController::class, 'show']);
