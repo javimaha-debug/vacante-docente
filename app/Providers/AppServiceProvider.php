@@ -48,6 +48,12 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Public listings with personal data (participants): cap requests per IP
+        // to hinder bulk scraping while keeping the list browsable.
+        RateLimiter::for('public-list', function (Request $request) {
+            return Limit::perMinute(40)->by($request->ip());
+        });
+
         // Geocoding: 20 requests / minute / IP.
         RateLimiter::for('geocode', function (Request $request) {
             return Limit::perMinute(20)->by($request->ip());

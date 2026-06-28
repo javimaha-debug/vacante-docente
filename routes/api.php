@@ -73,8 +73,9 @@ Route::prefix('v1')->group(function () {
     Route::get('procesos/{proceso}/vacantes', [ProcesoController::class, 'vacantes']);
     Route::get('procesos/{proceso}/cambios', [ProcesoController::class, 'cambios']);
 
-    // Participant lists (public list + search).
-    Route::get('participantes/{proceso}', [ParticipanteController::class, 'index']);
+    // Participant lists (public list + search; rate-limited — contains names).
+    Route::get('participantes/{proceso}', [ParticipanteController::class, 'index'])
+        ->middleware('throttle:public-list');
     Route::get('participantes/{proceso}/cambios', [ParticipanteController::class, 'cambios']);
 
     // Centros directory (public): list + detail.
