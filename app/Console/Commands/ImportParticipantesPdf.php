@@ -150,6 +150,13 @@ class ImportParticipantesPdf extends Command
         $this->info('Importadas '.count($rows)." filas; {$matched} actualizaciones en perfiles de usuario.");
         if (! $isFirst) {
             $this->info("Cambios vs listado anterior: {$nuevos} nuevos, {$modificados} modificados, {$eliminados} eliminados.");
+
+            $notified = app(\App\Services\ListadoNotificacionService::class)->notifyParticipantes($proceso, [
+                'nuevos' => $nuevos, 'modificados' => $modificados, 'eliminados' => $eliminados,
+            ]);
+            if ($notified > 0) {
+                $this->info("Notificados {$notified} usuarios afectados.");
+            }
         }
 
         return self::SUCCESS;

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\CentroController;
 use App\Http\Controllers\Api\DistanceController;
 use App\Http\Controllers\Api\GeocodeController;
 use App\Http\Controllers\Api\GvaController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ParticipanteController;
 use App\Http\Controllers\Api\PreferenceController;
 use App\Http\Controllers\Api\ProcesoController;
@@ -80,6 +81,10 @@ Route::prefix('v1')->group(function () {
 
     // Authenticated teacher profile + dashboard (Sanctum bearer token).
     Route::middleware('auth:sanctum')->group(function () {
+        // In-app notifications inbox.
+        Route::get('notificaciones', [NotificationController::class, 'index']);
+        Route::post('notificaciones/leer/{id?}', [NotificationController::class, 'markRead']);
+
         Route::get('user/me', [UserProfileController::class, 'me']);
         Route::get('user/profile', [UserProfileController::class, 'show']);
         Route::put('user/profile', [UserProfileController::class, 'update']);

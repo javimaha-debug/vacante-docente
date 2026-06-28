@@ -173,6 +173,13 @@ class ImportVacantesPdf extends Command
         $this->info('Imported '.count($rows)." vacancies for proceso #{$proceso->id} ({$proceso->nombre}).");
         if (! $isFirst) {
             $this->info("Cambios vs listado anterior: {$nuevas} nuevas, {$modificadas} modificadas, {$eliminadas} eliminadas.");
+
+            $notified = app(\App\Services\ListadoNotificacionService::class)->notifyVacantes($proceso, [
+                'nuevas' => $nuevas, 'modificadas' => $modificadas, 'eliminadas' => $eliminadas,
+            ]);
+            if ($notified > 0) {
+                $this->info("Notificados {$notified} usuarios afectados.");
+            }
         }
 
         return self::SUCCESS;

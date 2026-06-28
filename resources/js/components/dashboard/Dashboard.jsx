@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '../../hooks/useAuth';
+import NotificationBell from './NotificationBell';
 
 const NAV = [
     { to: '/dashboard', label: 'Inicio', end: true, icon: '🏠' },
@@ -62,6 +63,7 @@ export default function Dashboard() {
                     </nav>
 
                     <div className="ml-auto flex items-center gap-3">
+                        <NotificationBell />
                         <div className="flex items-center gap-2">
                             {user?.avatar_url ? (
                                 <img
