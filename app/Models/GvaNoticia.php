@@ -17,6 +17,7 @@ class GvaNoticia extends Model
         'url',
         'fecha_publicacion',
         'tipo',
+        'categoria',
         'resumen',
         'keywords_matched',
         'notificado',

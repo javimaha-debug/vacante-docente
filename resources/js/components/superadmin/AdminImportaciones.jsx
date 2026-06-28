@@ -4,6 +4,8 @@ import { KpiCard, SkeletonRows, ErrorState, Badge } from './ui';
 
 const ESTADO_TONE = { ok: 'green', error: 'red', sin_proceso: 'amber', pendiente: 'slate' };
 const ESTADO_LABEL = { ok: 'Importado', error: 'Error', sin_proceso: 'Sin proceso', pendiente: 'Pendiente' };
+const CAT_LABEL = { inicio: 'Inicio de curso', continua: 'Contínua', otro: 'Otro' };
+const CAT_TONE = { inicio: 'blue', continua: 'amber', otro: 'slate' };
 
 function fechaCorta(iso) {
     if (!iso) return '—';
@@ -102,7 +104,10 @@ export default function AdminImportaciones() {
                             <li key={n.id} className="rounded-lg border border-slate-700/60 bg-slate-800/40 p-3">
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="min-w-0 truncate font-medium text-slate-200" title={n.titulo}>{n.titulo}</span>
-                                    <Badge tone={ESTADO_TONE[n.estado] ?? 'slate'}>{ESTADO_LABEL[n.estado] ?? n.estado}</Badge>
+                                    <span className="flex shrink-0 items-center gap-1">
+                                        <Badge tone={CAT_TONE[n.categoria] ?? 'slate'}>{CAT_LABEL[n.categoria] ?? n.categoria}</Badge>
+                                        <Badge tone={ESTADO_TONE[n.estado] ?? 'slate'}>{ESTADO_LABEL[n.estado] ?? n.estado}</Badge>
+                                    </span>
                                 </div>
                                 {n.resumen && <p className="mt-1 text-xs text-slate-400">{n.resumen}</p>}
                                 <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
