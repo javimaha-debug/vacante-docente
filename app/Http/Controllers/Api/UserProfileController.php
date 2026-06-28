@@ -143,7 +143,9 @@ class UserProfileController extends Controller
             $procesosQuery->where('ccaa_id', $user->ccaa_id);
         }
 
-        $procesosActivos = $procesosQuery->get()->map(fn (Proceso $p) => [
+        $procesos = $procesosQuery->get();
+
+        $procesosActivos = $procesos->map(fn (Proceso $p) => [
             'id' => $p->id,
             'nombre' => $p->nombre,
             'estado' => $p->estado,
@@ -165,7 +167,7 @@ class UserProfileController extends Controller
 
         // Upcoming, dated milestones across the active procesos.
         $proximosPlazos = [];
-        foreach ($procesosQuery->get() as $p) {
+        foreach ($procesos as $p) {
             foreach ([
                 'inicio_peticiones' => $p->fecha_inicio_peticiones,
                 'fin_peticiones' => $p->fecha_fin_peticiones,

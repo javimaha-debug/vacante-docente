@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -133,7 +134,32 @@ class AuthController extends Controller
 
         $token = $user->createToken($provider.'-spa')->plainTextToken;
 
-        return redirect('/dashboard?token='.urlencode($token));
+        // Don't put the long-lived token in the URL (leaks via history/Referer/
+        // logs). Hand over a single-use, short-lived code the SPA exchanges for
+        // the real token via POST.
+        $code = Str::random(48);
+        Cache::put('oauth_code:'.$code, ['token' => $token, 'uid' => $user->id], now()->addSeconds(120));
+
+        return redirect('/dashboard?code='.$code);
+    }
+
+    /**
+     * Exchange a one-time OAuth code (from the callback redirect) for the real
+     * Sanctum token. The code is single-use and expires after 2 minutes.
+     */
+    public function exchange(Request $request): JsonResponse
+    {
+        $data = $request->validate(['code' => ['required', 'string', 'max:64']]);
+
+        $payload = Cache::pull('oauth_code:'.$data['code']);
+        if (! $payload || empty($payload['token'])) {
+            throw ValidationException::withMessages(['code' => 'Código inválido o caducado.']);
+        }
+
+        return response()->json([
+            'token' => $payload['token'],
+            'user' => User::find($payload['uid']),
+        ]);
     }
 
     /**

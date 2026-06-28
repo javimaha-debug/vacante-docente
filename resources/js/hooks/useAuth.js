@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import api from '../lib/api';
-import { getToken, setToken, clearToken, captureTokenFromUrl } from '../lib/auth-token';
+import { getToken, setToken, clearToken, captureTokenFromUrl, popAuthCodeFromUrl } from '../lib/auth-token';
 
 // Shared auth state. Provided by <AuthProvider> (see app.jsx) and consumed by
 // components via useAuth().
@@ -23,14 +23,15 @@ export function useAuth() {
  * - On a missing/expired token, exposes user=null so guards redirect to login.
  */
 export function useProvideAuth() {
-    // Grab a token handed over by the OAuth redirect (?token=...) once, before
-    // reading from storage, then strip it from the URL.
-    const [token, setTokenState] = useState(() => {
+    // Grab credentials handed over by the OAuth redirect once, then strip them
+    // from the URL: a legacy ?token=, or a one-time ?code= to be exchanged.
+    const [pendingCode] = useState(() => {
         captureTokenFromUrl();
-        return getToken();
+        return getToken() ? null : popAuthCodeFromUrl();
     });
+    const [token, setTokenState] = useState(() => getToken());
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(Boolean(getToken()));
+    const [loading, setLoading] = useState(Boolean(getToken()) || Boolean(pendingCode));
 
     const fetchUser = useCallback(async () => {
         if (!getToken()) {
@@ -54,10 +55,6 @@ export function useProvideAuth() {
         }
     }, []);
 
-    useEffect(() => {
-        fetchUser();
-    }, [fetchUser]);
-
     const login = useCallback(
         (newToken) => {
             setToken(newToken);
@@ -66,6 +63,23 @@ export function useProvideAuth() {
         },
         [fetchUser]
     );
+
+    useEffect(() => {
+        // OAuth one-time code → exchange it for the real token, then load.
+        if (pendingCode) {
+            api.post('/auth/exchange', { code: pendingCode })
+                .then(({ data }) => login(data.token))
+                .catch(() => {
+                    clearToken();
+                    setTokenState(null);
+                    setUser(null);
+                    setLoading(false);
+                });
+            return;
+        }
+        fetchUser();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const logout = useCallback(async () => {
         const current = getToken();
