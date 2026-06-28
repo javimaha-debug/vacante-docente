@@ -37,6 +37,7 @@ class VacancyResource extends JsonResource
             'req_ling' => (bool) $this->req_ling,
             'observ' => $this->observ,
             'observ_tags' => $this->resolveTags(),
+            'cambio' => $this->cambio, // 'nueva' | 'modificada' | null
             'year' => $this->year,
             'distances' => $this->distances,
         ];

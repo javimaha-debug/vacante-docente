@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\VacancyResource;
 use App\Models\Proceso;
+use App\Models\ProcesoImportacion;
 use App\Models\UserList;
 use App\Models\Vacancy;
 use App\Services\DistanceCacheRepository;
@@ -15,6 +16,28 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class ProcesoController extends Controller
 {
     public function __construct(private readonly DistanceCacheRepository $distances) {}
+
+    /**
+     * Summary of the most recent import for the "listado actualizado" banner.
+     * Only returns a meaningful payload when the last import had changes.
+     */
+    public function cambios(Proceso $proceso): JsonResponse
+    {
+        $last = ProcesoImportacion::where('proceso_id', $proceso->id)
+            ->orderByDesc('importado_en')
+            ->first();
+
+        $hasChanges = $last && ! $last->es_primera
+            && ($last->nuevas > 0 || $last->modificadas > 0 || $last->eliminadas > 0);
+
+        return response()->json([
+            'has_changes' => (bool) $hasChanges,
+            'importado_en' => $last?->importado_en?->toIso8601String(),
+            'nuevas' => $last?->nuevas ?? 0,
+            'modificadas' => $last?->modificadas ?? 0,
+            'eliminadas' => $last?->eliminadas ?? 0,
+        ]);
+    }
 
     /**
      * All procesos with estado, colectivo, dates and vacancy counts.

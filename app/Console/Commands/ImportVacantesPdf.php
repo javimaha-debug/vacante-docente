@@ -117,18 +117,83 @@ class ImportVacantesPdf extends Command
             return self::SUCCESS;
         }
 
-        // Re-runnable: replace this proceso's vacancies.
-        DB::transaction(function () use ($proceso, $rows) {
+        // Diff vs the previous listing (keyed by lloc) to flag new/modified
+        // vacancies and record an import summary for the "listado actualizado"
+        // banner + notifications.
+        $old = Vacancy::where('proceso_id', $proceso->id)
+            ->get(['lloc', 'centro_codigo', 'centro_nombre', 'localidad', 'requisito_linguistico', 'itinerante', 'observaciones', 'specialty_id'])
+            ->keyBy('lloc')
+            ->map(fn ($v) => $this->signature((array) $v->getAttributes()))
+            ->all();
+        $isFirst = empty($old);
+
+        $newKeys = [];
+        $nuevas = $modificadas = 0;
+        foreach ($rows as &$row) {
+            $lloc = $row['lloc'];
+            $newKeys[$lloc] = true;
+            $sig = $this->signature($row);
+
+            if ($isFirst) {
+                $row['cambio'] = null;
+            } elseif (! isset($old[$lloc])) {
+                $row['cambio'] = 'nueva';
+                $nuevas++;
+            } elseif ($old[$lloc] !== $sig) {
+                $row['cambio'] = 'modificada';
+                $modificadas++;
+            } else {
+                $row['cambio'] = null;
+            }
+            $row['cambio_en'] = $now;
+        }
+        unset($row);
+
+        $eliminadas = $isFirst ? 0 : count(array_diff_key($old, $newKeys));
+
+        // Re-runnable: replace this proceso's vacancies, then record the import.
+        DB::transaction(function () use ($proceso, $rows, $now, $isFirst, $nuevas, $modificadas, $eliminadas) {
             Vacancy::where('proceso_id', $proceso->id)->delete();
 
             foreach (array_chunk($rows, 100) as $chunk) {
                 DB::table('vacancies')->insert($chunk);
             }
+
+            \App\Models\ProcesoImportacion::create([
+                'proceso_id' => $proceso->id,
+                'importado_en' => $now,
+                'total' => count($rows),
+                'nuevas' => $nuevas,
+                'modificadas' => $modificadas,
+                'eliminadas' => $eliminadas,
+                'es_primera' => $isFirst,
+            ]);
         });
 
         $this->info('Imported '.count($rows)." vacancies for proceso #{$proceso->id} ({$proceso->nombre}).");
+        if (! $isFirst) {
+            $this->info("Cambios vs listado anterior: {$nuevas} nuevas, {$modificadas} modificadas, {$eliminadas} eliminadas.");
+        }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Stable content signature of a vacancy (for change detection).
+     *
+     * @param  array<string, mixed>  $v
+     */
+    private function signature(array $v): string
+    {
+        return implode('|', [
+            $v['centro_codigo'] ?? '',
+            $v['centro_nombre'] ?? '',
+            $v['localidad'] ?? '',
+            (int) ($v['requisito_linguistico'] ?? $v['req_ling'] ?? 0),
+            (int) ($v['itinerante'] ?? 0),
+            trim((string) ($v['observaciones'] ?? $v['observ'] ?? '')),
+            $v['specialty_id'] ?? '',
+        ]);
     }
 
     /**

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import clsx from 'clsx';
 import { TRAVEL_MODES, formatDuration, modeSummary, hasAnyDistance, mapsRouteUrl } from '../lib/distance';
+import CambioBadge from './CambioBadge';
 
 const PROVINCIA_STYLES = {
     Alacant: 'bg-rose-100 text-rose-700',
@@ -99,7 +100,10 @@ export default function VacancyCard({
                         <h3 className="truncate text-sm font-semibold text-slate-900" title={vacancy.centro_nombre}>
                             {vacancy.centro_nombre}
                         </h3>
-                        <span className="shrink-0 text-[11px] font-medium text-slate-400">#{vacancy.num}</span>
+                        <div className="flex shrink-0 items-center gap-1">
+                            <CambioBadge cambio={vacancy.cambio} />
+                            <span className="text-[11px] font-medium text-slate-400">#{vacancy.num}</span>
+                        </div>
                     </div>
 
                     <p className="mt-0.5 text-xs text-slate-500">

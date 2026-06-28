@@ -13,6 +13,7 @@ import SortableRows from './components/SortableRows';
 import ListBoard from './components/ListBoard';
 import ExportPanel from './components/ExportPanel';
 import ProcesoSelector from './components/ProcesoSelector';
+import CambiosBanner from './components/CambiosBanner';
 
 import LoginPage from './components/auth/LoginPage';
 import Dashboard from './components/dashboard/Dashboard';
@@ -28,6 +29,7 @@ import TablonResponder from './components/tablon/TablonResponder';
 
 import { useUserList } from './hooks/useUserList';
 import { useVacancies } from './hooks/useVacancies';
+import { useCambios } from './hooks/useCambios';
 import { useDistances } from './hooks/useDistances';
 import { useListSync } from './hooks/useListSync';
 import { AuthContext, useAuth, useProvideAuth } from './hooks/useAuth';
@@ -101,6 +103,8 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
         procesoId,
         enabled: isAuthenticated,
     });
+
+    const cambios = useCambios(procesoId);
 
     // Preference lookup + derived columns.
     const prefByVacancy = useMemo(() => {
@@ -362,34 +366,41 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
                 focusedContent
             ) : isLoading ? (
                 <div className="flex h-full items-center justify-center text-sm text-slate-400">Cargando vacantes…</div>
-            ) : viewMode === 'kanban' ? (
-                <KanbanBoard
-                    neutral={neutralSorted}
-                    selected={selectedShown}
-                    revisar={revisarShown}
-                    discarded={discardedShown}
-                    home={home}
-                    showDiscarded={showDiscarded}
-                    onStatusChange={handleStatusChange}
-                    onNotesChange={handleNotesChange}
-                    onReorder={handleReorder}
-                    hasMore={hasNextPage}
-                    onLoadMore={fetchNextPage}
-                    isLoadingMore={isFetchingNextPage}
-                />
             ) : (
-                <ListView
-                    selected={selectedShown}
-                    revisar={revisarShown}
-                    neutral={neutralSorted}
-                    home={home}
-                    onStatusChange={handleStatusChange}
-                    onNotesChange={handleNotesChange}
-                    onReorder={handleReorder}
-                    hasMore={hasNextPage}
-                    onLoadMore={fetchNextPage}
-                    isLoadingMore={isFetchingNextPage}
-                />
+                <div className="flex h-full flex-col">
+                    <CambiosBanner cambios={cambios} />
+                    <div className="min-h-0 flex-1">
+                        {viewMode === 'kanban' ? (
+                            <KanbanBoard
+                                neutral={neutralSorted}
+                                selected={selectedShown}
+                                revisar={revisarShown}
+                                discarded={discardedShown}
+                                home={home}
+                                showDiscarded={showDiscarded}
+                                onStatusChange={handleStatusChange}
+                                onNotesChange={handleNotesChange}
+                                onReorder={handleReorder}
+                                hasMore={hasNextPage}
+                                onLoadMore={fetchNextPage}
+                                isLoadingMore={isFetchingNextPage}
+                            />
+                        ) : (
+                            <ListView
+                                selected={selectedShown}
+                                revisar={revisarShown}
+                                neutral={neutralSorted}
+                                home={home}
+                                onStatusChange={handleStatusChange}
+                                onNotesChange={handleNotesChange}
+                                onReorder={handleReorder}
+                                hasMore={hasNextPage}
+                                onLoadMore={fetchNextPage}
+                                isLoadingMore={isFetchingNextPage}
+                            />
+                        )}
+                    </div>
+                </div>
             )}
 
             {exporting && (

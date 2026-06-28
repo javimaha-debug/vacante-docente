@@ -33,6 +33,8 @@ class Vacancy extends Model
         'itinerante',
         'observaciones',
         'is_active',
+        'cambio',
+        'cambio_en',
     ];
 
     protected function casts(): array

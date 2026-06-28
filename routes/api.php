@@ -62,6 +62,7 @@ Route::prefix('v1')->group(function () {
     // Procesos (public): list + per-proceso vacancies with filters.
     Route::get('procesos', [ProcesoController::class, 'index']);
     Route::get('procesos/{proceso}/vacantes', [ProcesoController::class, 'vacantes']);
+    Route::get('procesos/{proceso}/cambios', [ProcesoController::class, 'cambios']);
 
     // Participant lists (public list + search).
     Route::get('participantes/{proceso}', [ParticipanteController::class, 'index']);
