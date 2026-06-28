@@ -33,50 +33,24 @@ import { useCambios } from './hooks/useCambios';
 import { useDistances } from './hooks/useDistances';
 import { useListSync } from './hooks/useListSync';
 import { AuthContext, useAuth, useProvideAuth } from './hooks/useAuth';
-import { getSpecialtyId, setSpecialtyId, clearSpecialty, getProcesoId, setProcesoId } from './lib/session';
+import { getSpecialtyId, setSpecialtyId, clearSpecialty, getProcesoId, setProcesoId, getStoredFilters, setStoredFilters } from './lib/session';
+import { DEFAULT_FILTERS, matchesFilters, statusEnabled, sortVacancies, countActiveFilters } from './lib/vacancyFilters';
 
 const queryClient = new QueryClient({
     defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
 });
 
-// Accent- and case-insensitive normalisation for client-side search.
-const normalizeStr = (s) =>
-    (s ?? '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
-// Real-time search against every relevant field of a vacancy.
-function matchesVacancy(vacancy, q) {
-    if (!q) return true;
-    const hay = normalizeStr(
-        [
-            vacancy.centro_nombre,
-            vacancy.localidad,
-            vacancy.centro_codigo,
-            vacancy.provincia,
-            vacancy.tipo_centro,
-            vacancy.observ,
-            `#${vacancy.num}`,
-            vacancy.num,
-            (vacancy.observ_tags ?? []).join(' '),
-        ].join(' ')
-    );
-    return hay.includes(q);
-}
-
-const EMPTY_FILTERS = {
-    search: '',
-    provincia: '',
-    tiposCentro: [],
-    tags: [],
-    reqLing: false,
-    itinerante: false,
-    maxDistance: '',
-    sort: 'priority',
-};
-
 function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', focused = false }) {
-    const [filters, setFilters] = useState(EMPTY_FILTERS);
-    const [showDiscarded, setShowDiscarded] = useState(false);
+    const [filters, setFilters] = useState(() => ({ ...DEFAULT_FILTERS, ...(getStoredFilters() ?? {}) }));
     const [viewMode, setViewMode] = useState(initialView);
+
+    // Persist the filter set across navigation/reloads.
+    useEffect(() => {
+        setStoredFilters(filters);
+    }, [filters]);
+
+    const clearFilters = useCallback(() => setFilters({ ...DEFAULT_FILTERS }), []);
+    const showDiscarded = statusEnabled(filters, 'discarded');
     const [exporting, setExporting] = useState(false);
     const [procesoId, setProcesoIdState] = useState(getProcesoId);
     const notesTimers = useRef({});
@@ -121,52 +95,32 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
         [vacancies, prefByVacancy]
     );
 
-    // Candidate list with the powerful filters applied client-side: a maximum
-    // driving distance and the chosen ordering. (Province / type / req. ling. /
-    // itinerant / search are already applied server-side.)
-    const searchQ = normalizeStr(filters.search);
-
+    // All explorer filters are applied client-side, combined with AND, so the
+    // results and the counter stay in sync. Status (estado) decides which groups
+    // are shown; the field filters apply to every group.
     const neutralSorted = useMemo(() => {
-        const drivingKm = (v) => v.distances?.driving_ida?.distance_km ?? v.distances?.driving_tornada?.distance_km ?? null;
+        if (!statusEnabled(filters, 'neutral')) return [];
+        const list = neutral.filter((v) => matchesFilters(v, filters));
+        return sortVacancies(list, filters.sort);
+    }, [neutral, filters]);
 
-        let list = searchQ ? neutral.filter((v) => matchesVacancy(v, searchQ)) : neutral;
-        const max = parseFloat(filters.maxDistance);
-        if (!Number.isNaN(max)) {
-            // Keep candidates without a computed distance visible — only drop
-            // those that DO have a distance and exceed the limit.
-            list = list.filter((v) => {
-                const km = drivingKm(v);
-                return km == null || km <= max;
-            });
-        }
-
-        const sort = filters.sort ?? 'priority';
-        if (sort === 'priority') return list;
-
-        const cmp = {
-            distance: (a, b) => (drivingKm(a) ?? Infinity) - (drivingKm(b) ?? Infinity),
-            num: (a, b) => (a.num ?? 0) - (b.num ?? 0),
-            localidad: (a, b) => (a.localidad ?? '').localeCompare(b.localidad ?? ''),
-            centro: (a, b) => (a.centro_nombre ?? '').localeCompare(b.centro_nombre ?? ''),
-        }[sort];
-
-        return cmp ? [...list].sort(cmp) : list;
-    }, [neutral, filters.maxDistance, filters.sort, searchQ]);
-
-    // Search also filters "Mi lista" and "Descartadas" (display only — the full
-    // selected/discarded sets are kept for counts, sync, export and reorder).
+    // Field filters also narrow "Mi lista" / "A revisar" / "Descartadas" for
+    // display (full sets are kept for counts, sync, export and reorder).
     const selectedShown = useMemo(
-        () => (searchQ ? selected.filter((p) => matchesVacancy(p.vacancy, searchQ)) : selected),
-        [selected, searchQ]
-    );
-    const discardedShown = useMemo(
-        () => (searchQ ? discarded.filter((p) => matchesVacancy(p.vacancy, searchQ)) : discarded),
-        [discarded, searchQ]
+        () => (statusEnabled(filters, 'selected') ? selected.filter((p) => matchesFilters(p.vacancy, filters)) : []),
+        [selected, filters]
     );
     const revisarShown = useMemo(
-        () => (searchQ ? revisar.filter((p) => matchesVacancy(p.vacancy, searchQ)) : revisar),
-        [revisar, searchQ]
+        () => (statusEnabled(filters, 'revisar') ? revisar.filter((p) => matchesFilters(p.vacancy, filters)) : []),
+        [revisar, filters]
     );
+    const discardedShown = useMemo(
+        () => (statusEnabled(filters, 'discarded') ? discarded.filter((p) => matchesFilters(p.vacancy, filters)) : []),
+        [discarded, filters]
+    );
+
+    // How many vacancies match the active filters across all shown statuses.
+    const matchingCount = neutralSorted.length + selectedShown.length + revisarShown.length + discardedShown.length;
 
     const persist = useCallback(
         (rows) => savePreferences.mutate(rows),
@@ -273,7 +227,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
         [prefByVacancy, persist]
     );
 
-    const counts = { total, selected: selected.length, revisar: revisar.length, discarded: discarded.length };
+    const counts = { total, matching: matchingCount, selected: selected.length, revisar: revisar.length, discarded: discarded.length };
 
     const sidebar = (
         <div className="space-y-5">
@@ -303,8 +257,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
                 filters={filters}
                 setFilters={setFilters}
                 counts={counts}
-                showDiscarded={showDiscarded}
-                setShowDiscarded={setShowDiscarded}
+                onClear={clearFilters}
             />
         </div>
     );
@@ -361,6 +314,7 @@ function Organizer({ specialtyId, onChangeSpecialty, initialView = 'kanban', foc
             viewMode={focused ? undefined : viewMode}
             onViewModeChange={focused ? undefined : setViewMode}
             sidebar={focused ? focusedSidebar : sidebar}
+            filterCount={focused ? 0 : countActiveFilters(filters)}
         >
             {focused ? (
                 focusedContent

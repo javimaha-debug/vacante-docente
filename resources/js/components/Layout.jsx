@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onExport, viewMode, onViewModeChange, sidebar, children }) {
+export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onExport, viewMode, onViewModeChange, sidebar, filterCount = 0, children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
@@ -8,11 +8,19 @@ export default function Layout({ specialty, vacancyCount, onChangeSpecialty, onE
             {/* Header */}
             <header className="z-20 flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5 shadow-sm">
                 <button
-                    className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+                    className="relative flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 lg:hidden"
                     onClick={() => setSidebarOpen((v) => !v)}
-                    aria-label="Menú"
+                    aria-label="Filtrar"
                 >
-                    ☰
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h18M6 12h12M10 19.5h4" />
+                    </svg>
+                    Filtrar
+                    {filterCount > 0 && (
+                        <span className="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1 text-[11px] font-bold text-white">
+                            {filterCount}
+                        </span>
+                    )}
                 </button>
 
                 <div className="flex items-center gap-2">
