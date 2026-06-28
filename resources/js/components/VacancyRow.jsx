@@ -101,46 +101,51 @@ export default function VacancyRow({
                 </div>
 
                 {/* Quick actions */}
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 items-center gap-0.5">
                     <a
                         href={mapsRouteUrl(home, vacancy, 'driving')}
                         target="_blank"
                         rel="noreferrer"
-                        title="Ver ruta en Google Maps"
-                        className="rounded-md px-1.5 py-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+                        title="Cómo llegar (Google Maps)"
+                        className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-brand-600"
                     >
-                        🗺️
+                        <RouteIcon />
                     </a>
-                    <button
-                        type="button"
-                        onClick={() => onStatusChange?.(status === 'selected' ? 'neutral' : 'selected')}
-                        title={status === 'selected' ? 'Quitar de mi lista' : 'Añadir a mi lista'}
-                        className={clsx(
-                            'rounded-md px-1.5 py-1 text-xs font-semibold transition',
-                            status === 'selected' ? 'bg-emerald-600 text-white' : 'text-emerald-700 hover:bg-emerald-50'
-                        )}
+                    <ActionButton
+                        active={status === 'selected'}
+                        activeClass="bg-emerald-600 text-white"
+                        idleClass="text-emerald-700 hover:bg-emerald-50"
+                        title="Añadir a mi lista"
+                        onClick={() => onStatusChange?.('selected')}
                     >
-                        ✓
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onStatusChange?.(status === 'discarded' ? 'neutral' : 'discarded')}
-                        title={status === 'discarded' ? 'Restaurar' : 'Descartar'}
-                        className={clsx(
-                            'rounded-md px-1.5 py-1 text-xs font-semibold transition',
-                            status === 'discarded' ? 'bg-rose-600 text-white' : 'text-rose-600 hover:bg-rose-50'
-                        )}
+                        <CheckIcon />
+                    </ActionButton>
+                    <ActionButton
+                        active={status === 'neutral'}
+                        activeClass="bg-slate-600 text-white"
+                        idleClass="text-slate-500 hover:bg-slate-100"
+                        title="Sin asignar"
+                        onClick={() => onStatusChange?.('neutral')}
                     >
-                        ✕
-                    </button>
+                        <UndoIcon />
+                    </ActionButton>
+                    <ActionButton
+                        active={status === 'discarded'}
+                        activeClass="bg-rose-600 text-white"
+                        idleClass="text-rose-600 hover:bg-rose-50"
+                        title="Descartar"
+                        onClick={() => onStatusChange?.('discarded')}
+                    >
+                        <XIcon />
+                    </ActionButton>
                     {onNotesChange && (
                         <button
                             type="button"
                             onClick={() => setShowNotes((v) => !v)}
                             title="Nota"
-                            className={clsx('rounded-md px-1.5 py-1 text-xs', notes ? 'text-brand-600' : 'text-slate-400 hover:bg-slate-100')}
+                            className={clsx('rounded-md p-1.5 transition', notes ? 'text-brand-600' : 'text-slate-400 hover:bg-slate-100')}
                         >
-                            ✎
+                            <NoteIcon />
                         </button>
                     )}
                 </div>
@@ -178,3 +183,41 @@ export default function VacancyRow({
         </div>
     );
 }
+
+function ActionButton({ active, activeClass, idleClass, title, onClick, children }) {
+    return (
+        <button
+            type="button"
+            title={title}
+            aria-label={title}
+            onClick={onClick}
+            className={clsx('rounded-md p-1.5 transition', active ? activeClass : idleClass)}
+        >
+            {children}
+        </button>
+    );
+}
+
+const ic = 'h-4 w-4';
+const svgProps = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, className: ic };
+
+// Directions / route pin.
+const RouteIcon = () => (
+    <svg {...svgProps}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+    </svg>
+);
+const CheckIcon = () => (
+    <svg {...svgProps}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+);
+// "Sin asignar": undo / reset arrow.
+const UndoIcon = () => (
+    <svg {...svgProps}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+);
+const XIcon = () => (
+    <svg {...svgProps}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+);
+const NoteIcon = () => (
+    <svg {...svgProps}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.931-8.931z" /></svg>
+);
