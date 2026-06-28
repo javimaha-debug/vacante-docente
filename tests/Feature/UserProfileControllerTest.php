@@ -232,6 +232,13 @@ class UserProfileControllerTest extends TestCase
             ->assertJsonPath('resumen_historial.ultimo_centro', 'IES LA FONT')
             ->assertJsonPath('resumen_historial.ultima_posicion', 7)
             ->assertJsonPath('proceso_listado.id', $proceso->id)
-            ->assertJsonPath('proceso_listado.fecha', '2026-06-22');
+            ->assertJsonPath('proceso_listado.fecha', '2026-06-22')
+            // Personal info + full history for the user dashboard.
+            ->assertJsonPath('info.email', $user->email)
+            ->assertJsonPath('info.num_especialidades', 1)
+            ->assertJsonCount(1, 'historial')
+            ->assertJsonPath('historial.0.centro', 'IES LA FONT')
+            ->assertJsonPath('historial.0.posicion_definitiva', 7)
+            ->assertJsonPath('historial.0.estado', 'Adjudicat');
     }
 }

@@ -148,6 +148,8 @@ export default function DashboardHome() {
     const plazos = data?.proximos_plazos ?? [];
     const favoritas = data?.mis_vacantes_favoritas ?? [];
     const resumen = data?.resumen_historial ?? {};
+    const info = data?.info ?? {};
+    const historial = data?.historial ?? [];
     const novedades = (noticias?.data ?? []).slice(0, 5);
     // Read the official position from the LATEST participant listing; fall back
     // to a published proceso if no listing has been imported yet.
@@ -156,6 +158,8 @@ export default function DashboardHome() {
 
     return (
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2">
+            <InfoCard info={info} />
+
             <MiPosicionCard proceso={procesoPublicado} />
 
             <Card title="Procesos activos">
@@ -269,6 +273,91 @@ export default function DashboardHome() {
                     </ul>
                 )}
             </Card>
+
+            <HistorialSection historial={historial} />
         </div>
+    );
+}
+
+const ESTADO_HISTORIAL_STYLES = {
+    Adjudicat: 'bg-blue-100 text-blue-700',
+    Activat: 'bg-green-100 text-green-700',
+    Desactivat: 'bg-slate-100 text-slate-600',
+};
+
+// Personal info summary card (full width).
+function InfoCard({ info }) {
+    const rows = [
+        ['Nombre', info.name],
+        ['Correo', info.email],
+        ['Nombre GVA', info.nombre_gva || '— (configúralo en Mi Perfil)'],
+        ['Colectivo', [info.colectivo, info.cuerpo].filter(Boolean).join(' · ') || '—'],
+        ['Comunidad', info.ccaa || '—'],
+        ['Domicilio', info.direccion_origen || '—'],
+        ['Especialidades', info.num_especialidades ?? 0],
+        ['Miembro desde', info.miembro_desde || '—'],
+    ];
+
+    return (
+        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:col-span-2">
+            <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-slate-700">Mi información</h2>
+                <Link to="/dashboard/perfil" className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+                    Editar perfil →
+                </Link>
+            </div>
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+                {rows.map(([label, value]) => (
+                    <div key={label} className="flex items-baseline justify-between gap-3 border-b border-slate-50 pb-1">
+                        <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</dt>
+                        <dd className="truncate text-right text-sm text-slate-700" title={String(value)}>{value}</dd>
+                    </div>
+                ))}
+            </dl>
+        </section>
+    );
+}
+
+// Full adjudication history as a timeline (full width).
+function HistorialSection({ historial }) {
+    return (
+        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:col-span-2">
+            <h2 className="mb-3 text-sm font-bold text-slate-700">Historial de adjudicaciones</h2>
+            {historial.length === 0 ? (
+                <p className="text-sm text-slate-400">
+                    Aún no hay historial. Se irá completando a medida que participes en los procesos.
+                </p>
+            ) : (
+                <ol className="relative space-y-4 border-l border-slate-200 pl-5">
+                    {historial.map((h) => (
+                        <li key={h.id} className="relative">
+                            <span className="absolute -left-[1.42rem] top-1.5 h-2.5 w-2.5 rounded-full bg-brand-500 ring-2 ring-white" />
+                            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                <span className="text-sm font-bold text-slate-800">{h.curso ?? h.anyo}</span>
+                                {h.estado && (
+                                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${ESTADO_HISTORIAL_STYLES[h.estado] ?? 'bg-slate-100 text-slate-600'}`}>
+                                        {h.estado}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-sm text-slate-700">
+                                {h.especialidad ?? '—'}
+                                {h.posicion_definitiva != null && (
+                                    <span className="text-slate-400"> · posición {h.posicion_definitiva}</span>
+                                )}
+                            </p>
+                            {h.centro && (
+                                <p className="text-xs text-slate-500">
+                                    {h.centro}
+                                    {h.localidad && ` (${h.localidad})`}
+                                    {h.jornada && ` · ${h.jornada}`}
+                                </p>
+                            )}
+                            {h.proceso && <p className="text-[11px] text-slate-400">{h.proceso}</p>}
+                        </li>
+                    ))}
+                </ol>
+            )}
+        </section>
     );
 }
