@@ -66,4 +66,25 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    /*
+    | Microsoft OAuth (Socialite). Requires the socialite-providers/microsoft
+    | package installed and registered. Enabled when MICROSOFT_CLIENT_ID is set.
+    */
+    'microsoft' => [
+        'client_id' => env('MICROSOFT_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+        'redirect' => env('MICROSOFT_REDIRECT_URI'),
+        'tenant' => env('MICROSOFT_TENANT', 'common'),
+    ],
+
+    /*
+    | Apple OAuth (Socialite). Requires the socialite-providers/apple package.
+    | Enabled when APPLE_CLIENT_ID is set (needs a private key, team & key id).
+    */
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID'),
+        'client_secret' => env('APPLE_CLIENT_SECRET'),
+        'redirect' => env('APPLE_REDIRECT_URI'),
+    ],
+
 ];

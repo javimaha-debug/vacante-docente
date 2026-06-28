@@ -13,6 +13,13 @@ class GoogleOAuthTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Social login is gated on configured credentials.
+        config(['services.google.client_id' => 'test-client-id', 'services.google.client_secret' => 'test-secret']);
+    }
+
     private function fakeGoogleUser(string $email, string $name, ?string $avatar): void
     {
         $socialiteUser = Mockery::mock(\Laravel\Socialite\Two\User::class);

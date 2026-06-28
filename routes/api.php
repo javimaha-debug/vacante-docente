@@ -29,6 +29,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
+    // Email + password auth (public, rate limited). Social login lives on the
+    // web routes (/auth/{provider}) so Socialite can redirect.
+    Route::get('auth/providers', [\App\Http\Controllers\AuthController::class, 'providers']);
+    Route::post('auth/register', [\App\Http\Controllers\AuthController::class, 'register'])->middleware('throttle:10,1');
+    Route::post('auth/login', [\App\Http\Controllers\AuthController::class, 'login'])->middleware('throttle:10,1');
+
     // Catalog
     Route::get('specialties', [SpecialtyController::class, 'index']);
     Route::get('vacancies', [VacancyController::class, 'index']);
