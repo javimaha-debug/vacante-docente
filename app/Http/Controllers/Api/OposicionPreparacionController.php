@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OposicionEspecialidad;
 use App\Models\OposicionSesion;
 use App\Models\OposicionTema;
+use App\Models\Specialty;
 use App\Models\TemaOficial;
 use App\Models\TemarioOficial;
 use Illuminate\Http\JsonResponse;
