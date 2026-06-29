@@ -5,12 +5,15 @@ import api from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 
+// Ordered estado pipeline (drives the timeline stepper).
+const ESTADO_FLOW = ['rumor', 'anunciada', 'convocada', 'en_proceso', 'resuelta'];
+
 const ESTADO = {
-    rumor: { label: 'Rumor', chip: 'bg-slate-100 text-slate-600' },
-    anunciada: { label: 'Anunciada', chip: 'bg-amber-50 text-amber-700' },
-    convocada: { label: 'Convocada', chip: 'bg-blue-50 text-blue-700' },
-    en_proceso: { label: 'En proceso', chip: 'bg-teal-50 text-teal-700' },
-    resuelta: { label: 'Resuelta', chip: 'bg-brand-50 text-brand-700' },
+    rumor: { label: 'Rumor', chip: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' },
+    anunciada: { label: 'Anunciada', chip: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
+    convocada: { label: 'Convocada', chip: 'bg-blue-50 text-blue-700', dot: 'bg-blue-500' },
+    en_proceso: { label: 'En proceso', chip: 'bg-teal-50 text-teal-700', dot: 'bg-teal-500' },
+    resuelta: { label: 'Resuelta', chip: 'bg-brand-50 text-brand-700', dot: 'bg-brand-600' },
 };
 
 const CUERPO_BADGE = 'bg-slate-100 text-slate-600';
@@ -28,6 +31,14 @@ const CUERPOS = [
     { value: 'fp', label: 'FP' },
     { value: 'otros', label: 'Otros' },
 ];
+
+function daysUntil(dateStr) {
+    if (!dateStr) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(dateStr);
+    return Math.round((d - today) / 86400000);
+}
 
 export default function Convocatorias() {
     const { user } = useAuth();
@@ -47,10 +58,20 @@ export default function Convocatorias() {
         })).data,
     });
 
-    const convocatorias = data?.data ?? [];
+    // The cuerpos the user is preparing — used to surface a matching banner.
+    const { data: esp } = useQuery({
+        queryKey: ['oposicion', 'especialidades'],
+        queryFn: async () => (await api.get('/oposicion/especialidades')).data,
+    });
+    const userCuerpos = new Set((esp?.data ?? []).map((e) => e.cuerpo));
 
-    // Hero: an active convocatoria (convocada / en_proceso) — surfaced first.
-    const activa = convocatorias.find((c) => ['convocada', 'en_proceso'].includes(c.estado));
+    const convocatorias = data?.data ?? [];
+    const anyFilter = Boolean(filters.estado || filters.comunidad || filters.cuerpo);
+
+    // Prominent banner: an active call (convocada / en_proceso) for the user's cuerpo.
+    const matching = convocatorias.find(
+        (c) => ['convocada', 'en_proceso'].includes(c.estado) && (userCuerpos.size === 0 || userCuerpos.has(c.cuerpo))
+    );
 
     const refresh = () => qc.invalidateQueries({ queryKey: ['convocatorias'] });
 
@@ -68,12 +89,12 @@ export default function Convocatorias() {
                 )}
             </div>
 
-            {activa && <Hero convocatoria={activa} />}
+            {matching && <MatchBanner convocatoria={matching} onChanged={refresh} />}
 
             <div className="mb-5 flex flex-wrap gap-2">
                 <select value={filters.estado} onChange={(e) => setFilters((f) => ({ ...f, estado: e.target.value }))} className={selectCls}>
                     <option value="">Todos los estados</option>
-                    {Object.entries(ESTADO).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
+                    {ESTADO_FLOW.map((v) => <option key={v} value={v}>{ESTADO[v].label}</option>)}
                 </select>
                 <select value={filters.comunidad} onChange={(e) => setFilters((f) => ({ ...f, comunidad: e.target.value }))} className={selectCls}>
                     {COMUNIDADES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -90,7 +111,9 @@ export default function Convocatorias() {
             ) : convocatorias.length === 0 ? (
                 <div className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
                     <div className="text-3xl">📭</div>
-                    <p className="mt-2 text-sm font-medium text-slate-600">No hay convocatorias para estos filtros.</p>
+                    <p className="mt-2 text-sm font-medium text-slate-600">
+                        {anyFilter ? 'No hay convocatorias para estos filtros.' : 'No hay convocatorias activas en tu comunidad.'}
+                    </p>
                     <p className="mt-1 text-sm text-slate-400">Te avisaremos cuando haya novedades.</p>
                 </div>
             ) : (
@@ -112,21 +135,73 @@ export default function Convocatorias() {
     );
 }
 
-function Hero({ convocatoria }) {
+// Horizontal stepper showing where the convocatoria is in the estado pipeline.
+function Timeline({ estado }) {
+    const currentIdx = ESTADO_FLOW.indexOf(estado);
+    return (
+        <ol className="mt-3 flex items-center gap-1">
+            {ESTADO_FLOW.map((e, i) => {
+                const done = i <= currentIdx;
+                return (
+                    <li key={e} className="flex flex-1 flex-col items-center gap-1">
+                        <div className="flex w-full items-center">
+                            <span className={clsx('h-1 flex-1 rounded-full', i === 0 ? 'bg-transparent' : done ? 'bg-brand-500' : 'bg-slate-200')} />
+                            <span className={clsx('h-2.5 w-2.5 shrink-0 rounded-full', done ? ESTADO[e].dot : 'bg-slate-200')} />
+                            <span className={clsx('h-1 flex-1 rounded-full', i === ESTADO_FLOW.length - 1 ? 'bg-transparent' : i < currentIdx ? 'bg-brand-500' : 'bg-slate-200')} />
+                        </div>
+                        <span className={clsx('text-[10px] font-medium', i === currentIdx ? 'text-slate-700' : 'text-slate-400')}>{ESTADO[e].label}</span>
+                    </li>
+                );
+            })}
+        </ol>
+    );
+}
+
+function AlertButton({ convocatoria, onChanged }) {
+    const active = Boolean(convocatoria.alert_active);
+    const toggle = useMutation({
+        mutationFn: async () => (await api.post(`/convocatorias/${convocatoria.id}/alert/toggle`)).data,
+        onSuccess: onChanged,
+    });
+
+    return (
+        <button
+            onClick={() => toggle.mutate()}
+            disabled={toggle.isPending}
+            className={clsx(
+                'rounded-lg px-3 py-1.5 text-sm font-semibold transition disabled:opacity-60',
+                active ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            )}
+        >
+            {active ? '🔔 Alerta activada' : 'Activar alerta'}
+        </button>
+    );
+}
+
+function MatchBanner({ convocatoria, onChanged }) {
     const fecha = convocatoria.fecha_oficial || convocatoria.fecha_estimada;
+    const dias = daysUntil(fecha);
     return (
         <div className="mb-5 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-700 p-5 text-white shadow-brand">
             <p className="text-sm font-semibold">🎓 Hay una convocatoria activa para tu especialidad</p>
             <p className="mt-1 font-heading text-lg font-bold">{convocatoria.titulo}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-white/80">
-                {fecha && <span>📅 {new Date(fecha).toLocaleDateString('es-ES')}</span>}
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-white/85">
                 <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">{ESTADO[convocatoria.estado]?.label}</span>
+                {fecha && <span>📅 {new Date(fecha).toLocaleDateString('es-ES')}</span>}
+                {dias != null && dias >= 0 && (
+                    <span className="rounded-full bg-amber-400 px-2 py-0.5 text-xs font-bold text-amber-950">
+                        {dias === 0 ? '¡Hoy!' : `Faltan ${dias} días`}
+                    </span>
+                )}
             </div>
-            {convocatoria.url_oficial && (
-                <a href={convocatoria.url_oficial} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50">
-                    Ver convocatoria oficial ↗
-                </a>
-            )}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+                {convocatoria.url_oficial && (
+                    <a href={convocatoria.url_oficial} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+                        Ver convocatoria oficial ↗
+                    </a>
+                )}
+                <AlertButton convocatoria={convocatoria} onChanged={onChanged} />
+            </div>
         </div>
     );
 }
@@ -152,10 +227,14 @@ function ConvocatoriaCard({ convocatoria: c, isAdmin, onEdit, onChanged }) {
             </div>
 
             <p className="mt-2 text-sm font-semibold text-slate-800">{c.titulo}</p>
-            {fecha && <p className="mt-1 text-xs text-slate-500">{fechaLabel}: {new Date(fecha).toLocaleDateString('es-ES')}</p>}
+
+            <Timeline estado={c.estado} />
+
+            {fecha && <p className="mt-3 text-xs text-slate-500">{fechaLabel}: {new Date(fecha).toLocaleDateString('es-ES')}</p>}
             {c.notas && <p className="mt-2 text-sm text-slate-600">{c.notas}</p>}
 
-            <div className="mt-3 flex items-center gap-3">
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+                <AlertButton convocatoria={c} onChanged={onChanged} />
                 {c.url_oficial && (
                     <a href={c.url_oficial} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-brand-700 hover:text-brand-800">
                         Ver convocatoria oficial ↗
@@ -220,7 +299,7 @@ function EditModal({ convocatoria, onClose, onSaved }) {
                     </Field>
                     <Field label="Estado">
                         <select value={form.estado} onChange={set('estado')} className={inputCls}>
-                            {Object.entries(ESTADO).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
+                            {ESTADO_FLOW.map((v) => <option key={v} value={v}>{ESTADO[v].label}</option>)}
                         </select>
                     </Field>
                     <div className="grid grid-cols-2 gap-3">

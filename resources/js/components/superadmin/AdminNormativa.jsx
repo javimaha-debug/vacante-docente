@@ -28,13 +28,42 @@ export default function AdminNormativa() {
         onSuccess: refresh,
     });
 
+    const { data: syncState } = useQuery({
+        queryKey: ['admin', 'normativa', 'sync-state'],
+        queryFn: async () => (await api.get('/superadmin/normativa/sync-state')).data,
+    });
+
+    const syncBoe = useMutation({
+        mutationFn: async () => (await api.post('/superadmin/normativa/sync-boe')).data,
+        onSuccess: () => { refresh(); qc.invalidateQueries({ queryKey: ['admin', 'normativa', 'sync-state'] }); },
+    });
+    const syncDogv = useMutation({
+        mutationFn: async () => (await api.post('/superadmin/normativa/sync-dogv')).data,
+        onSuccess: () => { refresh(); qc.invalidateQueries({ queryKey: ['admin', 'normativa', 'sync-state'] }); },
+    });
+
+    const fmt = (iso) => iso ? new Date(iso).toLocaleString('es-ES') : 'nunca';
+
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-base font-semibold text-slate-200">Normativa</h2>
-                <button onClick={() => setCreating(true)} className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-500">
-                    + Subir documento
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={() => syncBoe.mutate()} disabled={syncBoe.isPending} className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50">
+                        {syncBoe.isPending ? 'Sincronizando…' : 'Sincronizar BOE'}
+                    </button>
+                    <button onClick={() => syncDogv.mutate()} disabled={syncDogv.isPending} className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50">
+                        {syncDogv.isPending ? 'Sincronizando…' : 'Sincronizar DOGV'}
+                    </button>
+                    <button onClick={() => setCreating(true)} className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-500">
+                        + Subir documento
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 text-xs text-slate-500">
+                <span>BOE — última sync: {fmt(syncState?.boe?.last_run_at)}{syncState?.boe?.resumen ? ` (${syncState.boe.resumen.new ?? 0} nuevos)` : ''}</span>
+                <span>DOGV — última sync: {fmt(syncState?.dogv?.last_run_at)}{syncState?.dogv?.resumen ? ` (${syncState.dogv.resumen.new ?? 0} nuevos)` : ''}</span>
             </div>
 
             {isLoading ? (

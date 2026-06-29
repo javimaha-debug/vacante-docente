@@ -30,6 +30,18 @@ const COMUNIDADES = [
     { value: 'valenciana', label: 'Comunitat Valenciana' },
 ];
 
+const FUENTE_BADGE = {
+    boe: { label: 'BOE', cls: 'bg-blue-50 text-blue-700' },
+    dogv: { label: 'DOGV', cls: 'bg-purple-50 text-purple-700' },
+    manual: { label: 'Manual', cls: 'bg-slate-100 text-slate-500' },
+};
+
+const IDIOMAS = [
+    { value: '', label: 'Todos los idiomas' },
+    { value: 'castellano', label: 'Castellano' },
+    { value: 'valenciano', label: 'Valenciano' },
+];
+
 // Logical sections shown as headers in the grid.
 function sectionFor(doc) {
     if (doc.comunidad_autonoma === 'nacional') return 'Normativa básica nacional';
@@ -42,7 +54,7 @@ const SECTION_ORDER = ['Normativa básica nacional', 'Normativa CV', 'Por especi
 export default function Normativa() {
     const { user } = useAuth();
     const isAdmin = Boolean(user?.is_admin) || Boolean(user?.is_superadmin);
-    const [filters, setFilters] = useState({ categoria: '', comunidad: '', vigente: '' });
+    const [filters, setFilters] = useState({ categoria: '', comunidad: '', vigente: '', idioma: '' });
     const [showUpload, setShowUpload] = useState(false);
     const qc = useQueryClient();
 
@@ -53,6 +65,7 @@ export default function Normativa() {
                 categoria: filters.categoria || undefined,
                 comunidad: filters.comunidad || undefined,
                 vigente: filters.vigente === '' ? undefined : filters.vigente,
+                idioma: filters.idioma || undefined,
             },
         })).data,
     });
@@ -65,6 +78,7 @@ export default function Normativa() {
     }
 
     const refresh = () => qc.invalidateQueries({ queryKey: ['normativa'] });
+    const anyFilter = Boolean(filters.categoria || filters.comunidad || filters.vigente || filters.idioma);
 
     return (
         <div className="relative mx-auto max-w-5xl">
@@ -87,6 +101,9 @@ export default function Normativa() {
                     <option value="1">Solo vigentes</option>
                     <option value="0">Solo derogadas</option>
                 </select>
+                <select value={filters.idioma} onChange={(e) => setFilters((f) => ({ ...f, idioma: e.target.value }))} className={selectCls}>
+                    {IDIOMAS.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
+                </select>
             </div>
 
             {isError ? (
@@ -95,8 +112,18 @@ export default function Normativa() {
                 <p className="text-sm text-slate-400">Cargando…</p>
             ) : docs.length === 0 ? (
                 <div className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
-                    <p className="text-sm font-medium text-slate-600">No hay documentos para estos filtros.</p>
-                    <p className="mt-1 text-sm text-slate-400">Prueba a quitar algún filtro para ver más normativa.</p>
+                    {anyFilter ? (
+                        <>
+                            <p className="text-sm font-medium text-slate-600">No hay documentos para estos filtros.</p>
+                            <p className="mt-1 text-sm text-slate-400">Prueba a quitar algún filtro para ver más normativa.</p>
+                        </>
+                    ) : (
+                        <>
+                            <div className="text-3xl">📚</div>
+                            <p className="mt-2 text-sm font-medium text-slate-600">El equipo está cargando la normativa.</p>
+                            <p className="mt-1 text-sm text-slate-400">Vuelve pronto.</p>
+                        </>
+                    )}
                 </div>
             ) : (
                 <div className="space-y-8">
@@ -156,7 +183,15 @@ function NormativaCard({ doc, isAdmin, onChanged }) {
 
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium capitalize text-slate-500">{doc.comunidad_autonoma}</span>
+                {(() => {
+                    const f = FUENTE_BADGE[doc.fuente] ?? FUENTE_BADGE.manual;
+                    return <span className={clsx('rounded-full px-2 py-0.5 font-semibold', f.cls)}>{f.label}</span>;
+                })()}
+                {doc.idioma && (
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium capitalize text-slate-500">{doc.idioma}</span>
+                )}
                 {doc.fecha_publicacion && <span>{new Date(doc.fecha_publicacion).toLocaleDateString('es-ES')}</span>}
+                {doc.actualizado && <span>· Actualizado {new Date(doc.actualizado).toLocaleDateString('es-ES')}</span>}
             </div>
 
             <div className="mt-3 flex items-center gap-2">

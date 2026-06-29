@@ -21,6 +21,8 @@ class NormativaController extends Controller
             'especialidad' => ['sometimes', 'nullable', 'string', 'max:50'],
             'cuerpo' => ['sometimes', 'nullable', 'string', 'max:50'],
             'vigente' => ['sometimes', 'nullable', 'boolean'],
+            'idioma' => ['sometimes', 'nullable', 'in:castellano,valenciano'],
+            'fuente' => ['sometimes', 'nullable', 'in:boe,dogv,manual'],
         ]);
 
         $docs = NormativaDocumento::query()
@@ -29,6 +31,8 @@ class NormativaController extends Controller
             ->when($data['cuerpo'] ?? null, fn ($q, $c) => $q->where(fn ($w) => $w->where('cuerpo', $c)->orWhereNull('cuerpo')))
             // A specialty filter also keeps the "todas" (null) documents.
             ->when($data['especialidad'] ?? null, fn ($q, $c) => $q->where(fn ($w) => $w->where('especialidad_code', $c)->orWhereNull('especialidad_code')))
+            ->when($data['idioma'] ?? null, fn ($q, $i) => $q->where('idioma', $i))
+            ->when($data['fuente'] ?? null, fn ($q, $f) => $q->where('fuente', $f))
             ->when(array_key_exists('vigente', $data) && $data['vigente'] !== null, fn ($q) => $q->where('vigente', $data['vigente']))
             ->orderByRaw("CASE categoria WHEN 'ley_organica' THEN 0 WHEN 'decreto' THEN 1 WHEN 'orden' THEN 2 WHEN 'resolucion' THEN 3 WHEN 'instrucciones' THEN 4 ELSE 5 END")
             ->orderByDesc('fecha_publicacion')
@@ -61,6 +65,9 @@ class NormativaController extends Controller
             'pdf_url' => $d->pdf_path ? Storage::disk('public')->url($d->pdf_path) : null,
             'fecha_publicacion' => $d->fecha_publicacion?->toDateString(),
             'vigente' => (bool) $d->vigente,
+            'fuente' => $d->fuente ?? 'manual',
+            'idioma' => $d->idioma,
+            'actualizado' => $d->updated_at?->toIso8601String(),
         ];
     }
 }

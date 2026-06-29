@@ -20,6 +20,8 @@ class NormativaDocumento extends Model
         'pdf_path',
         'fecha_publicacion',
         'vigente',
+        'fuente',
+        'idioma',
         'published_by',
         'published_at',
     ];

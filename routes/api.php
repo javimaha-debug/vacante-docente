@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\ConvocatoriasController;
 use App\Http\Controllers\Api\DistanceController;
 use App\Http\Controllers\Api\GeocodeController;
 use App\Http\Controllers\Api\GvaController;
+use App\Http\Controllers\Api\Integrations\GoogleDriveController;
+use App\Http\Controllers\Api\Integrations\Microsoft365Controller;
 use App\Http\Controllers\Api\NormativaController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OposicionPreparacionController;
@@ -26,6 +28,9 @@ use App\Http\Controllers\Api\SuperAdmin\SistemaController as AdminSistemaControl
 use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripcionesController;
 use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
 use App\Http\Controllers\Api\TablonController;
+use App\Http\Controllers\Api\UserDocumentController;
+use App\Http\Controllers\Api\UserDocumentTagController;
+use App\Http\Controllers\Api\UserFolderController;
 use App\Http\Controllers\Api\UserListController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\Api\VacancyController;
@@ -33,11 +38,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Middleware\UpdateLastActive;
 use App\Models\Colectivo;
 use App\Models\Plan;
-use App\Http\Controllers\Api\UserDocumentController;
-use App\Http\Controllers\Api\UserFolderController;
-use App\Http\Controllers\Api\UserDocumentTagController;
-use App\Http\Controllers\Api\Integrations\GoogleDriveController;
-use App\Http\Controllers\Api\Integrations\Microsoft365Controller;
+use App\Models\UserIntegration;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -187,8 +189,8 @@ Route::prefix('v1')->group(function () {
         Route::get('integrations/microsoft/connect', [Microsoft365Controller::class, 'connect']);
         Route::get('integrations/microsoft/files', [Microsoft365Controller::class, 'files']);
         Route::post('integrations/microsoft/import', [Microsoft365Controller::class, 'import']);
-        Route::get('integrations/status', function (\Illuminate\Http\Request $request) {
-            $providers = \App\Models\UserIntegration::where('user_id', $request->user()->id)->pluck('provider')->all();
+        Route::get('integrations/status', function (Request $request) {
+            $providers = UserIntegration::where('user_id', $request->user()->id)->pluck('provider')->all();
 
             return response()->json([
                 'google_drive' => in_array('google_drive', $providers, true),
@@ -238,6 +240,7 @@ Route::prefix('v1')->group(function () {
         Route::get('normativa/{normativa}', [NormativaController::class, 'show']);
         Route::get('convocatorias', [ConvocatoriasController::class, 'index']);
         Route::get('convocatorias/{convocatoria}', [ConvocatoriasController::class, 'show']);
+        Route::post('convocatorias/{convocatoria}/alert/toggle', [ConvocatoriasController::class, 'toggleAlert']);
 
         // GVA admin review (id=1 or is_admin).
         Route::get('admin/gva-noticias', [GvaController::class, 'adminUnnotified']);
@@ -298,10 +301,14 @@ Route::prefix('v1')->group(function () {
 
             // Modo Oposición admin: convocatorias + normativa management.
             Route::get('convocatorias', [AdminConvocatoriasController::class, 'index']);
+            Route::post('convocatorias/monitor', [AdminConvocatoriasController::class, 'monitor']);
             Route::post('convocatorias', [AdminConvocatoriasController::class, 'store']);
             Route::patch('convocatorias/{convocatoria}', [AdminConvocatoriasController::class, 'update']);
             Route::delete('convocatorias/{convocatoria}', [AdminConvocatoriasController::class, 'destroy']);
 
+            Route::get('normativa/sync-state', [AdminNormativaController::class, 'syncState']);
+            Route::post('normativa/sync-boe', [AdminNormativaController::class, 'syncBoe']);
+            Route::post('normativa/sync-dogv', [AdminNormativaController::class, 'syncDogv']);
             Route::get('normativa', [AdminNormativaController::class, 'index']);
             Route::post('normativa', [AdminNormativaController::class, 'store']);
             // PATCH can't carry multipart file uploads reliably; accept POST + _method too.
