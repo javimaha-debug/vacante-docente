@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { useConversations } from './asistente/useAsistente';
@@ -23,6 +24,17 @@ export default function Asistente() {
     const [mode, setMode] = useState('chat');
     const [conversationId, setConversationId] = useState(null);
     const conversations = useConversations();
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Deep link from "Estudiar con IA" (Mi Preparación): ?c={conversationId}.
+    useEffect(() => {
+        const c = searchParams.get('c');
+        if (c) {
+            setMode('chat');
+            setConversationId(Number(c));
+            setSearchParams({}, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
 
     const newChat = () => { setMode('chat'); setConversationId(null); };
 

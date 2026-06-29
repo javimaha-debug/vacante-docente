@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\OposicionEspecialidad;
 use App\Models\OposicionSesion;
 use App\Models\OposicionTema;
+use App\Models\TemaOficial;
+use App\Models\TemarioOficial;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -133,6 +135,8 @@ class OposicionPreparacionController extends Controller
             'notas' => ['sometimes', 'nullable', 'string'],
             'titulo' => ['sometimes', 'string', 'max:300'],
             'numero' => ['sometimes', 'integer', 'min:0'],
+            'esquema_progreso' => ['sometimes', 'nullable', 'array'],
+            'esquema_progreso.*' => ['integer'],
         ]);
 
         // Stamp the study time whenever the tema moves forward.
@@ -205,6 +209,120 @@ class OposicionPreparacionController extends Controller
             'created' => count($created),
             'data' => collect($created)->map(fn ($t) => $this->temaArray($t)),
         ], 201);
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Temario oficial (BOE) */
+    /* ---------------------------------------------------------------- */
+
+    /**
+     * Whether an official temario exists for a specialty + cuerpo, with a preview.
+     */
+    public function temarioOficial(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'especialidad_code' => ['required', 'string', 'max:50'],
+            'cuerpo' => ['sometimes', 'nullable', 'in:maestros,secundaria,fp,otros'],
+        ]);
+
+        $temario = TemarioOficial::query()
+            ->where('especialidad_code', $data['especialidad_code'])
+            ->when($data['cuerpo'] ?? null, fn ($q, $c) => $q->where('cuerpo', $c))
+            ->first();
+
+        if (! $temario) {
+            return response()->json(['exists' => false]);
+        }
+
+        $preview = $temario->temas()->orderBy('numero')->limit(5)->get(['numero', 'titulo']);
+
+        return response()->json([
+            'exists' => true,
+            'temario_id' => $temario->id,
+            'especialidad_nombre' => $temario->especialidad_nombre,
+            'cuerpo' => $temario->cuerpo,
+            'source_order' => $temario->source_order,
+            'total_temas' => $temario->total_temas,
+            'preview' => $preview,
+            // Whether the user already has temas for this specialty.
+            'ya_importado' => OposicionTema::where('user_id', $request->user()->id)
+                ->where('especialidad_code', $data['especialidad_code'])->exists(),
+        ]);
+    }
+
+    /**
+     * Copy the official temario into the user's oposicion_temas as a starting point.
+     */
+    public function importOficial(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'especialidad_code' => ['required', 'string', 'max:50'],
+            'cuerpo' => ['sometimes', 'nullable', 'in:maestros,secundaria,fp,otros'],
+        ]);
+
+        $user = $request->user();
+
+        $temario = TemarioOficial::query()
+            ->where('especialidad_code', $data['especialidad_code'])
+            ->when($data['cuerpo'] ?? null, fn ($q, $c) => $q->where('cuerpo', $c))
+            ->with('temas')
+            ->first();
+
+        if (! $temario) {
+            return response()->json(['message' => 'No hay temario oficial para esta especialidad.'], 404);
+        }
+
+        $created = DB::transaction(function () use ($temario, $user, $data) {
+            // Don't duplicate temas the user already has for this specialty.
+            $existing = OposicionTema::where('user_id', $user->id)
+                ->where('especialidad_code', $data['especialidad_code'])
+                ->pluck('numero')->all();
+
+            $rows = 0;
+            foreach ($temario->temas as $tema) {
+                if (in_array($tema->numero, $existing, true)) {
+                    continue;
+                }
+                OposicionTema::create([
+                    'user_id' => $user->id,
+                    'especialidad_code' => $data['especialidad_code'],
+                    'numero' => $tema->numero,
+                    'titulo' => $tema->titulo,
+                    'status' => 'pendiente',
+                    'es_oficial' => true,
+                    'tema_oficial_id' => $tema->id,
+                ]);
+                $rows++;
+            }
+
+            return $rows;
+        });
+
+        return response()->json(['imported' => $created], 201);
+    }
+
+    /**
+     * The official esquema + bibliography behind one of the user's temas.
+     */
+    public function temaOficialDetail(Request $request, OposicionTema $tema): JsonResponse
+    {
+        if ($tema->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $oficial = $tema->tema_oficial_id ? TemaOficial::find($tema->tema_oficial_id) : null;
+        if (! $oficial) {
+            return response()->json(['esquema' => null, 'bibliografia' => null, 'keywords' => null]);
+        }
+
+        return response()->json([
+            'numero' => $oficial->numero,
+            'titulo' => $oficial->titulo,
+            'esquema' => $oficial->esquema,
+            'bibliografia' => $oficial->bibliografia,
+            'keywords' => $oficial->keywords,
+            'tiempo_estimado_minutos' => $oficial->tiempo_estimado_minutos,
+        ]);
     }
 
     /* ---------------------------------------------------------------- */
@@ -386,6 +504,11 @@ class OposicionPreparacionController extends Controller
             'status' => $t->status,
             'notas' => $t->notas,
             'last_studied_at' => $t->last_studied_at?->toIso8601String(),
+            'es_oficial' => (bool) $t->es_oficial,
+            'tema_oficial_id' => $t->tema_oficial_id,
+            'tiene_esquema' => $t->tema_oficial_id !== null,
+            'esquema_progreso' => $t->esquema_progreso ?? [],
+            'score' => $t->score,
         ];
     }
 

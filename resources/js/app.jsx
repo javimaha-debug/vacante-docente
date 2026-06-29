@@ -42,6 +42,7 @@ import AdminCalendario from './components/superadmin/AdminCalendario';
 import AdminAiUsage from './components/superadmin/AdminAiUsage';
 import AdminConvocatorias from './components/superadmin/AdminConvocatorias';
 import AdminNormativa from './components/superadmin/AdminNormativa';
+import AdminTemarios from './components/superadmin/AdminTemarios';
 import CentrosList from './components/centros/CentrosList';
 import CentroDetail from './components/centros/CentroDetail';
 import TablonList from './components/tablon/TablonList';
@@ -582,6 +583,7 @@ function AppRoutes() {
                 <Route path="suscripciones" element={<AdminSuscripciones />} />
                 <Route path="convocatorias" element={<AdminConvocatorias />} />
                 <Route path="normativa" element={<AdminNormativa />} />
+                <Route path="temarios" element={<AdminTemarios />} />
                 <Route path="importaciones" element={<SuperAdminImportaciones />} />
                 <Route path="monitor-docs" element={<AdminMonitorDocs />} />
                 <Route path="calendario" element={<AdminCalendario />} />

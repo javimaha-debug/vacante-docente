@@ -13,6 +13,7 @@ const NAV = [
     { to: '/superadmin/suscripciones', label: 'Suscripciones', icon: '💳' },
     { to: '/superadmin/convocatorias', label: 'Convocatorias', icon: '📅' },
     { to: '/superadmin/normativa', label: 'Normativa', icon: '📄' },
+    { to: '/superadmin/temarios', label: 'Temarios', icon: '📚' },
     { to: '/superadmin/importaciones', label: 'Importaciones', icon: '🔄' },
     { to: '/superadmin/monitor-docs', label: 'Monitor Docs', icon: '📑', badge: 'docs-pending' },
     { to: '/superadmin/calendario', label: 'Calendario', icon: '📅' },

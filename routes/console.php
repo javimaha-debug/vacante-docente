@@ -64,3 +64,11 @@ Schedule::command('convocatorias:monitor')
     ->timezone('Europe/Madrid')
     ->name('convocatorias-monitor')
     ->withoutOverlapping();
+
+// Official temarios sync: first Sunday of each month at 05:00 Spain time.
+Schedule::command('temarios:sync-boe')
+    ->weeklyOn(0, '05:00')
+    ->when(fn () => (int) now('Europe/Madrid')->day <= 7)
+    ->timezone('Europe/Madrid')
+    ->name('temarios-sync-boe')
+    ->withoutOverlapping();

@@ -21,6 +21,9 @@ class OposicionTema extends Model
         'score_sessions',
         'score_updated_at',
         'score_breakdown',
+        'es_oficial',
+        'tema_oficial_id',
+        'esquema_progreso',
     ];
 
     protected function casts(): array
@@ -32,11 +35,18 @@ class OposicionTema extends Model
             'score_sessions' => 'integer',
             'score_updated_at' => 'datetime',
             'score_breakdown' => 'array',
+            'es_oficial' => 'boolean',
+            'esquema_progreso' => 'array',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function temaOficial(): BelongsTo
+    {
+        return $this->belongsTo(TemaOficial::class, 'tema_oficial_id');
     }
 }

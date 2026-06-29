@@ -25,6 +25,7 @@ class AiConversationController extends Controller
             'mode' => ['required', 'in:chat,flashcards,simulacro,simulador_oral'],
             'context_type' => ['required', 'in:free,temario,document'],
             'especialidad_code' => ['nullable', 'string', 'max:50'],
+            'tema_numero' => ['nullable', 'integer', 'min:1'],
             'title' => ['nullable', 'string', 'max:255'],
             'document_ids' => ['sometimes', 'array'],
         ]);
@@ -34,6 +35,7 @@ class AiConversationController extends Controller
             'mode' => $data['mode'],
             'context_type' => $data['context_type'],
             'especialidad_code' => $data['especialidad_code'] ?? null,
+            'tema_numero' => $data['tema_numero'] ?? null,
             'title' => $data['title'] ?? null,
         ]);
 

@@ -117,4 +117,9 @@ return [
         'sources' => json_decode((string) env('CONVOCATORIAS_SOURCES', '[]'), true) ?: [],
     ],
 
+    'temarios' => [
+        // Optional comma-separated list of union/ANPE pages for enrich-sources.
+        'sources' => array_filter(explode(',', (string) env('TEMARIOS_SOURCES', ''))),
+    ],
+
 ];
