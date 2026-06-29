@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DocumentChunk;
+use App\Support\Vector;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -29,7 +30,7 @@ class RagService
 
         $threshold = (float) config('ai.rag.similarity_threshold', 0.7);
 
-        return DB::getDriverName() === 'pgsql'
+        return Vector::enabled()
             ? $this->searchPg($queryVector, $userId, $documentIds, $limit, $threshold)
             : $this->searchFallback($queryVector, $userId, $documentIds, $limit, $threshold);
     }
