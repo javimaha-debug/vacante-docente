@@ -34,6 +34,6 @@ class Convocatoria extends Model
 
     public function sourceDocument(): BelongsTo
     {
-        return $this->belongsTo(GvaNoticia::class, 'source_document_id');
+        return $this->belongsTo(DetectedDocument::class, 'source_document_id');
     }
 }
