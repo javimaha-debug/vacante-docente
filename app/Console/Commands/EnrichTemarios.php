@@ -35,9 +35,11 @@ class EnrichTemarios extends Command
         }
 
         if ($especialidad) {
-            $query->where(function ($q) use ($especialidad) {
-                $q->where('especialidad_nombre', 'like', '%'.$especialidad.'%')
-                    ->orWhere('especialidad_code', 'like', '%'.$especialidad.'%');
+            // ILIKE on PostgreSQL, LIKE on SQLite (both work case-insensitively this way).
+            $op = \Illuminate\Support\Facades\DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
+            $query->where(function ($q) use ($especialidad, $op) {
+                $q->where('especialidad_nombre', $op, '%'.$especialidad.'%')
+                    ->orWhere('especialidad_code', $op, '%'.$especialidad.'%');
             });
         }
 
