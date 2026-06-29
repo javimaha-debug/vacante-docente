@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Smalot\PdfParser\Parser;
+use Symfony\Component\Process\Process;
 
 class SyncTemariosBoe extends Command
 {
@@ -33,12 +33,6 @@ class SyncTemariosBoe extends Command
 
     public function handle(TemarioBoeParser $parser, TemarioSyncService $sync): int
     {
-        if (! class_exists(Parser::class)) {
-            $this->error('smalot/pdfparser no está instalado; no se puede extraer el texto de los PDF.');
-
-            return self::FAILURE;
-        }
-
         $only = $this->option('cuerpo');
         $enrich = ! $this->option('no-enrich');
         $totals = ['temarios' => 0, 'temas' => 0, 'especialidades' => 0];
@@ -100,14 +94,25 @@ class SyncTemariosBoe extends Command
         }
     }
 
-    /** Extract text from a PDF using smalot/pdfparser. */
+    /**
+     * Extract text from a PDF with pdftotext (poppler). Done in an external
+     * process so a 700-page BOE order doesn't blow PHP's memory_limit (the
+     * smalot/pdfparser approach OOM'd on the secundaria temario).
+     */
     private function extractText(string $absolutePath): string
     {
         try {
-            $parser = new Parser;
-            $pdf = $parser->parseFile($absolutePath);
+            $process = new Process(['pdftotext', '-enc', 'UTF-8', $absolutePath, '-']);
+            $process->setTimeout(300);
+            $process->run();
 
-            return $pdf->getText();
+            if (! $process->isSuccessful()) {
+                Log::warning('temarios:sync-boe pdftotext failed', ['path' => $absolutePath, 'stderr' => trim($process->getErrorOutput())]);
+
+                return '';
+            }
+
+            return $process->getOutput();
         } catch (\Throwable $e) {
             Log::warning('temarios:sync-boe extract failed', ['path' => $absolutePath, 'error' => $e->getMessage()]);
 

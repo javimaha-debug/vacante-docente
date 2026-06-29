@@ -25,7 +25,14 @@ return new class extends Migration
             $table->index(['user_document_id', 'chunk_index']);
         });
 
-        if (DB::getDriverName() === 'pgsql') {
+        // Use a real pgvector column + index only when the extension is actually
+        // present; otherwise (SQLite, MySQL, or Postgres without pgvector) store
+        // the embedding as TEXT so the migration never fails and the app uses the
+        // PHP cosine fallback.
+        $hasPgVector = DB::getDriverName() === 'pgsql'
+            && ! empty(DB::select("SELECT 1 FROM pg_extension WHERE extname = 'vector'"));
+
+        if ($hasPgVector) {
             DB::statement('ALTER TABLE document_chunks ADD COLUMN embedding vector(1024)');
             DB::statement('CREATE INDEX document_chunks_embedding_idx ON document_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)');
         } else {

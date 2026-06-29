@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\DocumentChunk;
 use App\Models\UserDocument;
 use App\Services\EmbeddingService;
+use App\Support\Vector;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -44,7 +45,7 @@ class EmbedDocumentJob implements ShouldQueue
 
         try {
             $batchSize = (int) config('ai.voyage.batch', 128);
-            $isPg = DB::getDriverName() === 'pgsql';
+            $isPg = Vector::enabled();
 
             foreach ($chunks->chunk($batchSize) as $batch) {
                 $vectors = $embeddings->embed($batch->pluck('content')->all(), 'document');
