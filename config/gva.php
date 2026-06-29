@@ -32,7 +32,9 @@ return [
         'node' => env('GVA_RENDER_NODE', 'node'),
         'script' => base_path('scripts/gva-render.mjs'),
         'chromium' => env('GVA_CHROMIUM_PATH'), // null → playwright-managed browser
-        'timeout' => (int) env('GVA_RENDER_TIMEOUT', 90),
+        // Higher default: the renderer now also follows news-article links one
+        // hop to find listing PDFs inside them (provisional participants, etc.).
+        'timeout' => (int) env('GVA_RENDER_TIMEOUT', 180),
     ],
 
     // GVA source pages, by category.

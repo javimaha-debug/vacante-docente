@@ -210,10 +210,12 @@ class GvaAutoImportService
     private function resolveKind(string $text): ?string
     {
         // Denylist of document types that are NOT importable participant/vacancy
-        // listings (offered-posts definitive lists, scoring scales, credentials,
-        // shift/turn allocations, annexes, corrections, instructions). These have
-        // caused destructive misclassifications, so route them to manual review.
-        if (preg_match('#pue_def|llocs oferits|llocs definit|barem|credencial|(?<![a-z])torn(s)?(?![a-z])|annex|anexo|correcci|instrucc#u', $text)) {
+        // listings (offered-posts definitive lists, credentials, shift/turn
+        // allocations, corrections, instructions). These caused destructive
+        // misclassifications, so route them to manual review. NB: "barem" and
+        // "annex" are intentionally NOT here — they appear in legitimate lists
+        // ("llistat provisional de participants amb barem").
+        if (preg_match('#pue_def|llocs oferits|llocs definit|credencial|(?<![a-z])torn(s)?(?![a-z])|correcci|instrucc#u', $text)) {
             return null;
         }
 
