@@ -127,6 +127,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('user/especialidades/{specialty}', [UserProfileController::class, 'destroyEspecialidad']);
         Route::get('user/dashboard', [UserProfileController::class, 'dashboard']);
         Route::get('user/adjudicaciones-continuas', [UserProfileController::class, 'adjudicacionesContinuas']);
+        Route::get('user/mis-listados', [UserProfileController::class, 'misListados']);
 
         // Authenticated vacancy list (kanban) synced to the account.
         Route::get('user/lista', [UserProfileController::class, 'lista']);

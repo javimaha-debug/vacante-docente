@@ -14,6 +14,7 @@ const NAV_BY_MODE = {
         { to: '/dashboard', label: 'Inicio', end: true, icon: '🏠' },
         { to: '/dashboard/vacantes', label: 'Vacantes', icon: '🔎' },
         { to: '/dashboard/lista', label: 'Mi Lista', icon: '📋' },
+        { to: '/dashboard/mi-posicion', label: 'Mi posición', icon: '📍' },
         { to: '/dashboard/centros', label: 'Centros', icon: '🏫' },
         { to: '/dashboard/tablon', label: 'Tablón', icon: '📌' },
     ],
