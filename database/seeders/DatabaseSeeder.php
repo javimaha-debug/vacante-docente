@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
             PlanesSeeder::class,
             SuperAdminSeeder::class,
             DocumentMonitorSeeder::class,
+            NormativaSeeder::class,
+            ConvocatoriaSeeder::class,
         ]);
     }
 }

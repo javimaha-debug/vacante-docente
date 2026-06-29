@@ -1,29 +1,38 @@
 <?php
 
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\CalendarController;
 use App\Http\Controllers\Api\CentroController;
+use App\Http\Controllers\Api\ConvocatoriasController;
 use App\Http\Controllers\Api\DistanceController;
 use App\Http\Controllers\Api\GeocodeController;
 use App\Http\Controllers\Api\GvaController;
+use App\Http\Controllers\Api\NormativaController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\OposicionPreparacionController;
 use App\Http\Controllers\Api\ParticipanteController;
-use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\PreferenceController;
 use App\Http\Controllers\Api\ProcesoController;
+use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\SpecialtyController;
+use App\Http\Controllers\Api\SuperAdmin\CalendarController as AdminCalendarController;
+use App\Http\Controllers\Api\SuperAdmin\ConvocatoriasController as AdminConvocatoriasController;
+use App\Http\Controllers\Api\SuperAdmin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Api\SuperAdmin\DocumentController as AdminDocumentController;
+use App\Http\Controllers\Api\SuperAdmin\ImportacionesController as AdminImportacionesController;
+use App\Http\Controllers\Api\SuperAdmin\MetricasController as AdminMetricasController;
+use App\Http\Controllers\Api\SuperAdmin\NormativaController as AdminNormativaController;
+use App\Http\Controllers\Api\SuperAdmin\SistemaController as AdminSistemaController;
+use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripcionesController;
+use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
 use App\Http\Controllers\Api\TablonController;
 use App\Http\Controllers\Api\UserListController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\Api\VacancyController;
-use App\Http\Controllers\Api\SuperAdmin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Api\SuperAdmin\MetricasController as AdminMetricasController;
-use App\Http\Controllers\Api\SuperAdmin\SistemaController as AdminSistemaController;
-use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripcionesController;
-use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
-use App\Http\Controllers\Api\SuperAdmin\ImportacionesController as AdminImportacionesController;
-use App\Http\Controllers\Api\SuperAdmin\DocumentController as AdminDocumentController;
-use App\Http\Controllers\Api\SuperAdmin\CalendarController as AdminCalendarController;
-use App\Http\Controllers\Api\CalendarController;
+use App\Http\Controllers\AuthController;
+use App\Http\Middleware\UpdateLastActive;
+use App\Models\Colectivo;
+use App\Models\Plan;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -40,10 +49,10 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     // Email + password auth (public, rate limited). Social login lives on the
     // web routes (/auth/{provider}) so Socialite can redirect.
-    Route::get('auth/providers', [\App\Http\Controllers\AuthController::class, 'providers']);
-    Route::post('auth/register', [\App\Http\Controllers\AuthController::class, 'register'])->middleware('throttle:10,1');
-    Route::post('auth/login', [\App\Http\Controllers\AuthController::class, 'login'])->middleware('throttle:login');
-    Route::post('auth/exchange', [\App\Http\Controllers\AuthController::class, 'exchange'])->middleware('throttle:30,1');
+    Route::get('auth/providers', [AuthController::class, 'providers']);
+    Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
+    Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('auth/exchange', [AuthController::class, 'exchange'])->middleware('throttle:30,1');
 
     // Catalog
     Route::get('specialties', [SpecialtyController::class, 'index']);
@@ -67,7 +76,7 @@ Route::prefix('v1')->group(function () {
     // Catalog (public): collectives available for the profile selector.
     Route::get('colectivos', function () {
         return response()->json([
-            'data' => \App\Models\Colectivo::query()
+            'data' => Colectivo::query()
                 ->orderBy('body')
                 ->orderBy('name')
                 ->get(['id', 'code', 'name', 'body']),
@@ -77,7 +86,7 @@ Route::prefix('v1')->group(function () {
     // Plans catalogue (public): drives the pricing / upgrade page.
     Route::get('planes', function () {
         return response()->json([
-            'data' => \App\Models\Plan::query()
+            'data' => Plan::query()
                 ->where('activo', true)
                 ->orderBy('sort_order')
                 ->get(['codigo', 'nombre', 'descripcion', 'features', 'sort_order']),
@@ -110,7 +119,7 @@ Route::prefix('v1')->group(function () {
 
     // Authenticated teacher profile + dashboard (Sanctum bearer token).
     // Every authenticated request refreshes the user's last_active_at stamp.
-    Route::middleware(['auth:sanctum', \App\Http\Middleware\UpdateLastActive::class])->group(function () {
+    Route::middleware(['auth:sanctum', UpdateLastActive::class])->group(function () {
         // In-app notifications inbox.
         Route::get('notificaciones', [NotificationController::class, 'index']);
         Route::post('notificaciones/leer/{id?}', [NotificationController::class, 'markRead']);
@@ -157,6 +166,27 @@ Route::prefix('v1')->group(function () {
         Route::post('tablon/{anuncio}/contactar', [TablonController::class, 'contactar']);
         Route::get('tablon/{anuncio}/contactos', [TablonController::class, 'contactos']);
         Route::post('tablon/contactos/{contacto}/responder', [TablonController::class, 'responder']);
+
+        // Modo Oposición — Mi preparación (per-user study tracker).
+        Route::get('oposicion/especialidades', [OposicionPreparacionController::class, 'especialidades']);
+        Route::post('oposicion/especialidades', [OposicionPreparacionController::class, 'storeEspecialidad']);
+        Route::delete('oposicion/especialidades/{especialidad}', [OposicionPreparacionController::class, 'destroyEspecialidad']);
+
+        Route::get('oposicion/temas', [OposicionPreparacionController::class, 'temas']);
+        Route::post('oposicion/temas', [OposicionPreparacionController::class, 'storeTema']);
+        Route::post('oposicion/temas/bulk', [OposicionPreparacionController::class, 'bulkTemas']);
+        Route::patch('oposicion/temas/{tema}', [OposicionPreparacionController::class, 'updateTema']);
+        Route::delete('oposicion/temas/{tema}', [OposicionPreparacionController::class, 'destroyTema']);
+
+        Route::get('oposicion/sesiones', [OposicionPreparacionController::class, 'sesiones']);
+        Route::post('oposicion/sesiones', [OposicionPreparacionController::class, 'storeSesion']);
+        Route::get('oposicion/stats', [OposicionPreparacionController::class, 'stats']);
+
+        // Modo Oposición — Normativa & Convocatorias (read, auth required).
+        Route::get('normativa', [NormativaController::class, 'index']);
+        Route::get('normativa/{normativa}', [NormativaController::class, 'show']);
+        Route::get('convocatorias', [ConvocatoriasController::class, 'index']);
+        Route::get('convocatorias/{convocatoria}', [ConvocatoriasController::class, 'show']);
 
         // GVA admin review (id=1 or is_admin).
         Route::get('admin/gva-noticias', [GvaController::class, 'adminUnnotified']);
@@ -214,5 +244,18 @@ Route::prefix('v1')->group(function () {
             Route::get('sistema/logs', [AdminSistemaController::class, 'logs']);
             Route::post('sistema/cache-clear', [AdminSistemaController::class, 'cacheClear']);
             Route::get('sistema/failed-jobs', [AdminSistemaController::class, 'failedJobs']);
+
+            // Modo Oposición admin: convocatorias + normativa management.
+            Route::get('convocatorias', [AdminConvocatoriasController::class, 'index']);
+            Route::post('convocatorias', [AdminConvocatoriasController::class, 'store']);
+            Route::patch('convocatorias/{convocatoria}', [AdminConvocatoriasController::class, 'update']);
+            Route::delete('convocatorias/{convocatoria}', [AdminConvocatoriasController::class, 'destroy']);
+
+            Route::get('normativa', [AdminNormativaController::class, 'index']);
+            Route::post('normativa', [AdminNormativaController::class, 'store']);
+            // PATCH can't carry multipart file uploads reliably; accept POST + _method too.
+            Route::post('normativa/{normativa}', [AdminNormativaController::class, 'update']);
+            Route::patch('normativa/{normativa}', [AdminNormativaController::class, 'update']);
+            Route::delete('normativa/{normativa}', [AdminNormativaController::class, 'destroy']);
         });
 });
