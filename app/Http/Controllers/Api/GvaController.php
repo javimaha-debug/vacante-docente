@@ -3,21 +3,42 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ImportListadoManual;
 use App\Models\GvaNoticia;
 use App\Models\Proceso;
 use App\Services\GvaAutoImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 
 class GvaController extends Controller
 {
-    private function denyUnlessAdmin(Request $request): ?JsonResponse
-    {
-        $user = $request->user();
+    /**
+     * Hosts the manual-import fetch is allowed to reach (anti-SSRF). Only
+     * official gazette / education domains a real listing could live on.
+     */
+    private const ALLOWED_IMPORT_HOSTS = [
+        'ceice.gva.es',
+        'dogv.gva.es',
+        'www.dogv.gva.es',
+        'boe.es',
+        'www.boe.es',
+        'anpecomunidadvalenciana.es',
+    ];
 
-        return ($user->id === 1 || $user->is_admin)
-            ? null
-            : response()->json(['message' => 'No autorizado.'], 403);
+    /**
+     * Reject URLs whose host isn't on the allow-list (anti-SSRF). The host is
+     * matched exactly (case-insensitive) against ALLOWED_IMPORT_HOSTS.
+     */
+    private function assertAllowedUrl(string $url): void
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        abort_unless(
+            $host !== '' && in_array($host, self::ALLOWED_IMPORT_HOSTS, true),
+            422,
+            'El dominio de la URL no está permitido para importación.'
+        );
     }
 
     /**
@@ -25,10 +46,6 @@ class GvaController extends Controller
      */
     public function adminImportaciones(Request $request): JsonResponse
     {
-        if ($deny = $this->denyUnlessAdmin($request)) {
-            return $deny;
-        }
-
         $noticias = GvaNoticia::query()
             ->with('proceso:id,nombre')
             ->where('tipo', 'PDF')
@@ -55,16 +72,12 @@ class GvaController extends Controller
      */
     public function adminCrearProcesos(Request $request): JsonResponse
     {
-        if ($deny = $this->denyUnlessAdmin($request)) {
-            return $deny;
-        }
-
         $data = $request->validate([
             'anyo' => ['required', 'integer', 'min:2000', 'max:2100'],
             'estado' => ['sometimes', 'in:publicado,pendiente,cerrado'],
         ]);
 
-        \Illuminate\Support\Facades\Artisan::call('procesos:create', [
+        Artisan::call('procesos:create', [
             'anyo' => $data['anyo'],
             '--estado' => $data['estado'] ?? 'cerrado',
         ]);
@@ -75,7 +88,7 @@ class GvaController extends Controller
             ->get(['id', 'nombre', 'anyo', 'colectivo_id'])
             ->map(fn (Proceso $p) => ['id' => $p->id, 'nombre' => $p->nombre]);
 
-        return response()->json(['data' => $procesos, 'output' => trim(\Illuminate\Support\Facades\Artisan::output())]);
+        return response()->json(['data' => $procesos, 'output' => trim(Artisan::output())]);
     }
 
     /**
@@ -84,15 +97,14 @@ class GvaController extends Controller
      */
     public function adminImportarManual(Request $request): JsonResponse
     {
-        if ($deny = $this->denyUnlessAdmin($request)) {
-            return $deny;
-        }
-
         $data = $request->validate([
             'url' => ['required', 'url', 'max:1000'],
             'tipo' => ['required', 'in:vacantes,participantes,continua'],
             'proceso_id' => ['required_if:tipo,vacantes,participantes', 'nullable', 'integer', 'exists:procesos,id'],
         ]);
+
+        // Anti-SSRF: only allow fetching from official gazette/education hosts.
+        $this->assertAllowedUrl($data['url']);
 
         // Track it as a notice so its status appears in the admin list.
         $noticia = GvaNoticia::firstOrCreate(
@@ -101,7 +113,7 @@ class GvaController extends Controller
         );
         $noticia->forceFill(['import_estado' => null, 'import_resumen' => 'En cola…'])->save();
 
-        \App\Jobs\ImportListadoManual::dispatch($noticia->id, $data['tipo'], $data['proceso_id'] ?? null);
+        ImportListadoManual::dispatch($noticia->id, $data['tipo'], $data['proceso_id'] ?? null);
 
         return response()->json(['queued' => true, 'noticia_id' => $noticia->id], 202);
     }
@@ -112,10 +124,6 @@ class GvaController extends Controller
      */
     public function adminReimport(Request $request, GvaNoticia $noticia, GvaAutoImportService $service): JsonResponse
     {
-        if ($deny = $this->denyUnlessAdmin($request)) {
-            return $deny;
-        }
-
         $data = $request->validate([
             'proceso_id' => ['sometimes', 'nullable', 'integer', 'exists:procesos,id'],
             'kind' => ['sometimes', 'nullable', 'in:participantes,vacantes'],
@@ -154,16 +162,10 @@ class GvaController extends Controller
 
     /**
      * Unnotified GVA items for an admin to review and trigger imports.
-     * Restricted to user id=1 or users flagged is_admin.
+     * Authorization is enforced by the EnsureSuperAdmin route middleware.
      */
     public function adminUnnotified(Request $request): JsonResponse
     {
-        $user = $request->user();
-
-        if (! ($user->id === 1 || $user->is_admin)) {
-            return response()->json(['message' => 'No autorizado.'], 403);
-        }
-
         $noticias = GvaNoticia::query()
             ->where('notificado', false)
             ->orderByDesc('id')

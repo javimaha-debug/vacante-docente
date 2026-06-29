@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { SkeletonRows, ErrorState, Badge } from './ui';
+import { SkeletonRows, ErrorState, Badge, enumLabel } from './ui';
 
 const ESTADOS = ['rumor', 'anunciada', 'convocada', 'en_proceso', 'resuelta'];
 const ESTADO_TONE = { rumor: 'slate', anunciada: 'amber', convocada: 'blue', en_proceso: 'blue', resuelta: 'green' };
@@ -88,7 +88,7 @@ export default function AdminConvocatorias() {
                                         {c.cuerpo && <p className="text-xs capitalize text-slate-500">{c.cuerpo}</p>}
                                     </td>
                                     <td className="px-4 py-2 capitalize text-slate-300">{c.comunidad_autonoma}</td>
-                                    <td className="px-4 py-2"><Badge tone={ESTADO_TONE[c.estado]}>{c.estado}</Badge></td>
+                                    <td className="px-4 py-2"><Badge tone={ESTADO_TONE[c.estado]}>{enumLabel('estado', c.estado)}</Badge></td>
                                     <td className="px-4 py-2 text-xs text-slate-400">
                                         {c.fecha_oficial || c.fecha_estimada
                                             ? new Date(c.fecha_oficial || c.fecha_estimada).toLocaleDateString('es-ES')

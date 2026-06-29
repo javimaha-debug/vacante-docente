@@ -6,6 +6,7 @@ use App\Models\ParticipanteProceso;
 use App\Models\Proceso;
 use App\Models\User;
 use App\Models\Vacancy;
+use App\Notifications\EliminadoDeListado;
 use App\Notifications\ListadoActualizado;
 use Illuminate\Support\Facades\Notification;
 
@@ -92,14 +93,17 @@ class ListadoNotificacionService
             return 0;
         }
 
-        $users = User::whereNotNull('nombre_gva')->get()
-            ->filter(fn (User $u) => in_array(mb_strtolower(trim((string) $u->nombre_gva)), $names, true));
+        // Match in the database (same approach as notifyParticipantes) instead
+        // of loading the whole users table and filtering in PHP.
+        $users = User::whereNotNull('nombre_gva')
+            ->whereRaw('LOWER(nombre_gva) IN ('.implode(',', array_fill(0, count($names), '?')).')', $names)
+            ->get();
 
         if ($users->isEmpty()) {
             return 0;
         }
 
-        Notification::send($users, new \App\Notifications\EliminadoDeListado($proceso));
+        Notification::send($users, new EliminadoDeListado($proceso));
 
         return $users->count();
     }

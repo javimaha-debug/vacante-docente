@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import api from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { SectionTitle } from './shared';
 
 const CATEGORIA_LABEL = {
@@ -220,6 +221,7 @@ function NormativaCard({ doc, isAdmin, onChanged }) {
 
 function UploadModal({ onClose, onSaved }) {
     useEscapeKey(onClose);
+    const trapRef = useFocusTrap();
     const [form, setForm] = useState({
         titulo: '', descripcion: '', categoria: 'ley_organica',
         comunidad_autonoma: 'valenciana', url_oficial: '', fecha_publicacion: '',
@@ -240,7 +242,7 @@ function UploadModal({ onClose, onSaved }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
-            <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div ref={trapRef} role="dialog" aria-modal="true" className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between">
                     <h3 className="font-heading text-base font-bold text-slate-800">Añadir documento</h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>

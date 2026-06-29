@@ -71,9 +71,9 @@ export default function VacancyCard({
     return (
         <div
             className={clsx(
-                'rounded-xl border bg-white p-3 shadow-sm transition',
+                'rounded-2xl bg-white p-4 shadow-sm transition',
                 status === 'discarded' && 'opacity-60',
-                isDragging ? 'border-brand-400 shadow-lg ring-2 ring-brand-200' : 'border-slate-200 hover:border-slate-300'
+                isDragging ? 'shadow-lg ring-2 ring-brand-300' : 'ring-1 ring-slate-200 hover:ring-slate-300'
             )}
         >
             <div className="flex items-start gap-2">
@@ -146,8 +146,8 @@ export default function VacancyCard({
                 </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between gap-2">
-                <div className="flex gap-1">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-1 flex-wrap gap-1.5">
                     <StatusButton active={status === 'selected'} color="emerald" onClick={() => onStatusChange?.('selected')}>
                         ✓ Mi lista
                     </StatusButton>
@@ -198,7 +198,7 @@ function StatusButton({ active, color, children, onClick }) {
             type="button"
             onClick={onClick}
             aria-pressed={active}
-            className={clsx('rounded-md px-2 py-1 text-[11px] font-semibold transition', palette[color])}
+            className={clsx('flex min-h-[44px] flex-1 items-center justify-center rounded-lg px-2 py-2 text-xs font-semibold transition', palette[color])}
         >
             {children}
         </button>

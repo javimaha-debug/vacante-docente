@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsurePlan;
+use App\Http\Middleware\EnsureSuperAdmin;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,13 +28,23 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Route middleware aliases for SaaS authorization.
         $middleware->alias([
-            'superadmin' => \App\Http\Middleware\EnsureSuperAdmin::class,
-            'plan' => \App\Http\Middleware\EnsurePlan::class,
+            'superadmin' => EnsureSuperAdmin::class,
+            'plan' => EnsurePlan::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Always render API errors as JSON for the SPA / API consumers.
         $exceptions->shouldRenderJsonWhen(function ($request) {
             return $request->is('api/*') || $request->expectsJson();
+        });
+
+        // Never leak database internals (SQL, table/column names) to clients.
+        // In production return a generic 500; debug builds keep the detail.
+        $exceptions->render(function (QueryException $e, $request) {
+            if (! config('app.debug') && ($request->is('api/*') || $request->expectsJson())) {
+                return response()->json(['message' => 'Se ha producido un error en el servidor.'], 500);
+            }
+
+            return null; // fall through to default rendering
         });
     })->create();

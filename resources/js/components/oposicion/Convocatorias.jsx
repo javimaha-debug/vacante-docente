@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import api from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 // Ordered estado pipeline (drives the timeline stepper).
 const ESTADO_FLOW = ['rumor', 'anunciada', 'convocada', 'en_proceso', 'resuelta'];
@@ -258,6 +259,7 @@ function ConvocatoriaCard({ convocatoria: c, isAdmin, onEdit, onChanged }) {
 
 function EditModal({ convocatoria, onClose, onSaved }) {
     useEscapeKey(onClose);
+    const trapRef = useFocusTrap();
     const isNew = !convocatoria;
     const [form, setForm] = useState({
         titulo: convocatoria?.titulo ?? '',
@@ -284,7 +286,7 @@ function EditModal({ convocatoria, onClose, onSaved }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
-            <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div ref={trapRef} role="dialog" aria-modal="true" className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between">
                     <h3 className="font-heading text-base font-bold text-slate-800">{isNew ? 'Nueva convocatoria' : 'Editar convocatoria'}</h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>

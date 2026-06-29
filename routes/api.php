@@ -116,6 +116,11 @@ Route::prefix('v1')->group(function () {
     Route::get('documents/{document}/thumbnail', [UserDocumentController::class, 'thumbnail'])
         ->middleware('signed')->name('documents.thumbnail');
 
+    // Normativa PDFs: public content served from the private disk via a signed,
+    // short-lived URL so the storage path is never exposed.
+    Route::get('normativa/{normativa}/pdf', [NormativaController::class, 'pdf'])
+        ->middleware('signed')->name('normativa.pdf');
+
     // Cloud integration OAuth callbacks (hit by the provider; user recovered
     // from the signed `state`, so no bearer token here).
     Route::get('integrations/google-drive/callback', [GoogleDriveController::class, 'callback']);
@@ -127,10 +132,10 @@ Route::prefix('v1')->group(function () {
     Route::get('procesos/{proceso}/cambios', [ProcesoController::class, 'cambios']);
 
     // Participant change summary (counts only, no names) stays public.
-    Route::get('participantes/{proceso}/cambios', [ParticipanteController::class, 'cambios']);
+    Route::get('participantes/{proceso}/cambios', [ParticipanteController::class, 'cambios'])->middleware('throttle:public-list');
 
     // Centros directory (public): list + detail.
-    Route::get('centros', [CentroController::class, 'index']);
+    Route::get('centros', [CentroController::class, 'index'])->middleware('throttle:centros');
     Route::get('centros/{codigo}', [CentroController::class, 'show']);
 
     // Tablón de anuncios (public listing).
@@ -172,7 +177,7 @@ Route::prefix('v1')->group(function () {
 
         // Personal document area (Sprint A).
         Route::get('documents', [UserDocumentController::class, 'index']);
-        Route::post('documents/upload', [UserDocumentController::class, 'upload']);
+        Route::post('documents/upload', [UserDocumentController::class, 'upload'])->middleware('throttle:uploads');
         Route::get('documents/{document}', [UserDocumentController::class, 'show']);
         Route::patch('documents/{document}', [UserDocumentController::class, 'update']);
         Route::delete('documents/{document}', [UserDocumentController::class, 'destroy']);
@@ -190,10 +195,10 @@ Route::prefix('v1')->group(function () {
         // Cloud integrations (connect returns a consent URL; files/import use tokens).
         Route::get('integrations/google-drive/connect', [GoogleDriveController::class, 'connect']);
         Route::get('integrations/google-drive/files', [GoogleDriveController::class, 'files']);
-        Route::post('integrations/google-drive/import', [GoogleDriveController::class, 'import']);
+        Route::post('integrations/google-drive/import', [GoogleDriveController::class, 'import'])->middleware('throttle:uploads');
         Route::get('integrations/microsoft/connect', [Microsoft365Controller::class, 'connect']);
         Route::get('integrations/microsoft/files', [Microsoft365Controller::class, 'files']);
-        Route::post('integrations/microsoft/import', [Microsoft365Controller::class, 'import']);
+        Route::post('integrations/microsoft/import', [Microsoft365Controller::class, 'import'])->middleware('throttle:uploads');
         Route::get('integrations/status', function (Request $request) {
             $providers = UserIntegration::where('user_id', $request->user()->id)->pluck('provider')->all();
 
@@ -208,7 +213,7 @@ Route::prefix('v1')->group(function () {
         Route::put('user/lista/sync', [UserProfileController::class, 'syncLista']);
 
         // Participant list (contains names) — requires login.
-        Route::get('participantes/{proceso}', [ParticipanteController::class, 'index']);
+        Route::get('participantes/{proceso}', [ParticipanteController::class, 'index'])->middleware('throttle:public-list');
 
         // Participant self-lookup.
         Route::get('participantes/{proceso}/mi-posicion', [ParticipanteController::class, 'miPosicion']);
@@ -256,23 +261,27 @@ Route::prefix('v1')->group(function () {
         Route::get('ai/conversations', [AiConversationController::class, 'index']);
         Route::post('ai/conversations', [AiConversationController::class, 'store']);
         Route::get('ai/conversations/{conversation}', [AiConversationController::class, 'show']);
-        Route::post('ai/conversations/{conversation}/message', [AiConversationController::class, 'message']);
+        Route::post('ai/conversations/{conversation}/message', [AiConversationController::class, 'message'])->middleware('throttle:ai');
         Route::delete('ai/conversations/{conversation}', [AiConversationController::class, 'destroy']);
 
-        Route::post('ai/flashcards/from-tema', [FlashcardController::class, 'fromTema']);
-        Route::post('ai/flashcards/from-document', [FlashcardController::class, 'fromDocument']);
+        Route::post('ai/flashcards/from-tema', [FlashcardController::class, 'fromTema'])->middleware('throttle:ai-generate');
+        Route::post('ai/flashcards/from-document', [FlashcardController::class, 'fromDocument'])->middleware('throttle:ai-generate');
         Route::post('ai/flashcards/result', [FlashcardController::class, 'result']);
 
         Route::get('ai/scores', [ScoringController::class, 'index']);
         Route::get('ai/scores/{tema}', [ScoringController::class, 'show']);
-        Route::post('ai/scores/{tema}/simulacro', [ScoringController::class, 'simulacro']);
+        Route::post('ai/scores/{tema}/simulacro', [ScoringController::class, 'simulacro'])->middleware('throttle:ai-generate');
 
-        // GVA admin review (id=1 or is_admin).
-        Route::get('admin/gva-noticias', [GvaController::class, 'adminUnnotified']);
-        Route::get('admin/gva-importaciones', [GvaController::class, 'adminImportaciones']);
-        Route::post('admin/gva-importaciones/{noticia}/reimportar', [GvaController::class, 'adminReimport']);
-        Route::post('admin/procesos', [GvaController::class, 'adminCrearProcesos']);
-        Route::post('admin/importaciones/manual', [GvaController::class, 'adminImportarManual']);
+        // GVA admin review — role-based authorization via EnsureSuperAdmin
+        // (admin/superadmin), consistent with the superadmin panel. Paths kept
+        // under admin/* so the existing dashboard SPA keeps working.
+        Route::middleware('superadmin')->group(function () {
+            Route::get('admin/gva-noticias', [GvaController::class, 'adminUnnotified']);
+            Route::get('admin/gva-importaciones', [GvaController::class, 'adminImportaciones']);
+            Route::post('admin/gva-importaciones/{noticia}/reimportar', [GvaController::class, 'adminReimport']);
+            Route::post('admin/procesos', [GvaController::class, 'adminCrearProcesos']);
+            Route::post('admin/importaciones/manual', [GvaController::class, 'adminImportarManual']);
+        });
     });
 
     // SuperAdmin panel API: requires an admin/superadmin role, rate limited.
