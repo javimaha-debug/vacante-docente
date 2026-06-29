@@ -20,6 +20,7 @@ const NAV = [
     { to: '/superadmin/calendario', label: 'Calendario', icon: '📅' },
     { to: '/superadmin/ia-usage', label: 'IA Usage', icon: '🤖' },
     { to: '/superadmin/metricas', label: 'Métricas', icon: '📈' },
+    { to: '/superadmin/modo-docente', label: 'Modo Docente', icon: '🧑‍🏫', badge: 'docente-pendiente' },
     { to: '/superadmin/sistema', label: 'Sistema', icon: '🛠️' },
 ];
 
@@ -62,6 +63,14 @@ export default function AdminLayout() {
     });
     const pendingDocs = docStats?.pendientes ?? 0;
 
+    // Pending moderation badge on "Modo Docente" nav item.
+    const { data: docenteStats } = useQuery({
+        queryKey: ['admin-docente-stats'],
+        queryFn: async () => (await api.get('/superadmin/docente/stats')).data,
+        refetchInterval: 120000,
+    });
+    const pendingDocente = docenteStats?.banco?.pendientes_moderacion ?? 0;
+
     return (
         <div className="flex h-full bg-slate-900 text-slate-100">
             {/* Sidebar */}
@@ -85,7 +94,7 @@ export default function AdminLayout() {
                             key={item.to}
                             item={item}
                             onNavigate={() => setOpen(false)}
-                            count={item.badge === 'docs-pending' ? pendingDocs : 0}
+                            count={item.badge === 'docs-pending' ? pendingDocs : item.badge === 'docente-pendiente' ? pendingDocente : 0}
                         />
                     ))}
                 </nav>

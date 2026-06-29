@@ -22,6 +22,19 @@ use App\Http\Controllers\Api\ProcesoController;
 use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\ScoringController;
 use App\Http\Controllers\Api\SpecialtyController;
+use App\Http\Controllers\Api\Docente\AdaptadorController as DocenteAdaptadorController;
+use App\Http\Controllers\Api\Docente\AsignaturasController as DocenteAsignaturasController;
+use App\Http\Controllers\Api\Docente\BancoController as DocenteBancoController;
+use App\Http\Controllers\Api\Docente\ExamenesController as DocenteExamenesController;
+use App\Http\Controllers\Api\Docente\GruposController as DocenteGruposController;
+use App\Http\Controllers\Api\Docente\HorarioController as DocenteHorarioController;
+use App\Http\Controllers\Api\Docente\MeritosController as DocenteMeritosController;
+use App\Http\Controllers\Api\Docente\ProgramacionesController as DocenteProgramacionesController;
+use App\Http\Controllers\Api\Docente\RubricasController as DocenteRubricasController;
+use App\Http\Controllers\Api\Docente\SesionesController as DocenteSesionesController;
+use App\Http\Controllers\Api\Docente\SituacionesController as DocenteSituacionesController;
+use App\Http\Controllers\Api\Docente\UnidadesController as DocenteUnidadesController;
+use App\Http\Controllers\Api\SuperAdmin\DocenteMetricasController as AdminDocenteMetricasController;
 use App\Http\Controllers\Api\SuperAdmin\AiUsageController as AdminAiUsageController;
 use App\Http\Controllers\Api\SuperAdmin\CalendarController as AdminCalendarController;
 use App\Http\Controllers\Api\SuperAdmin\ConvocatoriasController as AdminConvocatoriasController;
@@ -285,6 +298,78 @@ Route::prefix('v1')->group(function () {
         Route::get('ai/scores/{tema}', [ScoringController::class, 'show']);
         Route::post('ai/scores/{tema}/simulacro', [ScoringController::class, 'simulacro'])->middleware('throttle:ai-generate');
 
+        // ── Modo Docente ──────────────────────────────────────────────────────
+        Route::prefix('docente')->group(function () {
+            Route::get('asignaturas', [DocenteAsignaturasController::class, 'index']);
+            Route::post('asignaturas', [DocenteAsignaturasController::class, 'store']);
+            Route::patch('asignaturas/{asignatura}', [DocenteAsignaturasController::class, 'update']);
+            Route::delete('asignaturas/{asignatura}', [DocenteAsignaturasController::class, 'destroy']);
+            Route::get('asignaturas/{asignatura}/grupos', [DocenteAsignaturasController::class, 'grupos']);
+
+            Route::post('grupos', [DocenteGruposController::class, 'store']);
+            Route::patch('grupos/{grupo}', [DocenteGruposController::class, 'update']);
+            Route::delete('grupos/{grupo}', [DocenteGruposController::class, 'destroy']);
+
+            Route::get('horario', [DocenteHorarioController::class, 'index']);
+            Route::post('horario', [DocenteHorarioController::class, 'store']);
+            Route::patch('horario/{horario}', [DocenteHorarioController::class, 'update']);
+            Route::delete('horario/{horario}', [DocenteHorarioController::class, 'destroy']);
+            Route::get('horario/semana', [DocenteHorarioController::class, 'semana']);
+
+            Route::get('sesiones', [DocenteSesionesController::class, 'index']);
+            Route::post('sesiones', [DocenteSesionesController::class, 'store']);
+            Route::patch('sesiones/{sesion}', [DocenteSesionesController::class, 'update']);
+            Route::get('grupos/{grupo}/progreso', [DocenteSesionesController::class, 'progresoGrupo']);
+
+            Route::get('programaciones', [DocenteProgramacionesController::class, 'index']);
+            Route::post('programaciones', [DocenteProgramacionesController::class, 'store']);
+            Route::get('programaciones/{programacion}', [DocenteProgramacionesController::class, 'show']);
+            Route::patch('programaciones/{programacion}', [DocenteProgramacionesController::class, 'update']);
+            Route::delete('programaciones/{programacion}', [DocenteProgramacionesController::class, 'destroy']);
+            Route::post('programaciones/{programacion}/adaptar', [DocenteProgramacionesController::class, 'adaptar']);
+            Route::post('programaciones/{programacion}/duplicar', [DocenteProgramacionesController::class, 'duplicar']);
+
+            Route::get('programaciones/{programacion}/unidades', [DocenteUnidadesController::class, 'index']);
+            Route::post('programaciones/{programacion}/unidades', [DocenteUnidadesController::class, 'store']);
+            Route::patch('unidades/{unidad}', [DocenteUnidadesController::class, 'update']);
+            Route::delete('unidades/{unidad}', [DocenteUnidadesController::class, 'destroy']);
+            Route::post('unidades/{unidad}/sesiones/generar', [DocenteUnidadesController::class, 'generarSesiones']);
+
+            Route::get('rubricas', [DocenteRubricasController::class, 'index']);
+            Route::post('rubricas', [DocenteRubricasController::class, 'store']);
+            Route::post('rubricas/generar', [DocenteRubricasController::class, 'generar'])->middleware('throttle:ai-generate');
+            Route::patch('rubricas/{rubrica}', [DocenteRubricasController::class, 'update']);
+            Route::delete('rubricas/{rubrica}', [DocenteRubricasController::class, 'destroy']);
+            Route::post('rubricas/{rubrica}/compartir', [DocenteRubricasController::class, 'compartir']);
+
+            Route::get('situaciones', [DocenteSituacionesController::class, 'index']);
+            Route::post('situaciones', [DocenteSituacionesController::class, 'store']);
+            Route::post('situaciones/generar', [DocenteSituacionesController::class, 'generar'])->middleware('throttle:ai-generate');
+            Route::patch('situaciones/{situacion}', [DocenteSituacionesController::class, 'update']);
+            Route::delete('situaciones/{situacion}', [DocenteSituacionesController::class, 'destroy']);
+            Route::post('situaciones/{situacion}/compartir', [DocenteSituacionesController::class, 'compartir']);
+
+            Route::get('examenes', [DocenteExamenesController::class, 'index']);
+            Route::post('examenes', [DocenteExamenesController::class, 'store']);
+            Route::post('examenes/generar', [DocenteExamenesController::class, 'generar'])->middleware('throttle:ai-generate');
+            Route::get('examenes/{examen}/export', [DocenteExamenesController::class, 'export']);
+            Route::delete('examenes/{examen}', [DocenteExamenesController::class, 'destroy']);
+
+            Route::get('meritos', [DocenteMeritosController::class, 'index']);
+            Route::post('meritos', [DocenteMeritosController::class, 'store']);
+            Route::patch('meritos/{merito}', [DocenteMeritosController::class, 'update']);
+            Route::delete('meritos/{merito}', [DocenteMeritosController::class, 'destroy']);
+            Route::get('meritos/baremo', [DocenteMeritosController::class, 'baremo']);
+            Route::get('meritos/export', [DocenteMeritosController::class, 'export']);
+
+            Route::get('banco', [DocenteBancoController::class, 'index']);
+            Route::get('banco/{recurso}', [DocenteBancoController::class, 'show']);
+            Route::post('banco/{recurso}/usar', [DocenteBancoController::class, 'usar']);
+            Route::post('banco/{recurso}/valorar', [DocenteBancoController::class, 'valorar']);
+
+            Route::post('adaptar-texto', [DocenteAdaptadorController::class, 'adaptarTexto'])->middleware('throttle:ai-generate');
+        });
+
         // GVA admin review — role-based authorization via EnsureSuperAdmin
         // (admin/superadmin), consistent with the superadmin panel. Paths kept
         // under admin/* so the existing dashboard SPA keeps working.
@@ -371,6 +456,11 @@ Route::prefix('v1')->group(function () {
             Route::post('recursos', [ResourceLinksController::class, 'store']);
             Route::put('recursos/{resourceLink}', [ResourceLinksController::class, 'update']);
             Route::delete('recursos/{resourceLink}', [ResourceLinksController::class, 'destroy']);
+
+            // Modo Docente superadmin: metrics + bank moderation.
+            Route::get('docente/stats', [AdminDocenteMetricasController::class, 'stats']);
+            Route::get('docente/banco-pendiente', [AdminDocenteMetricasController::class, 'pendientesModeracion']);
+            Route::patch('docente/banco/{recurso}/moderar', [AdminDocenteMetricasController::class, 'moderar']);
 
             // Modo Oposición admin: temarios oficiales (BOE) + enriquecimiento IA.
             Route::get('temarios/stats', [AdminTemariosController::class, 'stats']);

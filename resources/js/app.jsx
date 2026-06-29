@@ -56,6 +56,13 @@ import TablonForm from './components/tablon/TablonForm';
 import MisAnuncios from './components/tablon/MisAnuncios';
 import TablonResponder from './components/tablon/TablonResponder';
 import RecursosPage from './components/dashboard/RecursosPage';
+import ProgramacionPage from './components/docente/ProgramacionPage';
+import HorarioPage from './components/docente/HorarioPage';
+import DocenteRecursosPage from './components/docente/RecursosPage';
+import BancoPage from './components/docente/BancoPage';
+import MeritosPage from './components/docente/MeritosPage';
+import AsistentePage from './components/docente/AsistentePage';
+import AdminModoDocente from './components/superadmin/AdminModoDocente';
 
 import { useUserList } from './hooks/useUserList';
 import { useVacancies } from './hooks/useVacancies';
@@ -577,8 +584,15 @@ function AppRoutes() {
                 <Route path="normativa" element={<Normativa />} />
                 <Route path="convocatorias" element={<Convocatorias />} />
                 <Route path="asistente" element={<Asistente />} />
-                {/* Sections not yet built (docente). */}
+                {/* Bolsa recursos page. */}
                 <Route path="recursos" element={<RecursosPage />} />
+                {/* Modo Docente routes. */}
+                <Route path="docente/programacion" element={<ProgramacionPage />} />
+                <Route path="docente/horario" element={<HorarioPage />} />
+                <Route path="docente/recursos" element={<DocenteRecursosPage />} />
+                <Route path="docente/banco" element={<BancoPage />} />
+                <Route path="docente/meritos" element={<MeritosPage />} />
+                <Route path="docente/asistente" element={<AsistentePage />} />
             </Route>
 
             {/* Super-admin panel: separate dark SPA at /superadmin/*. */}
@@ -604,6 +618,7 @@ function AppRoutes() {
                 <Route path="ia-usage" element={<AdminAiUsage />} />
                 <Route path="metricas" element={<AdminMetricas />} />
                 <Route path="sistema" element={<AdminSistema />} />
+                <Route path="modo-docente" element={<AdminModoDocente />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
