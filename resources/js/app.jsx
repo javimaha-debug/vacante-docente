@@ -16,6 +16,11 @@ import ProcesoSelector from './components/ProcesoSelector';
 import CambiosBanner from './components/CambiosBanner';
 
 import LoginPage from './components/auth/LoginPage';
+import CookieBanner from './components/legal/CookieBanner';
+import AvisoLegal from './components/legal/AvisoLegal';
+import PoliticaPrivacidad from './components/legal/PoliticaPrivacidad';
+import PoliticaCookies from './components/legal/PoliticaCookies';
+import TerminosCondiciones from './components/legal/TerminosCondiciones';
 import Dashboard from './components/dashboard/Dashboard';
 import DashboardHome from './components/dashboard/DashboardHome';
 import UserProfile from './components/dashboard/UserProfile';
@@ -61,6 +66,7 @@ import { AuthContext, useAuth, useProvideAuth } from './hooks/useAuth';
 import { useFeatures } from './hooks/useFeatures';
 import { getSpecialtyId, setSpecialtyId, clearSpecialty, getProcesoId, setProcesoId, getStoredFilters, setStoredFilters } from './lib/session';
 import { DEFAULT_FILTERS, matchesFilters, statusEnabled, sortVacancies, countActiveFilters } from './lib/vacancyFilters';
+import { initSentry } from './lib/sentry';
 
 const queryClient = new QueryClient({
     defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
@@ -539,6 +545,11 @@ function AppRoutes() {
             <Route path="/" element={<RootRoute />} />
             {/* Signed reply link from the tablón contact email. */}
             <Route path="/tablon/responder/:contacto" element={<TablonResponder />} />
+            {/* Public legal pages (no auth required). */}
+            <Route path="/legal/aviso-legal" element={<AvisoLegal />} />
+            <Route path="/legal/privacidad" element={<PoliticaPrivacidad />} />
+            <Route path="/legal/cookies" element={<PoliticaCookies />} />
+            <Route path="/legal/terminos" element={<TerminosCondiciones />} />
             <Route
                 path="/dashboard"
                 element={
@@ -600,11 +611,14 @@ function AppRoutes() {
     );
 }
 
+initSentry();
+
 createRoot(document.getElementById('app')).render(
     <QueryClientProvider client={queryClient}>
         <BrowserRouter>
             <AuthProvider>
                 <AppRoutes />
+                <CookieBanner />
             </AuthProvider>
         </BrowserRouter>
     </QueryClientProvider>

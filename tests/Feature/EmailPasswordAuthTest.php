@@ -18,6 +18,7 @@ class EmailPasswordAuthTest extends TestCase
             'email' => 'ana@example.com',
             'password' => 'secretpass1',
             'password_confirmation' => 'secretpass1',
+            'acepto_condiciones' => true,
         ])->assertCreated()->assertJsonStructure(['token', 'user' => ['id', 'email']]);
 
         $this->assertDatabaseHas('users', ['email' => 'ana@example.com', 'name' => 'Ana Pérez']);
@@ -33,7 +34,7 @@ class EmailPasswordAuthTest extends TestCase
         $this->postJson('/api/v1/auth/register', [
             'name' => 'Hacker', 'email' => 'h@example.com',
             'password' => 'secretpass1', 'password_confirmation' => 'secretpass1',
-            'is_admin' => true,
+            'is_admin' => true, 'acepto_condiciones' => true,
         ])->assertCreated();
 
         $this->assertFalse((bool) User::where('email', 'h@example.com')->value('is_admin'));

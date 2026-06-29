@@ -27,6 +27,11 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)],
+            // RGPD art. 7 — the user must actively accept the Terms + Privacy
+            // Policy, and we record when, so consent is demonstrable.
+            'acepto_condiciones' => ['accepted'],
+        ], [
+            'acepto_condiciones.accepted' => 'Debes aceptar los Términos y la Política de Privacidad para crear una cuenta.',
         ]);
 
         $user = User::create([
@@ -35,6 +40,7 @@ class AuthController extends Controller
             // The User model casts 'password' => 'hashed', so pass it plain.
             'password' => $data['password'],
             'locale' => 'es',
+            'terms_accepted_at' => now(),
         ]);
 
         return response()->json([
@@ -130,6 +136,9 @@ class AuthController extends Controller
             $user->nombre_gva = null;
             $user->locale = 'es';
             $user->password = Hash::make(Str::random(40));
+            // Continuing through the provider's consent screen accepts the
+            // Terms + Privacy Policy (linked from the login screen).
+            $user->terms_accepted_at = now();
         }
 
         $user->name = $social->getName() ?: ($user->name ?: $email);

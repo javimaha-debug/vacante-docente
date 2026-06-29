@@ -261,3 +261,35 @@ The two modes look built by different designers. Highest-ROI fixes first:
 ---
 
 *Audit produced by four parallel review passes (auth/authorization, secrets/config/uploads/rate-limiting, visual consistency, mobile/a11y/perf/copy). Every finding cites a concrete file:line in the audited tree.*
+
+---
+
+# PART 3 — LEGAL & CUMPLIMIENTO (addendum)
+
+The original audit (PARTs 1–2) covered **technical security and UX only**. It did **not** assess legal/regulatory compliance. This addendum closes that gap for an EU SaaS handling personal data, subject to **RGPD (UE 2016/679)**, **LOPDGDD (LO 3/2018)**, **LSSI-CE (Ley 34/2002)** and the **AI Act (Reglamento UE 2024/1689)**.
+
+## State before this sprint
+
+Grep over `resources/ app/ routes/` for cookies/privacy/legal/consent returned **zero** compliance artifacts. There was no cookie banner, no privacy policy, no aviso legal, no terms, no registration consent, no account self-deletion (right to erasure), no data export (portability), and no disclosure of third-party processors (Stripe, Anthropic, Voyage AI, Google, Microsoft) or AI usage.
+
+## Implemented in this sprint
+
+| # | Item | Marco | Estado |
+|---|------|-------|--------|
+| L1 | Política de Privacidad (`/legal/privacidad`) | RGPD art. 13-14 | ✅ Implementado (texto plantilla) |
+| L2 | Aviso Legal (`/legal/aviso-legal`) | LSSI-CE art. 10 | ✅ Implementado (texto plantilla) |
+| L3 | Banner de cookies con consentimiento granular | LSSI-CE art. 22.2 | ✅ Implementado |
+| L4 | Términos y Condiciones (`/legal/terminos`) | LSSI-CE | ✅ Implementado (texto plantilla) |
+| L5 | Política de Cookies (`/legal/cookies`) | LSSI-CE art. 22.2 | ✅ Implementado |
+| L6 | Casilla de consentimiento en registro + sello `terms_accepted_at` | RGPD art. 7 | ✅ Implementado |
+| L7 | Borrado de cuenta (`DELETE user/account`) + UI | RGPD art. 17 | ✅ Implementado |
+| L8 | Exportación de datos (`GET user/export`) + UI | RGPD art. 20 | ✅ Implementado |
+| L9 | Disclosure de encargados/subencargados + transferencias internacionales | RGPD art. 28, 44-49 | ✅ En política de privacidad |
+| L10 | Aviso de IA en el chat + disclaimer de errores | AI Act art. 50 (aplica 02/08/2026) | ✅ Implementado |
+| L11 | Monitorización de errores (Sentry) backend + frontend, PII off, tracing tras consentimiento | Interés legítimo / seguridad | ✅ Implementado |
+
+## Pendiente (requiere intervención humana — NO automatizable)
+
+- **Revisión por un abogado/DPO** de la redacción legal vinculante (base jurídica de cada tratamiento, contratos de encargado del tratamiento con cada proveedor, registro de actividades RGPD art. 30). Los datos del titular ya están cumplimentados en `resources/js/components/legal/info.js`.
+- **Configurar el DSN de Sentry** (`SENTRY_LARAVEL_DSN`, `VITE_SENTRY_DSN`) en producción; sin DSN, la integración es un no-op.
+- Valorar (probable no-aplica) decisiones automatizadas del scoring respecto a RGPD art. 22.
