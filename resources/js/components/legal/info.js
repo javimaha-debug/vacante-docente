@@ -1,17 +1,17 @@
 // Centralised legal/identity data referenced by every legal page.
 //
-// ⚠️  COMPLETAR ANTES DE PRODUCCIÓN: los valores entre [corchetes] deben ser
-// rellenados por el titular con la información real (razón social, NIF,
-// domicilio) y revisados por un asesor legal / DPO. El resto del texto es una
-// plantilla de partida conforme a RGPD, LOPDGDD y LSSI-CE.
+// ⚠️  Los textos legales son una plantilla de partida conforme a RGPD, LOPDGDD
+// y LSSI-CE. Conviene que un asesor legal / DPO revise la redacción vinculante
+// (base jurídica, contratos de encargado del tratamiento, registro de
+// actividades) antes de su publicación definitiva.
 
 export const TITULAR = {
     marca: 'Doccentia',
-    razonSocial: '[RAZÓN SOCIAL O NOMBRE DEL TITULAR]',
-    nif: '[NIF / DNI]',
-    domicilio: '[DOMICILIO FISCAL COMPLETO]',
-    email: 'privacidad@doccentia.com',
-    emailSoporte: 'soporte@doccentia.com',
+    razonSocial: 'Haba Leasing Services S.L.',
+    nif: 'B75939678',
+    domicilio: 'Calle Trafalgar 19, 5º, 46930 Quart de Poblet, Valencia, España',
+    email: 'javimaha@gmail.com',
+    emailSoporte: 'javimaha@gmail.com',
     web: 'https://doccentia.com',
 };
 
@@ -27,5 +27,5 @@ export const ENCARGADOS = [
     { nombre: 'Google LLC', finalidad: 'Inicio de sesión, Google Maps y Google Drive (opcional)', ubicacion: 'EE. UU. (DPF + SCC)' },
     { nombre: 'Microsoft Corporation', finalidad: 'Inicio de sesión y Microsoft 365 (opcional)', ubicacion: 'EE. UU. (DPF + SCC)' },
     { nombre: 'Functional Software, Inc. (Sentry)', finalidad: 'Monitorización técnica de errores', ubicacion: 'EE. UU. (DPF + SCC)' },
-    { nombre: '[PROVEEDOR DE HOSTING]', finalidad: 'Alojamiento de la aplicación y la base de datos', ubicacion: '[UBICACIÓN DEL CENTRO DE DATOS]' },
+    { nombre: 'DigitalOcean, LLC (101 Avenue of the Americas, Nueva York, NY 10013, EE. UU.)', finalidad: 'Alojamiento de la aplicación y la base de datos', ubicacion: 'EE. UU. (SCC)' },
 ];

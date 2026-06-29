@@ -290,7 +290,6 @@ Grep over `resources/ app/ routes/` for cookies/privacy/legal/consent returned *
 
 ## Pendiente (requiere intervención humana — NO automatizable)
 
-- **Completar los datos del titular** en `resources/js/components/legal/info.js`: razón social, NIF, domicilio fiscal, proveedor de hosting. Los textos llevan placeholders `[...]`.
-- **Revisión por un abogado/DPO** de la redacción legal vinculante (base jurídica de cada tratamiento, contratos de encargado del tratamiento con cada proveedor, registro de actividades RGPD art. 30).
+- **Revisión por un abogado/DPO** de la redacción legal vinculante (base jurídica de cada tratamiento, contratos de encargado del tratamiento con cada proveedor, registro de actividades RGPD art. 30). Los datos del titular ya están cumplimentados en `resources/js/components/legal/info.js`.
 - **Configurar el DSN de Sentry** (`SENTRY_LARAVEL_DSN`, `VITE_SENTRY_DSN`) en producción; sin DSN, la integración es un no-op.
 - Valorar (probable no-aplica) decisiones automatizadas del scoring respecto a RGPD art. 22.
