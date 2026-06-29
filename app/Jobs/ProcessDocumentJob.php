@@ -50,7 +50,9 @@ class ProcessDocumentJob implements ShouldQueue
                 default => null,
             };
 
-            $document->forceFill(['processing_status' => 'ready'])->save();
+            // Stay 'processing': the RAG chain (extract → chunk → embed) sets the
+            // final 'ready' once the document is searchable.
+            $document->forceFill(['processing_status' => 'processing'])->save();
         } catch (\Throwable $e) {
             Log::warning('ProcessDocumentJob failed', ['document_id' => $document->id, 'error' => $e->getMessage()]);
             $document->forceFill(['processing_status' => 'failed'])->save();

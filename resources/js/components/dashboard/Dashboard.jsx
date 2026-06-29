@@ -24,7 +24,7 @@ const NAV_BY_MODE = {
         { to: '/dashboard/mis-documentos', label: 'Mis documentos', icon: '📂' },
         { to: '/dashboard/normativa', label: 'Normativa', icon: '📄' },
         { to: '/dashboard/convocatorias', label: 'Convocatorias', icon: '📅' },
-        { to: '/dashboard/asistente', label: 'Asistente IA', icon: '✨', comingSoon: true },
+        { to: '/dashboard/asistente', label: 'Asistente IA', icon: '✨' },
     ],
     docente: [
         { to: '/dashboard/aula', label: 'Mi aula', icon: '🧑‍🏫', comingSoon: true },

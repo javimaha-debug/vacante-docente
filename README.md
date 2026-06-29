@@ -215,3 +215,41 @@ Tras desplegar: `composer install` (instala `league/flysystem-aws-s3-v3`) y
 > de este sprint. Antes de abrir la subida a producción a gran escala, conviene añadir un
 > análisis (p. ej. ClamAV o un servicio externo) en `ProcessDocumentJob` y rechazar/poner
 > en cuarentena los ficheros marcados.
+
+## Asistente IA + RAG (Sprint B)
+
+El **Asistente IA** (modo Oposición → "Asistente IA") responde citando los
+**apuntes del propio opositor** mediante RAG (Retrieval Augmented Generation):
+
+1. Pipeline de procesado por documento (en cola):
+   `ProcessDocumentJob → ExtractDocumentTextJob → ChunkDocumentJob → EmbedDocumentJob`.
+   Extrae texto (PDF vía `pdftotext`, Word vía su XML, imágenes vía **Claude Haiku
+   Vision** OCR), lo trocea en chunks de ~400 tokens (50 de solapamiento) y los
+   **embebe con Voyage AI** (`voyage-3`, 1024 dim).
+2. **`RagService`** embebe la pregunta y recupera los chunks más cercanos por
+   similitud coseno (pgvector `<=>` en PostgreSQL; fallback en PHP sobre SQLite
+   para los tests) y los formatea como contexto citado.
+3. **`AiAssistantService`** llama a **Claude Sonnet 4.6** con un system prompt de
+   tutor de oposiciones + el temario/normativa del usuario, y guarda el coste en
+   `ai_usage`. Modos: chat, flashcards, simulacro. Las flashcards y simulacros
+   alimentan **`ScoringService`** (puntuación 0-100 por tema con recomendación).
+
+Configuración (`.env`):
+
+```bash
+VOYAGE_AI_API_KEY=...
+VOYAGE_AI_MODEL=voyage-3
+VOYAGE_AI_EMBEDDING_DIMENSIONS=1024
+ANTHROPIC_API_KEY=...
+```
+
+**pgvector (producción, PostgreSQL):** la migración `enable_pgvector_extension`
+ejecuta `CREATE EXTENSION IF NOT EXISTS vector` solo en `pgsql`; la columna
+`document_chunks.embedding` es `vector(1024)` con índice `ivfflat`. La extensión
+`vector` debe estar disponible en el servidor PostgreSQL. En SQLite (tests) la
+columna es `TEXT` y la similitud se calcula en PHP.
+
+> **Coste / límites:** Voyage regala los primeros 200M tokens; con pocos usuarios
+> el gasto mensual es < $1. Hay un tope duro de seguridad de **500 mensajes/día/
+> usuario** (`AI_DAILY_MESSAGE_LIMIT`). El panel SuperAdmin → "IA Usage" muestra
+> mensajes, tokens, llamadas a Voyage y coste estimado.

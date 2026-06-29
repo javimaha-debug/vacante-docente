@@ -17,6 +17,10 @@ class OposicionTema extends Model
         'status',
         'notas',
         'last_studied_at',
+        'score',
+        'score_sessions',
+        'score_updated_at',
+        'score_breakdown',
     ];
 
     protected function casts(): array
@@ -24,6 +28,10 @@ class OposicionTema extends Model
         return [
             'numero' => 'integer',
             'last_studied_at' => 'datetime',
+            'score' => 'integer',
+            'score_sessions' => 'integer',
+            'score_updated_at' => 'datetime',
+            'score_breakdown' => 'array',
         ];
     }
 

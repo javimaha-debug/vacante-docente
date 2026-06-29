@@ -26,6 +26,7 @@ import CalendarioPage from './components/dashboard/CalendarioPage';
 import MiPreparacion from './components/oposicion/MiPreparacion';
 import Normativa from './components/oposicion/Normativa';
 import Convocatorias from './components/oposicion/Convocatorias';
+import Asistente from './components/oposicion/Asistente';
 import MisDocumentos from './components/dashboard/MisDocumentos';
 
 import AdminLayout from './components/superadmin/AdminLayout';
@@ -38,6 +39,7 @@ import AdminMetricas from './components/superadmin/AdminMetricas';
 import AdminSistema from './components/superadmin/AdminSistema';
 import AdminMonitorDocs from './components/superadmin/AdminMonitorDocs';
 import AdminCalendario from './components/superadmin/AdminCalendario';
+import AdminAiUsage from './components/superadmin/AdminAiUsage';
 import AdminConvocatorias from './components/superadmin/AdminConvocatorias';
 import AdminNormativa from './components/superadmin/AdminNormativa';
 import CentrosList from './components/centros/CentrosList';
@@ -560,8 +562,8 @@ function AppRoutes() {
                 <Route path="mis-documentos" element={<MisDocumentos />} />
                 <Route path="normativa" element={<Normativa />} />
                 <Route path="convocatorias" element={<Convocatorias />} />
-                {/* Sections not yet built (asistente IA / docente). */}
-                <Route path="asistente" element={<ComingSoon title="Asistente IA" />} />
+                <Route path="asistente" element={<Asistente />} />
+                {/* Sections not yet built (docente). */}
                 <Route path="recursos" element={<ComingSoon title="Banco de recursos" />} />
             </Route>
 
@@ -583,6 +585,7 @@ function AppRoutes() {
                 <Route path="importaciones" element={<SuperAdminImportaciones />} />
                 <Route path="monitor-docs" element={<AdminMonitorDocs />} />
                 <Route path="calendario" element={<AdminCalendario />} />
+                <Route path="ia-usage" element={<AdminAiUsage />} />
                 <Route path="metricas" element={<AdminMetricas />} />
                 <Route path="sistema" element={<AdminSistema />} />
             </Route>

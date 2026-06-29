@@ -170,8 +170,11 @@ class DocumentAreaTest extends TestCase
         $this->assertTrue($doc->fresh()->tags()->where('user_document_tags.id', $tagId)->exists());
     }
 
-    public function test_process_job_marks_image_ready(): void
+    public function test_process_job_sets_page_count_and_queues_extraction(): void
     {
+        // ProcessDocumentJob now hands off to the RAG chain (extract → chunk →
+        // embed), which sets the final 'ready'. Fake the queue so only this job runs.
+        \Illuminate\Support\Facades\Queue::fake();
         Storage::fake($this->disk());
         $user = User::factory()->create();
         Storage::disk($this->disk())->put('p/img.png', 'binary');
@@ -179,8 +182,9 @@ class DocumentAreaTest extends TestCase
 
         (new ProcessDocumentJob($doc->id))->handle();
 
-        $this->assertSame('ready', $doc->fresh()->processing_status);
         $this->assertSame(1, $doc->fresh()->page_count);
+        $this->assertSame('processing', $doc->fresh()->processing_status);
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\ExtractDocumentTextJob::class);
     }
 
     public function test_integration_connect_requires_configuration(): void
