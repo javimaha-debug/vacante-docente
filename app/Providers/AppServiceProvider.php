@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use SocialiteProviders\Manager\SocialiteWasCalled;
+use SocialiteProviders\Microsoft\Provider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,9 +33,9 @@ class AppServiceProvider extends ServiceProvider
         // Register the Microsoft Socialite provider when the package is present
         // (composer require socialite-providers/microsoft). Guarded so the app
         // boots fine before it's installed.
-        if (class_exists(\SocialiteProviders\Microsoft\Provider::class)) {
-            Event::listen(function (\SocialiteProviders\Manager\SocialiteWasCalled $event) {
-                $event->extendSocialite('microsoft', \SocialiteProviders\Microsoft\Provider::class);
+        if (class_exists(Provider::class)) {
+            Event::listen(function (SocialiteWasCalled $event) {
+                $event->extendSocialite('microsoft', Provider::class);
             });
         }
 
@@ -65,18 +67,25 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(40)->by($request->ip());
         });
 
-        // Scope the anonymous {userList} route binding to the caller's
-        // session_token (header or request field) so one session can't read or
-        // mutate another's list by guessing its sequential id (IDOR).
+        // Scope the {userList} route binding to its owner so one session can't
+        // read or mutate another's list (and home address) by guessing its
+        // sequential id (IDOR — audit finding SEC-C1). Ownership is proven by
+        // EITHER the anonymous secret session_token (header or request field,
+        // compared in constant time) OR an authenticated account that owns the
+        // list (user_id). These routes carry no auth:sanctum middleware, so the
+        // bearer token is resolved via the sanctum guard explicitly.
         Route::bind('userList', function ($value) {
             $list = UserList::findOrFail($value);
-            $token = request()->header('X-Session-Token') ?: request()->input('session_token');
 
-            abort_unless(
-                is_string($token) && $token !== '' && hash_equals((string) $list->session_token, $token),
-                403,
-                'No autorizado para esta lista.'
-            );
+            $token = request()->header('X-Session-Token') ?: request()->input('session_token');
+            $tokenOwner = is_string($token) && $token !== ''
+                && $list->session_token !== null
+                && hash_equals((string) $list->session_token, $token);
+
+            $user = auth('sanctum')->user();
+            $accountOwner = $user && $list->user_id !== null && (int) $list->user_id === (int) $user->id;
+
+            abort_unless($tokenOwner || $accountOwner, 403, 'No autorizado para esta lista.');
 
             return $list;
         });
