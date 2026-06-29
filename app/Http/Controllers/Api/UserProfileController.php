@@ -330,6 +330,94 @@ class UserProfileController extends Controller
 
     /**
      * The authenticated user's weekly continuous-adjudication history, matched
+     * Aggregate "where am I in the lists?" view: searches every imported
+     * participant listing (across all procesos) and the weekly continuous
+     * adjudications by the user's nombre_gva, returning where they appear and
+     * at what position.
+     */
+    public function misListados(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user->nombre_gva) {
+            return response()->json([
+                'configured' => false,
+                'message' => 'Configura tu nombre GVA en el perfil para localizarte en las listas.',
+            ]);
+        }
+
+        $name = mb_strtolower($user->nombre_gva);
+
+        $userCodes = $user->especialidades()->with('specialty')->get()
+            ->flatMap(fn (UserEspecialidad $e) => [$e->specialty?->codigo, $e->specialty?->code])
+            ->filter()->map(fn ($c) => (string) $c)->all();
+
+        // All participant-list matches across every proceso, in one query.
+        $matches = \App\Models\ParticipanteProceso::query()
+            ->whereRaw('LOWER(nombre_gva) = ?', [$name])
+            ->with('proceso:id,nombre')
+            ->get()
+            ->groupBy('proceso_id');
+
+        $procesos = [];
+        foreach ($matches as $rows) {
+            $proceso = $rows->first()->proceso;
+            if (! $proceso) {
+                continue;
+            }
+            // Prefer the row matching one of the user's own specialty codes.
+            $row = $rows->first(fn ($p) => in_array((string) $p->especialidad_codigo, $userCodes, true)) ?? $rows->first();
+
+            $procesos[] = [
+                'proceso_id' => $proceso->id,
+                'proceso' => $proceso->nombre,
+                'posicion' => $row->posicion,
+                'estado' => $row->estado,
+                'cambio' => $row->cambio,
+                'especialidad_codigo' => $row->especialidad_codigo,
+                'listado_fecha' => \App\Models\ParticipanteImportacion::where('proceso_id', $proceso->id)
+                    ->orderByDesc('importado_en')->first()?->importado_en?->toDateString(),
+                'adjudicacion' => $row->estado === 'Adjudicat' ? [
+                    'lloc' => $row->lloc_adjudicado,
+                    'centro_nombre' => $row->centro_nombre,
+                    'localitat' => $row->localitat,
+                    'jornada' => $row->jornada,
+                ] : null,
+                // When the user appears in several specialties of the same proceso.
+                'otras' => $rows->count() > 1
+                    ? $rows->map(fn ($p) => [
+                        'especialidad_codigo' => $p->especialidad_codigo,
+                        'posicion' => $p->posicion,
+                        'estado' => $p->estado,
+                    ])->values()->all()
+                    : [],
+            ];
+        }
+
+        // Weekly continuous adjudications.
+        $continuas = \App\Models\AdjudicacionContinua::query()
+            ->where(fn ($q) => $q->where('user_id', $user->id)
+                ->orWhereRaw('LOWER(nombre_gva) = ?', [$name]))
+            ->orderByDesc('fecha')->limit(20)->get()
+            ->map(fn ($a) => [
+                'fecha' => $a->fecha?->toDateString(),
+                'cuerpo' => $a->cuerpo,
+                'estado' => $a->estado,
+                'especialidad_codigo' => $a->especialidad_codigo,
+                'posicion' => $a->posicion,
+                'centro' => $a->centro_nombre,
+                'localitat' => $a->localitat,
+            ])->all();
+
+        return response()->json([
+            'configured' => true,
+            'nombre_gva' => $user->nombre_gva,
+            'procesos' => $procesos,
+            'continuas' => $continuas,
+        ]);
+    }
+
+    /**
      * by nombre_gva (or a previously linked user_id), newest tanda first.
      */
     public function adjudicacionesContinuas(Request $request): JsonResponse

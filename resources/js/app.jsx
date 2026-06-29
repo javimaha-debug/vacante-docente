@@ -22,6 +22,7 @@ import UserProfile from './components/dashboard/UserProfile';
 import MisEspecialidades from './components/dashboard/MisEspecialidades';
 import AdminImportaciones from './components/dashboard/AdminImportaciones';
 import PlanesPage from './components/dashboard/PlanesPage';
+import MiPosicion from './components/dashboard/MiPosicion';
 
 import AdminLayout from './components/superadmin/AdminLayout';
 import AdminDashboard from './components/superadmin/AdminDashboard';
@@ -539,6 +540,7 @@ function AppRoutes() {
                 <Route path="planes" element={<PlanesPage />} />
                 <Route path="vacantes" element={<VacancyExplorer initialView="kanban" />} />
                 <Route path="lista" element={<VacancyExplorer initialView="list" focused />} />
+                <Route path="mi-posicion" element={<MiPosicion />} />
                 <Route path="centros" element={<CentrosList />} />
                 <Route path="centros/:codigo" element={<CentroDetail />} />
                 <Route path="tablon" element={<TablonList />} />
