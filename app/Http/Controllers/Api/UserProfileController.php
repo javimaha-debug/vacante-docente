@@ -5,16 +5,26 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\VacancyResource;
 use App\Models\AcademicCalendarEvent;
+use App\Models\AdjudicacionContinua;
 use App\Models\OposicionTema;
+use App\Models\ParticipanteImportacion;
+use App\Models\ParticipanteProceso;
 use App\Models\Proceso;
+use App\Models\ProcesoImportacion;
 use App\Models\User;
 use App\Models\UserEspecialidad;
+use App\Models\UserHistorial;
 use App\Models\UserList;
+use App\Models\UserVacancyPreference;
 use App\Models\Vacancy;
+use App\Policies\FeaturePolicy;
 use App\Services\GoogleMapsService;
+use App\Support\NameMatch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -31,7 +41,7 @@ class UserProfileController extends Controller
         $impersonation = $this->impersonationState();
 
         return response()->json(array_merge($user->toArray(), [
-            'features' => app(\App\Policies\FeaturePolicy::class)->featureMap($user),
+            'features' => app(FeaturePolicy::class)->featureMap($user),
             'plan_label' => $user->planLabel(),
             'plan_status_label' => $user->planStatusLabel(),
             'is_paid' => $user->isPaid(),
@@ -278,7 +288,7 @@ class UserProfileController extends Controller
             'ultima_posicion' => $ultimo?->posicion_definitiva,
         ];
 
-        $historialDetallado = $historial->map(fn (\App\Models\UserHistorial $h) => [
+        $historialDetallado = $historial->map(fn (UserHistorial $h) => [
             'id' => $h->id,
             'anyo' => $h->anyo,
             'curso' => $h->proceso?->curso ?? ($h->anyo ? $h->anyo.'-'.($h->anyo + 1) : null),
@@ -360,14 +370,16 @@ class UserProfileController extends Controller
             ]);
         }
 
-        $needle = mb_strtolower($term);
+        // Fold accents + case so accented names (PÉREZ, GARCÍA…) match what the
+        // user types. Both tables store the folded form in nombre_normalizado.
+        $needle = NameMatch::fold($term);
 
         // Exact match for the user's own name; partial (LIKE) for free searches
         // so a surname or partial name finds people.
-        $matchName = function ($query, string $column = 'nombre_gva') use ($isSearch, $needle) {
+        $matchName = function ($query, string $column = 'nombre_normalizado') use ($isSearch, $needle) {
             return $isSearch
-                ? $query->whereRaw('LOWER('.$column.') LIKE ?', ['%'.$this->escapeLike($needle).'%'])
-                : $query->whereRaw('LOWER('.$column.') = ?', [$needle]);
+                ? $query->where($column, 'LIKE', '%'.NameMatch::escapeLike($needle).'%')
+                : $query->where($column, $needle);
         };
 
         $userCodes = $user->especialidades()->with('specialty')->get()
@@ -375,7 +387,7 @@ class UserProfileController extends Controller
             ->filter()->map(fn ($c) => (string) $c)->all();
 
         // All participant-list matches across every proceso, grouped by person.
-        $rows = \App\Models\ParticipanteProceso::query()
+        $rows = ParticipanteProceso::query()
             ->where(fn ($query) => $matchName($query))
             ->with('proceso:id,nombre')
             ->orderBy('nombre_gva')
@@ -383,7 +395,7 @@ class UserProfileController extends Controller
             ->get();
 
         // Continua matches, also grouped by person.
-        $continuasRows = \App\Models\AdjudicacionContinua::query()
+        $continuasRows = AdjudicacionContinua::query()
             ->where(function ($query) use ($matchName, $isSearch, $user) {
                 $matchName($query);
                 if (! $isSearch) {
@@ -394,7 +406,7 @@ class UserProfileController extends Controller
 
         // Pre-load the latest listing date per proceso once.
         $procesoIds = $rows->pluck('proceso_id')->unique()->all();
-        $fechas = \App\Models\ParticipanteImportacion::query()
+        $fechas = ParticipanteImportacion::query()
             ->whereIn('proceso_id', $procesoIds)
             ->orderByDesc('importado_en')->get()
             ->groupBy('proceso_id')
@@ -444,9 +456,9 @@ class UserProfileController extends Controller
     /**
      * Build the per-proceso position cards for a single person's participant rows.
      *
-     * @param  \Illuminate\Support\Collection  $personRows
+     * @param  Collection  $personRows
      * @param  array<int, string>  $userCodes
-     * @param  \Illuminate\Support\Collection  $fechas  proceso_id => listado date
+     * @param  Collection  $fechas  proceso_id => listado date
      * @return array<int, array<string, mixed>>
      */
     private function buildProcesoCards($personRows, array $userCodes, $fechas): array
@@ -488,12 +500,6 @@ class UserProfileController extends Controller
         return $procesos;
     }
 
-    /** Escape LIKE wildcards in a user-supplied search term. */
-    private function escapeLike(string $value): string
-    {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
-    }
-
     /**
      * by nombre_gva (or a previously linked user_id), newest tanda first.
      */
@@ -509,9 +515,9 @@ class UserProfileController extends Controller
             ]);
         }
 
-        $rows = \App\Models\AdjudicacionContinua::query()
+        $rows = AdjudicacionContinua::query()
             ->where(fn ($q) => $q->where('user_id', $user->id)
-                ->orWhereRaw('LOWER(nombre_gva) = ?', [mb_strtolower($user->nombre_gva)]))
+                ->orWhere('nombre_normalizado', NameMatch::fold($user->nombre_gva)))
             ->orderByDesc('fecha')
             ->limit(40)
             ->get()
@@ -539,7 +545,7 @@ class UserProfileController extends Controller
      */
     private function latestParticipantListing(User $user): ?array
     {
-        $import = \App\Models\ParticipanteImportacion::query()
+        $import = ParticipanteImportacion::query()
             ->with('proceso:id,nombre,ccaa_id')
             ->when($user->ccaa_id, fn ($q) => $q->whereHas('proceso', fn ($p) => $p->where('ccaa_id', $user->ccaa_id)))
             ->orderByDesc('importado_en')
@@ -568,7 +574,7 @@ class UserProfileController extends Controller
             ? $q->whereHas('proceso', fn ($p) => $p->where('ccaa_id', $user->ccaa_id))
             : $q;
 
-        $vacantes = \App\Models\ProcesoImportacion::with('proceso:id,nombre')
+        $vacantes = ProcesoImportacion::with('proceso:id,nombre')
             ->where('es_primera', false)
             ->where(fn ($q) => $q->where('nuevas', '>', 0)->orWhere('modificadas', '>', 0)->orWhere('eliminadas', '>', 0))
             ->tap($scope)
@@ -584,7 +590,7 @@ class UserProfileController extends Controller
                 'eliminadas' => $i->eliminadas,
             ]);
 
-        $participantes = \App\Models\ParticipanteImportacion::with('proceso:id,nombre')
+        $participantes = ParticipanteImportacion::with('proceso:id,nombre')
             ->where('es_primera', false)
             ->where(fn ($q) => $q->where('nuevos', '>', 0)->orWhere('modificados', '>', 0)->orWhere('eliminados', '>', 0))
             ->tap($scope)
@@ -633,7 +639,7 @@ class UserProfileController extends Controller
 
         $items = [];
         if ($lists->isNotEmpty()) {
-            $prefs = \App\Models\UserVacancyPreference::query()
+            $prefs = UserVacancyPreference::query()
                 ->with('vacancy')
                 ->whereIn('user_list_id', $lists)
                 ->where('status', 'selected')
@@ -739,7 +745,7 @@ class UserProfileController extends Controller
         $tokenId = request()->user()?->currentAccessToken()?->id;
 
         if ($tokenId) {
-            $payload = \Illuminate\Support\Facades\Cache::get('impersonation:'.$tokenId);
+            $payload = Cache::get('impersonation:'.$tokenId);
             if ($payload) {
                 return ['active' => true, 'by' => $payload['admin_name'] ?? 'Administrador'];
             }
@@ -781,7 +787,7 @@ class UserProfileController extends Controller
             'is_paid' => $user->isPaid(),
             'is_admin' => $user->isAdmin(),
             'is_superadmin' => $user->isSuperAdmin(),
-            'features' => app(\App\Policies\FeaturePolicy::class)->featureMap($user),
+            'features' => app(FeaturePolicy::class)->featureMap($user),
             'is_impersonated' => $this->impersonationState()['active'],
             'impersonated_by' => $this->impersonationState()['by'],
             'especialidades' => $user->especialidades->map(fn (UserEspecialidad $e) => [
@@ -848,7 +854,7 @@ class UserProfileController extends Controller
 
         // Spanish date: e.g. "lunes, 29 de junio de 2026"
         $meses = ['', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
         $dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
         $fechaTexto = sprintf(
             '%s, %d de %s de %d',

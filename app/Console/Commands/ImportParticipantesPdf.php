@@ -3,12 +3,15 @@
 namespace App\Console\Commands;
 
 use App\Models\Centro;
+use App\Models\ParticipanteImportacion;
 use App\Models\ParticipanteProceso;
 use App\Models\Proceso;
 use App\Models\Specialty;
 use App\Models\User;
 use App\Models\UserEspecialidad;
 use App\Models\UserHistorial;
+use App\Services\ListadoNotificacionService;
+use App\Support\NameMatch;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -107,7 +110,7 @@ class ImportParticipantesPdf extends Command
         if (count($rows) === 0 && ! $this->option('allow-empty')) {
             $existing = ParticipanteProceso::where('proceso_id', $proceso->id)->count();
             $this->error(
-                "El PDF no produjo ninguna fila de participantes. Importación abortada para no borrar "
+                'El PDF no produjo ninguna fila de participantes. Importación abortada para no borrar '
                 ."los {$existing} registros existentes del proceso «{$proceso->nombre}». "
                 .'Si el listado realmente está vacío, reejecuta con --allow-empty.'
             );
@@ -163,6 +166,8 @@ class ImportParticipantesPdf extends Command
                     array_intersect_key($r, array_flip(self::DB_COLUMNS)),
                     [
                         'proceso_id' => $proceso->id,
+                        // Bulk insert() bypasses model events, so fold here.
+                        'nombre_normalizado' => NameMatch::fold($r['nombre_gva'] ?? ''),
                         'cambio' => $r['cambio'] ?? null,
                         'cambio_en' => $r['cambio_en'] ?? null,
                         'created_at' => $now,
@@ -171,7 +176,7 @@ class ImportParticipantesPdf extends Command
                 ), $chunk));
             }
 
-            \App\Models\ParticipanteImportacion::create([
+            ParticipanteImportacion::create([
                 'proceso_id' => $proceso->id,
                 'importado_en' => $now,
                 'total' => count($rows),
@@ -187,7 +192,7 @@ class ImportParticipantesPdf extends Command
         if (! $isFirst) {
             $this->info("Cambios vs listado anterior: {$nuevos} nuevos, {$modificados} modificados, {$eliminados} eliminados.");
 
-            $service = app(\App\Services\ListadoNotificacionService::class);
+            $service = app(ListadoNotificacionService::class);
             $notified = $service->notifyParticipantes($proceso, [
                 'nuevos' => $nuevos, 'modificados' => $modificados, 'eliminados' => $eliminados,
             ]);

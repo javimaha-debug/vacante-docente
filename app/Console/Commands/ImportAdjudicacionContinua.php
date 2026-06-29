@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\AdjudicacionContinua;
 use App\Models\User;
+use App\Notifications\AdjudicacionContinuaAsignada;
+use App\Support\NameMatch;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +62,7 @@ class ImportAdjudicacionContinua extends Command
         $curso = $this->cursoFromFecha($fecha);
 
         // Reuse the start-of-course adjudication parser (same layout).
-        $rows = (new ImportParticipantesPdf())->parseText($text);
+        $rows = (new ImportParticipantesPdf)->parseText($text);
         $this->info('Tanda '.$fecha->toDateString()." ({$cuerpo}, curso {$curso}) — ".count($rows).' filas, '
             .collect($rows)->pluck('nombre_gva')->unique()->count().' personas.');
 
@@ -80,6 +82,8 @@ class ImportAdjudicacionContinua extends Command
             'fecha' => $fecha->toDateString(),
             'cuerpo' => $cuerpo,
             'nombre_gva' => $r['nombre_gva'],
+            // Bulk insert() bypasses model events, so fold here.
+            'nombre_normalizado' => NameMatch::fold($r['nombre_gva'] ?? ''),
             'especialidad_codigo' => $r['especialidad_codigo'] ?? null,
             'posicion' => $r['posicion'] ?? null,
             'estado' => $r['estado'] ?? null,
@@ -130,7 +134,7 @@ class ImportAdjudicacionContinua extends Command
             if (! $row->user) {
                 continue;
             }
-            $row->user->notify(new \App\Notifications\AdjudicacionContinuaAsignada(
+            $row->user->notify(new AdjudicacionContinuaAsignada(
                 $fecha->toDateString(),
                 $row->centro_nombre,
                 $row->localitat,
