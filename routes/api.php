@@ -4,11 +4,9 @@ use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\AiConversationController;
 use App\Http\Controllers\Api\CalendarController;
 use App\Http\Controllers\Api\CentroController;
-use App\Http\Controllers\Api\FlashcardController;
-use App\Http\Controllers\Api\ScoringController;
-use App\Http\Controllers\Api\SuperAdmin\AiUsageController as AdminAiUsageController;
 use App\Http\Controllers\Api\ConvocatoriasController;
 use App\Http\Controllers\Api\DistanceController;
+use App\Http\Controllers\Api\FlashcardController;
 use App\Http\Controllers\Api\GeocodeController;
 use App\Http\Controllers\Api\GvaController;
 use App\Http\Controllers\Api\Integrations\GoogleDriveController;
@@ -20,7 +18,9 @@ use App\Http\Controllers\Api\ParticipanteController;
 use App\Http\Controllers\Api\PreferenceController;
 use App\Http\Controllers\Api\ProcesoController;
 use App\Http\Controllers\Api\PushSubscriptionController;
+use App\Http\Controllers\Api\ScoringController;
 use App\Http\Controllers\Api\SpecialtyController;
+use App\Http\Controllers\Api\SuperAdmin\AiUsageController as AdminAiUsageController;
 use App\Http\Controllers\Api\SuperAdmin\CalendarController as AdminCalendarController;
 use App\Http\Controllers\Api\SuperAdmin\ConvocatoriasController as AdminConvocatoriasController;
 use App\Http\Controllers\Api\SuperAdmin\DashboardController as AdminDashboardController;
@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\SuperAdmin\MetricasController as AdminMetricasContr
 use App\Http\Controllers\Api\SuperAdmin\NormativaController as AdminNormativaController;
 use App\Http\Controllers\Api\SuperAdmin\SistemaController as AdminSistemaController;
 use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripcionesController;
+use App\Http\Controllers\Api\SuperAdmin\TemariosController as AdminTemariosController;
 use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
 use App\Http\Controllers\Api\TablonController;
 use App\Http\Controllers\Api\UserDocumentController;
@@ -232,8 +233,13 @@ Route::prefix('v1')->group(function () {
         Route::get('oposicion/temas', [OposicionPreparacionController::class, 'temas']);
         Route::post('oposicion/temas', [OposicionPreparacionController::class, 'storeTema']);
         Route::post('oposicion/temas/bulk', [OposicionPreparacionController::class, 'bulkTemas']);
+        Route::post('oposicion/temas/import-oficial', [OposicionPreparacionController::class, 'importOficial']);
+        Route::get('oposicion/temas/{tema}/oficial', [OposicionPreparacionController::class, 'temaOficialDetail']);
         Route::patch('oposicion/temas/{tema}', [OposicionPreparacionController::class, 'updateTema']);
         Route::delete('oposicion/temas/{tema}', [OposicionPreparacionController::class, 'destroyTema']);
+
+        // Official BOE temario lookup + import.
+        Route::get('oposicion/temario-oficial', [OposicionPreparacionController::class, 'temarioOficial']);
 
         Route::get('oposicion/sesiones', [OposicionPreparacionController::class, 'sesiones']);
         Route::post('oposicion/sesiones', [OposicionPreparacionController::class, 'storeSesion']);
@@ -337,5 +343,15 @@ Route::prefix('v1')->group(function () {
             Route::post('normativa/{normativa}', [AdminNormativaController::class, 'update']);
             Route::patch('normativa/{normativa}', [AdminNormativaController::class, 'update']);
             Route::delete('normativa/{normativa}', [AdminNormativaController::class, 'destroy']);
+
+            // Modo Oposición admin: temarios oficiales (BOE) + enriquecimiento IA.
+            Route::get('temarios/stats', [AdminTemariosController::class, 'stats']);
+            Route::post('temarios/sync-boe', [AdminTemariosController::class, 'syncBoe']);
+            Route::get('temarios', [AdminTemariosController::class, 'index']);
+            Route::get('temarios/{temario}/temas', [AdminTemariosController::class, 'temas']);
+            Route::post('temarios/{temario}/temas', [AdminTemariosController::class, 'storeTema']);
+            Route::post('temarios/{temario}/regenerate', [AdminTemariosController::class, 'regenerate']);
+            Route::patch('temas-oficiales/{tema}', [AdminTemariosController::class, 'updateTema']);
+            Route::delete('temas-oficiales/{tema}', [AdminTemariosController::class, 'destroyTema']);
         });
 });

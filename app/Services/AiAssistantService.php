@@ -7,6 +7,8 @@ use App\Models\AiMessage;
 use App\Models\AiUsage;
 use App\Models\NormativaDocumento;
 use App\Models\OposicionTema;
+use App\Models\TemaOficial;
+use App\Models\TemarioOficial;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -107,6 +109,10 @@ class AiAssistantService
             // Normativa table/columns are optional context.
         }
 
+        // When studying a specific official tema, load its esquema + keywords so
+        // the assistant has the official knowledge base even without user notes.
+        $temaOficialBlock = $this->officialTemaContext($conversation);
+
         return <<<PROMPT
         Eres un asistente de estudio para oposiciones docentes en España.
         Ayudas a preparar la especialidad: {$especialidad}.
@@ -117,7 +123,7 @@ class AiAssistantService
 
         NORMATIVA RELEVANTE:
         {$normativa}
-
+        {$temaOficialBlock}
         INSTRUCCIONES:
         - Responde siempre en español
         - Sé conciso y pedagógico
@@ -127,6 +133,42 @@ class AiAssistantService
         - Si no sabes algo, dilo claramente
         - Posiciónate siempre como asistente, no como autor
         PROMPT;
+    }
+
+    /**
+     * Build the official-tema knowledge block for the system prompt, if the
+     * conversation is scoped to a specific tema number.
+     */
+    private function officialTemaContext(AiConversation $conversation): string
+    {
+        if (! $conversation->tema_numero || ! $conversation->especialidad_code) {
+            return '';
+        }
+
+        $temario = TemarioOficial::where('especialidad_code', $conversation->especialidad_code)->first();
+        if (! $temario) {
+            return '';
+        }
+
+        $tema = TemaOficial::where('temario_id', $temario->id)
+            ->where('numero', $conversation->tema_numero)->first();
+        if (! $tema) {
+            return '';
+        }
+
+        $esquema = '';
+        foreach ((array) $tema->esquema as $punto) {
+            $titulo = is_array($punto) ? ($punto['punto'] ?? '') : (string) $punto;
+            $esquema .= "- {$titulo}\n";
+            foreach ((array) ($punto['subpuntos'] ?? []) as $sub) {
+                $esquema .= "    · {$sub}\n";
+            }
+        }
+        $keywords = implode(', ', (array) $tema->keywords);
+
+        return "\nTEMA OFICIAL EN ESTUDIO — Tema {$tema->numero}: {$tema->titulo}\n"
+            ."ESQUEMA OFICIAL:\n".($esquema !== '' ? $esquema : "(sin esquema)\n")
+            .($keywords !== '' ? "PALABRAS CLAVE: {$keywords}\n" : '');
     }
 
     public function recordUsage(int $userId, int $tokensIn, int $tokensOut, int $voyageCalls = 0): void

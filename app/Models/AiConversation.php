@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class AiConversation extends Model
 {
     protected $fillable = [
-        'user_id', 'title', 'mode', 'context_type', 'especialidad_code',
+        'user_id', 'title', 'mode', 'context_type', 'especialidad_code', 'tema_numero',
     ];
 
     public function user(): BelongsTo

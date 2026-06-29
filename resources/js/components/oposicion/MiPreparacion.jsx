@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import api from '../../lib/api';
@@ -158,10 +159,22 @@ function MainArea({ code, byCode }) {
         return g;
     }, [temas]);
 
+    // Is there an official BOE temario for this specialty?
+    const { data: oficial } = useQuery({
+        queryKey: ['oposicion', 'temario-oficial', code],
+        queryFn: async () => (await api.get('/oposicion/temario-oficial', { params: { especialidad_code: code } })).data,
+        enabled: !!code,
+    });
+
     const invalidate = () => {
         qc.invalidateQueries({ queryKey: ['oposicion', 'temas', code] });
         qc.invalidateQueries({ queryKey: ['oposicion', 'stats'] });
     };
+
+    const importOficial = useMutation({
+        mutationFn: async () => (await api.post('/oposicion/temas/import-oficial', { especialidad_code: code })).data,
+        onSuccess: invalidate,
+    });
 
     return (
         <section className="space-y-4">
@@ -187,8 +200,43 @@ function MainArea({ code, byCode }) {
                 <p className="text-sm text-slate-400">Cargando temas…</p>
             ) : temas.length === 0 ? (
                 <div className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
-                    <p className="text-sm font-medium text-slate-600">Aún no tienes temas en esta especialidad.</p>
-                    <p className="mt-1 text-sm text-slate-400">Usa «Importar temario» para pegar tu lista de temas.</p>
+                    {oficial?.exists ? (
+                        <>
+                            <div className="text-3xl">📘</div>
+                            <p className="mt-2 text-sm font-medium text-slate-700">
+                                Hemos encontrado el temario oficial de {oficial.especialidad_nombre} con {oficial.total_temas} temas.
+                            </p>
+                            <p className="mt-1 text-sm text-slate-400">¿Quieres importarlo como punto de partida?</p>
+                            {oficial.preview?.length > 0 && (
+                                <ul className="mx-auto mt-3 max-w-md space-y-1 text-left">
+                                    {oficial.preview.map((t) => (
+                                        <li key={t.numero} className="truncate text-xs text-slate-500">{t.numero}. {t.titulo}</li>
+                                    ))}
+                                    <li className="text-xs text-slate-400">…</li>
+                                </ul>
+                            )}
+                            <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                <button
+                                    onClick={() => importOficial.mutate()}
+                                    disabled={importOficial.isPending}
+                                    className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                                >
+                                    {importOficial.isPending ? 'Importando…' : 'Importar temario oficial'}
+                                </button>
+                                <button
+                                    onClick={() => setShowImport(true)}
+                                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                                >
+                                    Crear mi propio temario
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-sm font-medium text-slate-600">Aún no tienes temas en esta especialidad.</p>
+                            <p className="mt-1 text-sm text-slate-400">Usa «Importar temario» para pegar tu lista de temas.</p>
+                        </>
+                    )}
                 </div>
             ) : (
                 <div className="space-y-5">
@@ -229,7 +277,9 @@ function TemaGroup({ status, temas, onChanged }) {
 
 function TemaRow({ tema, onChanged }) {
     const [open, setOpen] = useState(false);
+    const [panel, setPanel] = useState(null); // 'esquema' | 'bibliografia' | null
     const [notas, setNotas] = useState(tema.notas ?? '');
+    const navigate = useNavigate();
 
     const update = useMutation({
         mutationFn: async (patch) => (await api.patch(`/oposicion/temas/${tema.id}`, patch)).data,
@@ -240,6 +290,32 @@ function TemaRow({ tema, onChanged }) {
         onSuccess: onChanged,
     });
 
+    // Official esquema/bibliografía, loaded on demand when a panel opens.
+    const { data: oficial } = useQuery({
+        queryKey: ['oposicion', 'tema-oficial', tema.id],
+        queryFn: async () => (await api.get(`/oposicion/temas/${tema.id}/oficial`)).data,
+        enabled: open && tema.tiene_esquema && panel !== null,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    // Create a temario-scoped conversation for this tema and open the assistant.
+    const estudiar = useMutation({
+        mutationFn: async () => (await api.post('/ai/conversations', {
+            mode: 'chat',
+            context_type: 'temario',
+            especialidad_code: tema.especialidad_code,
+            tema_numero: tema.numero,
+            title: `Tema ${tema.numero}: ${tema.titulo}`.slice(0, 80),
+        })).data,
+        onSuccess: (conv) => navigate(`/dashboard/asistente?c=${conv.id}`),
+    });
+
+    const progreso = tema.esquema_progreso ?? [];
+    const togglePunto = (idx) => {
+        const next = progreso.includes(idx) ? progreso.filter((i) => i !== idx) : [...progreso, idx];
+        update.mutate({ esquema_progreso: next });
+    };
+
     return (
         <li className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
             <div className="flex items-center gap-3">
@@ -248,9 +324,17 @@ function TemaRow({ tema, onChanged }) {
                 </span>
                 <button onClick={() => setOpen((v) => !v)} className="min-w-0 flex-1 text-left">
                     <p className="truncate text-sm font-medium text-slate-800">{tema.titulo}</p>
-                    {tema.last_studied_at && (
-                        <p className="text-[11px] text-slate-400">Estudiado {new Date(tema.last_studied_at).toLocaleDateString('es-ES')}</p>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {tema.es_oficial && (
+                            <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">Oficial BOE</span>
+                        )}
+                        {Number.isFinite(tema.score) && tema.score != null && (
+                            <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">{tema.score} pts</span>
+                        )}
+                        {tema.last_studied_at && (
+                            <span className="text-[11px] text-slate-400">Estudiado {new Date(tema.last_studied_at).toLocaleDateString('es-ES')}</span>
+                        )}
+                    </div>
                 </button>
                 <button
                     onClick={() => update.mutate({ status: STATUS_NEXT[tema.status] })}
@@ -275,6 +359,28 @@ function TemaRow({ tema, onChanged }) {
                             </button>
                         ))}
                     </div>
+
+                    {tema.tiene_esquema && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                            <button onClick={() => setPanel(panel === 'esquema' ? null : 'esquema')} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200">
+                                Ver esquema
+                            </button>
+                            <button onClick={() => setPanel(panel === 'bibliografia' ? null : 'bibliografia')} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200">
+                                Ver bibliografía
+                            </button>
+                        </div>
+                    )}
+                    <button
+                        onClick={() => estudiar.mutate()}
+                        disabled={estudiar.isPending}
+                        className="mt-2 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                    >
+                        ✨ Estudiar con IA
+                    </button>
+
+                    {panel === 'esquema' && <EsquemaPanel esquema={oficial?.esquema} progreso={progreso} onToggle={togglePunto} />}
+                    {panel === 'bibliografia' && <BibliografiaPanel bibliografia={oficial?.bibliografia} />}
+
                     <textarea
                         value={notas}
                         onChange={(e) => setNotas(e.target.value)}
@@ -291,6 +397,60 @@ function TemaRow({ tema, onChanged }) {
                 </div>
             )}
         </li>
+    );
+}
+
+function EsquemaPanel({ esquema, progreso, onToggle }) {
+    if (!esquema) return <p className="mt-2 text-xs text-slate-400">Cargando esquema…</p>;
+    if (esquema.length === 0) return <p className="mt-2 text-xs text-slate-400">Este tema aún no tiene esquema generado.</p>;
+
+    const revisados = progreso.length;
+    return (
+        <div className="mt-2 rounded-lg bg-slate-50 p-3">
+            <p className="mb-2 text-[11px] font-semibold text-slate-500">{revisados} de {esquema.length} puntos revisados</p>
+            <ol className="space-y-2">
+                {esquema.map((p, i) => (
+                    <li key={i} className="text-sm">
+                        <label className="flex cursor-pointer items-start gap-2">
+                            <input type="checkbox" checked={progreso.includes(i)} onChange={() => onToggle(i)} className="mt-0.5 rounded text-brand-600 focus:ring-brand-400" />
+                            <span className="font-semibold text-slate-700">{p.punto ?? p}</span>
+                        </label>
+                        {Array.isArray(p.subpuntos) && p.subpuntos.length > 0 && (
+                            <ul className="ml-6 mt-1 list-disc space-y-0.5 text-xs text-slate-500">
+                                {p.subpuntos.map((s, j) => <li key={j}>{s}</li>)}
+                            </ul>
+                        )}
+                    </li>
+                ))}
+            </ol>
+        </div>
+    );
+}
+
+function BibliografiaPanel({ bibliografia }) {
+    if (!bibliografia) return <p className="mt-2 text-xs text-slate-400">Cargando bibliografía…</p>;
+    if (bibliografia.length === 0) return <p className="mt-2 text-xs text-slate-400">Sin bibliografía generada.</p>;
+
+    return (
+        <div className="mt-2 space-y-2">
+            {bibliografia.map((b, i) => {
+                const link = b.url || `https://www.google.com/search?q=${encodeURIComponent([b.titulo, b.autor].filter(Boolean).join(' '))}`;
+                return (
+                    <div key={i} className="rounded-lg bg-slate-50 p-2.5 text-sm">
+                        <div className="flex items-center gap-2">
+                            {b.tipo && <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-600">{b.tipo}</span>}
+                            <span className="font-semibold text-slate-700">{b.titulo}</span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                            {[b.autor, b.editorial, b.año ?? b['año']].filter(Boolean).join(' · ')}
+                        </p>
+                        <a href={link} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs font-medium text-brand-700 hover:text-brand-800">
+                            {b.url ? 'Abrir ↗' : 'Buscar en Google ↗'}
+                        </a>
+                    </div>
+                );
+            })}
+        </div>
     );
 }
 
