@@ -1,8 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\AiConversationController;
 use App\Http\Controllers\Api\CalendarController;
 use App\Http\Controllers\Api\CentroController;
+use App\Http\Controllers\Api\FlashcardController;
+use App\Http\Controllers\Api\ScoringController;
+use App\Http\Controllers\Api\SuperAdmin\AiUsageController as AdminAiUsageController;
 use App\Http\Controllers\Api\ConvocatoriasController;
 use App\Http\Controllers\Api\DistanceController;
 use App\Http\Controllers\Api\GeocodeController;
@@ -239,6 +243,21 @@ Route::prefix('v1')->group(function () {
         Route::get('convocatorias', [ConvocatoriasController::class, 'index']);
         Route::get('convocatorias/{convocatoria}', [ConvocatoriasController::class, 'show']);
 
+        // AI assistant (Sprint B: RAG + chat + flashcards + scoring).
+        Route::get('ai/conversations', [AiConversationController::class, 'index']);
+        Route::post('ai/conversations', [AiConversationController::class, 'store']);
+        Route::get('ai/conversations/{conversation}', [AiConversationController::class, 'show']);
+        Route::post('ai/conversations/{conversation}/message', [AiConversationController::class, 'message']);
+        Route::delete('ai/conversations/{conversation}', [AiConversationController::class, 'destroy']);
+
+        Route::post('ai/flashcards/from-tema', [FlashcardController::class, 'fromTema']);
+        Route::post('ai/flashcards/from-document', [FlashcardController::class, 'fromDocument']);
+        Route::post('ai/flashcards/result', [FlashcardController::class, 'result']);
+
+        Route::get('ai/scores', [ScoringController::class, 'index']);
+        Route::get('ai/scores/{tema}', [ScoringController::class, 'show']);
+        Route::post('ai/scores/{tema}/simulacro', [ScoringController::class, 'simulacro']);
+
         // GVA admin review (id=1 or is_admin).
         Route::get('admin/gva-noticias', [GvaController::class, 'adminUnnotified']);
         Route::get('admin/gva-importaciones', [GvaController::class, 'adminImportaciones']);
@@ -295,6 +314,9 @@ Route::prefix('v1')->group(function () {
             Route::get('sistema/logs', [AdminSistemaController::class, 'logs']);
             Route::post('sistema/cache-clear', [AdminSistemaController::class, 'cacheClear']);
             Route::get('sistema/failed-jobs', [AdminSistemaController::class, 'failedJobs']);
+
+            // AI usage / cost dashboard.
+            Route::get('ai-usage', [AdminAiUsageController::class, 'index']);
 
             // Modo Oposición admin: convocatorias + normativa management.
             Route::get('convocatorias', [AdminConvocatoriasController::class, 'index']);

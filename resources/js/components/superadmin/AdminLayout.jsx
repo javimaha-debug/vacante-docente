@@ -16,6 +16,7 @@ const NAV = [
     { to: '/superadmin/importaciones', label: 'Importaciones', icon: '🔄' },
     { to: '/superadmin/monitor-docs', label: 'Monitor Docs', icon: '📑', badge: 'docs-pending' },
     { to: '/superadmin/calendario', label: 'Calendario', icon: '📅' },
+    { to: '/superadmin/ia-usage', label: 'IA Usage', icon: '🤖' },
     { to: '/superadmin/metricas', label: 'Métricas', icon: '📈' },
     { to: '/superadmin/sistema', label: 'Sistema', icon: '🛠️' },
 ];
