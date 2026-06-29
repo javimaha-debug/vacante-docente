@@ -3,35 +3,36 @@
 namespace App\Console\Commands;
 
 use App\Models\SyncState;
-use App\Services\TemarioBoeParser;
 use App\Services\TemarioSyncService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Symfony\Component\Process\Process;
 
 class SyncTemariosBoe extends Command
 {
     protected $signature = 'temarios:sync-boe {--cuerpo= : Only sync this cuerpo (maestros|secundaria)} {--no-enrich : Skip dispatching AI enrichment}';
 
-    protected $description = 'Download and parse the official BOE temarios (EDU/3136/2011, EDU/3138/2011).';
+    protected $description = 'Sync the official BOE temarios (EDU/3136/2011, EDU/3138/2011) from the structured BOE XML.';
 
-    /** Official temario sources: nationwide BOE Orders. */
+    /**
+     * Official temario sources: nationwide BOE Orders. We read the structured
+     * XML (one <p> per heading/tema, in order) instead of the multi-column PDF,
+     * which pdftotext/smalot mangled into noise.
+     */
     private const SOURCES = [
         'maestros' => [
-            'url' => 'https://www.boe.es/boe/dias/2011/11/18/pdfs/BOE-A-2011-18097.pdf',
+            'id' => 'BOE-A-2011-18097',
             'order' => 'EDU/3136/2011',
             'published_at' => '2011-11-18',
         ],
         'secundaria' => [
-            'url' => 'https://www.boe.es/boe/dias/2011/11/18/pdfs/BOE-A-2011-18099.pdf',
+            'id' => 'BOE-A-2011-18099',
             'order' => 'EDU/3138/2011',
             'published_at' => '2011-11-18',
         ],
     ];
 
-    public function handle(TemarioBoeParser $parser, TemarioSyncService $sync): int
+    public function handle(TemarioSyncService $sync): int
     {
         $only = $this->option('cuerpo');
         $enrich = ! $this->option('no-enrich');
@@ -42,23 +43,22 @@ class SyncTemariosBoe extends Command
                 continue;
             }
 
-            $path = "temarios/boe/{$cuerpo}-".basename($src['url']);
-            if (! $this->download($src['url'], $path)) {
-                $this->warn("No se pudo descargar el PDF de {$cuerpo}.");
+            $xml = $this->fetchXml($src['id']);
+            if ($xml === '') {
+                $this->warn("No se pudo descargar el XML del BOE de {$cuerpo} ({$src['id']}).");
 
                 continue;
             }
 
-            $text = $this->extractText(Storage::disk('local')->path($path));
-            if ($text === '') {
-                $this->warn("No se extrajo texto del PDF de {$cuerpo}.");
+            $especialidades = $this->parseEspecialidades($xml);
+            if ($especialidades === []) {
+                $this->warn("No se extrajo ninguna especialidad del XML de {$cuerpo}.");
 
                 continue;
             }
 
-            $especialidades = $parser->parse($text);
             $result = $sync->ingestParsed($cuerpo, $especialidades, [
-                'source_url' => $src['url'],
+                'source_url' => "https://www.boe.es/diario_boe/txt.php?id={$src['id']}",
                 'source_order' => $src['order'],
                 'published_at' => $src['published_at'],
             ], $enrich);
@@ -77,46 +77,87 @@ class SyncTemariosBoe extends Command
         return self::SUCCESS;
     }
 
-    private function download(string $url, string $path): bool
+    /** Fetch the BOE disposition as XML. */
+    private function fetchXml(string $id): string
     {
         try {
-            $response = Http::timeout(120)->get($url);
-            if (! $response->successful()) {
-                return false;
-            }
-            Storage::disk('local')->put($path, $response->body());
+            $response = Http::withHeaders(['Accept' => 'application/xml'])
+                ->timeout(60)
+                ->get('https://www.boe.es/diario_boe/xml.php', ['id' => $id]);
 
-            return true;
+            return $response->successful() ? $response->body() : '';
         } catch (\Throwable $e) {
-            Log::warning('temarios:sync-boe download failed', ['url' => $url, 'error' => $e->getMessage()]);
+            Log::warning('temarios:sync-boe xml fetch failed', ['id' => $id, 'error' => $e->getMessage()]);
 
-            return false;
+            return '';
         }
     }
 
     /**
-     * Extract text from a PDF with pdftotext (poppler). Done in an external
-     * process so a 700-page BOE order doesn't blow PHP's memory_limit (the
-     * smalot/pdfparser approach OOM'd on the secundaria temario).
+     * Parse the BOE XML into especialidades + temas. The temario in these Orders
+     * is laid out as: a centered-italic heading per especialidad, then one
+     * paragraph per main tema ("N. Título"); subpoints ("N.M …") are ignored.
+     *
+     * @return array<int, array{especialidad_nombre:string, temas:array<int,array{numero:int,titulo:string}>}>
      */
-    private function extractText(string $absolutePath): string
+    public function parseEspecialidades(string $xml): array
     {
-        try {
-            $process = new Process(['pdftotext', '-enc', 'UTF-8', $absolutePath, '-']);
-            $process->setTimeout(300);
-            $process->run();
+        $previous = libxml_use_internal_errors(true);
+        $dom = new \DOMDocument();
+        $dom->loadXML($xml);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
 
-            if (! $process->isSuccessful()) {
-                Log::warning('temarios:sync-boe pdftotext failed', ['path' => $absolutePath, 'stderr' => trim($process->getErrorOutput())]);
+        $especialidades = [];
+        $current = null;
 
-                return '';
+        $commit = function () use (&$especialidades, &$current) {
+            if ($current !== null && $current['temas'] !== []) {
+                $especialidades[] = $current;
+            }
+            $current = null;
+        };
+
+        foreach ($dom->getElementsByTagName('p') as $p) {
+            $class = (string) $p->getAttribute('class');
+            $text = trim(preg_replace('/\s+/', ' ', (string) $p->textContent));
+            if ($text === '') {
+                continue;
             }
 
-            return $process->getOutput();
-        } catch (\Throwable $e) {
-            Log::warning('temarios:sync-boe extract failed', ['path' => $absolutePath, 'error' => $e->getMessage()]);
+            // Especialidad heading: centered-italic, short, no leading "N.".
+            if (str_contains($class, 'centro_cursiva')
+                && mb_strlen($text) <= 120
+                && ! preg_match('/^\d+\./', $text)) {
+                $commit();
+                $current = ['especialidad_nombre' => $this->cleanName($text), 'temas' => []];
 
-            return '';
+                continue;
+            }
+
+            // Main tema: "N. Título" (digit-dot-SPACE). Subpoints "N.M …" don't
+            // match because there's no space after the first dot.
+            if ($current !== null && preg_match('/^(\d{1,3})\.\s+(\S.*)$/u', $text, $m)) {
+                $titulo = $this->cleanTitle($m[2]);
+                if ($titulo !== '') {
+                    $current['temas'][] = ['numero' => (int) $m[1], 'titulo' => $titulo];
+                }
+            }
         }
+        $commit();
+
+        return $especialidades;
+    }
+
+    private function cleanName(string $name): string
+    {
+        return trim(preg_replace('/\s+/', ' ', $name), " \t.:");
+    }
+
+    private function cleanTitle(string $title): string
+    {
+        $title = trim(preg_replace('/\s+/', ' ', $title));
+
+        return rtrim($title, " .");
     }
 }
