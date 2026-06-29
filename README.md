@@ -178,3 +178,40 @@ php artisan centros:enrich-gva --codigo=46003251
 > Nota: el antiguo endpoint REST por centro (`ceice.gva.es/opencms/rest/...`) fue
 > retirado por la GVA; por eso ahora se usa el dataset abierto (una sola descarga
 > en vez de miles de peticiones). Las coordenadas verificadas no se sobrescriben.
+
+## Área de documentos del usuario (Sprint A)
+
+Cada usuario dispone de un almacén personal en **`/dashboard/mis-documentos`** (modo
+Oposición) para subir apuntes (PDF, Word, imágenes), organizarlos en carpetas y
+etiquetarlos. Los ficheros se guardan en **DigitalOcean Spaces** (disco `spaces`,
+S3-compatible) y se sirven siempre mediante **URLs firmadas de corta duración**
+(15 min) — las rutas internas del bucket nunca se exponen.
+
+Configuración (`.env`):
+
+```bash
+FILESYSTEM_DISK=spaces          # producción
+DO_SPACES_KEY=...
+DO_SPACES_SECRET=...
+DO_SPACES_ENDPOINT=https://ams3.digitaloceanspaces.com
+DO_SPACES_REGION=ams3
+DO_SPACES_BUCKET=doccentia-docs
+# DOCUMENTS_DISK=local          # opcional: forzar disco local en desarrollo
+```
+
+Tras desplegar: `composer install` (instala `league/flysystem-aws-s3-v3`) y
+`php artisan migrate --force`.
+
+- **Límite de almacenamiento**: 2 GB por usuario por defecto (`users.storage_limit_bytes`).
+  Se avisa al 80 % y se bloquea la subida al 100 %.
+- **Procesado**: `ProcessDocumentJob` calcula nº de páginas (`pdfinfo`) y genera una
+  miniatura de la página 1 (`imagick`) en segundo plano. Ambos son *best-effort*: si la
+  herramienta no está instalada, el documento se marca `ready` igualmente sin esos datos.
+- **Importar desde la nube**: Google Drive (`drive.readonly`) y Microsoft 365 / OneDrive
+  (Graph, `Files.Read offline_access`) con OAuth por usuario. Los tokens se guardan
+  **cifrados** (`user_integrations`, cast `encrypted`).
+
+> **Antivirus**: el escaneo de malware de los ficheros subidos queda **fuera del alcance**
+> de este sprint. Antes de abrir la subida a producción a gran escala, conviene añadir un
+> análisis (p. ej. ClamAV o un servicio externo) en `ProcessDocumentJob` y rechazar/poner
+> en cuarentena los ficheros marcados.
