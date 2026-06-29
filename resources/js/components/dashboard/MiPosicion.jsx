@@ -105,11 +105,38 @@ export default function MiPosicion() {
     const [input, setInput] = useState('');
     const [query, setQuery] = useState('');
 
+    // Full participant list
+    const [procSelectedId, setProcSelectedId] = useState(null);
+    const [listSearch, setListSearch] = useState('');
+    const [listPage, setListPage] = useState(1);
+
     const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
         queryKey: ['mis-listados', query],
         queryFn: async () => (await api.get('/user/mis-listados', { params: query ? { q: query } : {} })).data,
         placeholderData: keepPreviousData,
     });
+
+    const { data: procesosData } = useQuery({
+        queryKey: ['procesos-list'],
+        queryFn: async () => (await api.get('/procesos')).data,
+        retry: false,
+        staleTime: 5 * 60 * 1000,
+    });
+    const procesosList = procesosData?.data ?? (Array.isArray(procesosData) ? procesosData : []);
+
+    const { data: listaData, isFetching: listaFetching } = useQuery({
+        queryKey: ['participantes-lista', procSelectedId, listSearch, listPage],
+        enabled: Boolean(procSelectedId),
+        placeholderData: keepPreviousData,
+        queryFn: async () => {
+            const params = { page: listPage };
+            if (listSearch.trim()) params.nombre = listSearch.trim();
+            return (await api.get(`/participantes/${procSelectedId}`, { params })).data;
+        },
+    });
+    const listaItems = listaData?.data ?? [];
+    const listaLastPage = listaData?.last_page ?? 1;
+    const listaTotal = listaData?.total ?? null;
 
     const submit = (e) => {
         e.preventDefault();
@@ -122,7 +149,7 @@ export default function MiPosicion() {
     const resultados = data?.resultados ?? [];
 
     return (
-        <div className="mx-auto max-w-3xl space-y-5">
+        <div className="space-y-5">
             <div>
                 <h1 className="text-lg font-bold text-slate-800">Buscar en las listas</h1>
                 <p className="text-sm text-slate-500">
@@ -197,6 +224,94 @@ export default function MiPosicion() {
                     ))}
                 </div>
             )}
+
+            {/* Full participant list by proceso */}
+            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+                <h2 className="mb-3 text-sm font-bold text-slate-700">Lista completa por proceso</h2>
+                <div className="flex flex-wrap gap-2 mb-3">
+                    <select
+                        value={procSelectedId ?? ''}
+                        onChange={(e) => { setProcSelectedId(e.target.value || null); setListPage(1); }}
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-brand-400 focus:outline-none"
+                    >
+                        <option value="">— Selecciona un proceso —</option>
+                        {procesosList.map((p) => (
+                            <option key={p.id} value={p.id}>{p.nombre}</option>
+                        ))}
+                    </select>
+                    {procSelectedId && (
+                        <input
+                            value={listSearch}
+                            onChange={(e) => { setListSearch(e.target.value); setListPage(1); }}
+                            placeholder="Filtrar por nombre…"
+                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm min-w-[180px] focus:border-brand-400 focus:outline-none"
+                        />
+                    )}
+                    {listaTotal != null && (
+                        <span className="self-center text-xs text-slate-400">{listaTotal} participantes</span>
+                    )}
+                </div>
+
+                {procSelectedId && (
+                    <div className={listaFetching ? 'opacity-60' : ''}>
+                        {listaItems.length === 0 ? (
+                            <p className="text-sm text-slate-400">
+                                {listaFetching ? 'Cargando…' : `No se encontraron participantes${listSearch ? ' con ese nombre' : ''}.`}
+                            </p>
+                        ) : (
+                            <div className="max-h-[480px] overflow-y-auto rounded-lg border border-slate-100">
+                                <table className="w-full text-sm">
+                                    <thead className="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                        <tr>
+                                            <th className="px-3 py-2 text-right w-14">#</th>
+                                            <th className="px-3 py-2 text-left">Nombre</th>
+                                            <th className="px-3 py-2 text-right">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {listaItems.map((p) => {
+                                            const isMe = ownName && p.nombre_gva?.toLowerCase() === ownName.toLowerCase();
+                                            return (
+                                                <tr key={p.id} className={isMe ? 'bg-brand-50' : 'hover:bg-slate-50'}>
+                                                    <td className="px-3 py-2 text-right tabular-nums text-slate-400 text-xs">{p.posicion ?? '—'}</td>
+                                                    <td className="px-3 py-2 text-slate-800">
+                                                        <span className={isMe ? 'font-semibold' : ''}>{p.nombre_gva}</span>
+                                                        {isMe && (
+                                                            <span className="ml-2 rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">Tú</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-right">
+                                                        <EstadoBadge estado={p.estado} />
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                        {listaLastPage > 1 && (
+                            <div className="mt-3 flex items-center justify-center gap-3">
+                                <button
+                                    onClick={() => setListPage((p) => Math.max(1, p - 1))}
+                                    disabled={listPage <= 1}
+                                    className="rounded-lg bg-white px-3 py-1.5 text-xs ring-1 ring-slate-200 disabled:opacity-50"
+                                >
+                                    Anterior
+                                </button>
+                                <span className="text-xs text-slate-500">Página {listPage} de {listaLastPage}</span>
+                                <button
+                                    onClick={() => setListPage((p) => Math.min(listaLastPage, p + 1))}
+                                    disabled={listPage >= listaLastPage}
+                                    className="rounded-lg bg-white px-3 py-1.5 text-xs ring-1 ring-slate-200 disabled:opacity-50"
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

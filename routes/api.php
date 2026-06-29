@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Integrations\GoogleDriveController;
 use App\Http\Controllers\Api\Integrations\Microsoft365Controller;
 use App\Http\Controllers\Api\NormativaController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ResourceLinksController;
 use App\Http\Controllers\Api\OposicionPreparacionController;
 use App\Http\Controllers\Api\ParticipanteController;
 use App\Http\Controllers\Api\PreferenceController;
@@ -141,6 +142,9 @@ Route::prefix('v1')->group(function () {
     // Tablón de anuncios (public listing).
     Route::get('tablon', [TablonController::class, 'index']);
 
+    // Resource links (public, cached, low traffic).
+    Route::get('recursos', [ResourceLinksController::class, 'index']);
+
     // Address autocomplete (public, rate limited like geocode).
     Route::get('geocode', [AddressController::class, 'suggest'])->middleware('throttle:geocode');
 
@@ -168,6 +172,7 @@ Route::prefix('v1')->group(function () {
         Route::post('user/especialidades', [UserProfileController::class, 'storeEspecialidad']);
         Route::delete('user/especialidades/{specialty}', [UserProfileController::class, 'destroyEspecialidad']);
         Route::get('user/dashboard', [UserProfileController::class, 'dashboard']);
+        Route::get('user/hero', [UserProfileController::class, 'hero']);
         Route::get('user/adjudicaciones-continuas', [UserProfileController::class, 'adjudicacionesContinuas']);
         Route::get('user/mis-listados', [UserProfileController::class, 'misListados']);
 
@@ -352,6 +357,12 @@ Route::prefix('v1')->group(function () {
             Route::post('normativa/{normativa}', [AdminNormativaController::class, 'update']);
             Route::patch('normativa/{normativa}', [AdminNormativaController::class, 'update']);
             Route::delete('normativa/{normativa}', [AdminNormativaController::class, 'destroy']);
+
+            // Recursos (resource links): public list via ResourceLinksController::index, admin CRUD here.
+            Route::get('recursos', [ResourceLinksController::class, 'index']);
+            Route::post('recursos', [ResourceLinksController::class, 'store']);
+            Route::put('recursos/{resourceLink}', [ResourceLinksController::class, 'update']);
+            Route::delete('recursos/{resourceLink}', [ResourceLinksController::class, 'destroy']);
 
             // Modo Oposición admin: temarios oficiales (BOE) + enriquecimiento IA.
             Route::get('temarios/stats', [AdminTemariosController::class, 'stats']);

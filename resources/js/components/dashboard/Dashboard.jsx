@@ -18,6 +18,7 @@ const NAV_BY_MODE = {
         { to: '/dashboard/centros', label: 'Centros', icon: '🏫' },
         { to: '/dashboard/calendario', label: 'Calendario', icon: '📅' },
         { to: '/dashboard/tablon', label: 'Tablón', icon: '📌' },
+        { to: '/dashboard/recursos', label: 'Recursos', icon: '📚' },
     ],
     oposicion: [
         { to: '/dashboard/oposicion', label: 'Mi preparación', icon: '📖' },
@@ -30,7 +31,7 @@ const NAV_BY_MODE = {
         { to: '/dashboard/aula', label: 'Mi aula', icon: '🧑‍🏫', comingSoon: true },
         { to: '/dashboard/normativa', label: 'Normativa', icon: '📄', comingSoon: true },
         { to: '/dashboard/asistente', label: 'Asistente IA', icon: '✨', comingSoon: true },
-        { to: '/dashboard/recursos', label: 'Banco de recursos', icon: '📚', comingSoon: true },
+        { to: '/dashboard/recursos', label: 'Banco de recursos', icon: '📚' },
     ],
 };
 
