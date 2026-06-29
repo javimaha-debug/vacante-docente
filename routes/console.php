@@ -25,3 +25,22 @@ Schedule::command('metricas:calcular')
     ->timezone('Europe/Madrid')
     ->name('metricas-calcular')
     ->withoutOverlapping();
+
+// Document monitor: scan official sources/sindicatos for new listings.
+// Weekdays every 2h between 06:00–22:00, weekends every 6h. Inline (not queued)
+// so it runs with just the scheduler cron.
+Schedule::command('documents:monitor')
+    ->weekdays()
+    ->hourlyAt(5)
+    ->between('6:00', '22:00')
+    ->when(fn () => (int) now('Europe/Madrid')->hour % 2 === 0)
+    ->timezone('Europe/Madrid')
+    ->name('monitor-documents-weekday')
+    ->withoutOverlapping();
+
+Schedule::command('documents:monitor')
+    ->weekends()
+    ->everySixHours()
+    ->timezone('Europe/Madrid')
+    ->name('monitor-documents-weekend')
+    ->withoutOverlapping();

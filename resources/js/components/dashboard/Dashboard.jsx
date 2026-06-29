@@ -16,6 +16,7 @@ const NAV_BY_MODE = {
         { to: '/dashboard/lista', label: 'Mi Lista', icon: '📋' },
         { to: '/dashboard/mi-posicion', label: 'Mi posición', icon: '📍' },
         { to: '/dashboard/centros', label: 'Centros', icon: '🏫' },
+        { to: '/dashboard/calendario', label: 'Calendario', icon: '📅' },
         { to: '/dashboard/tablon', label: 'Tablón', icon: '📌' },
     ],
     oposicion: [
@@ -197,11 +198,8 @@ export default function Dashboard() {
     }
 
     const modo = user?.modo_activo ?? 'bolsa';
-    const navItems = NAV_BY_MODE[modo] ?? NAV_BY_MODE.bolsa;
-    const isAdmin = Boolean(user?.is_admin) || Boolean(user?.is_superadmin);
-    const fullNav = isAdmin
-        ? [...navItems, { to: '/dashboard/admin/importaciones', label: 'Importaciones', icon: '⚙️' }]
-        : navItems;
+    // Imports live entirely in the SuperAdmin panel now — no import UI for users.
+    const fullNav = NAV_BY_MODE[modo] ?? NAV_BY_MODE.bolsa;
 
     return (
         <div className="flex h-full flex-col">

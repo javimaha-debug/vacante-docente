@@ -20,9 +20,9 @@ import Dashboard from './components/dashboard/Dashboard';
 import DashboardHome from './components/dashboard/DashboardHome';
 import UserProfile from './components/dashboard/UserProfile';
 import MisEspecialidades from './components/dashboard/MisEspecialidades';
-import AdminImportaciones from './components/dashboard/AdminImportaciones';
 import PlanesPage from './components/dashboard/PlanesPage';
 import MiPosicion from './components/dashboard/MiPosicion';
+import CalendarioPage from './components/dashboard/CalendarioPage';
 
 import AdminLayout from './components/superadmin/AdminLayout';
 import AdminDashboard from './components/superadmin/AdminDashboard';
@@ -32,6 +32,8 @@ import AdminSuscripciones from './components/superadmin/AdminSuscripciones';
 import SuperAdminImportaciones from './components/superadmin/AdminImportaciones';
 import AdminMetricas from './components/superadmin/AdminMetricas';
 import AdminSistema from './components/superadmin/AdminSistema';
+import AdminMonitorDocs from './components/superadmin/AdminMonitorDocs';
+import AdminCalendario from './components/superadmin/AdminCalendario';
 import CentrosList from './components/centros/CentrosList';
 import CentroDetail from './components/centros/CentroDetail';
 import TablonList from './components/tablon/TablonList';
@@ -546,7 +548,7 @@ function AppRoutes() {
                 <Route path="tablon" element={<TablonList />} />
                 <Route path="tablon/nuevo" element={<TablonForm />} />
                 <Route path="tablon/mis-anuncios" element={<MisAnuncios />} />
-                <Route path="admin/importaciones" element={<AdminImportaciones />} />
+                <Route path="calendario" element={<CalendarioPage />} />
                 {/* Mode-specific sections not yet built (oposición / docente). */}
                 <Route path="normativa" element={<ComingSoon title="Normativa" />} />
                 <Route path="convocatorias" element={<ComingSoon title="Convocatorias" />} />
@@ -568,6 +570,8 @@ function AppRoutes() {
                 <Route path="usuarios/:id" element={<AdminUsuarioDetalle />} />
                 <Route path="suscripciones" element={<AdminSuscripciones />} />
                 <Route path="importaciones" element={<SuperAdminImportaciones />} />
+                <Route path="monitor-docs" element={<AdminMonitorDocs />} />
+                <Route path="calendario" element={<AdminCalendario />} />
                 <Route path="metricas" element={<AdminMetricas />} />
                 <Route path="sistema" element={<AdminSistema />} />
             </Route>

@@ -1,20 +1,24 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useAuth } from '../../hooks/useAuth';
 import { AdminErrorBoundary } from './ui';
 import { LogoHorizontalWhite } from '../brand/DoccentiaLogo';
+import api from '../../lib/api';
 
 const NAV = [
     { to: '/superadmin', label: 'Dashboard', end: true, icon: '📊' },
     { to: '/superadmin/usuarios', label: 'Usuarios', icon: '👥' },
     { to: '/superadmin/suscripciones', label: 'Suscripciones', icon: '💳' },
     { to: '/superadmin/importaciones', label: 'Importaciones', icon: '🔄' },
+    { to: '/superadmin/monitor-docs', label: 'Monitor Docs', icon: '📑', badge: 'docs-pending' },
+    { to: '/superadmin/calendario', label: 'Calendario', icon: '📅' },
     { to: '/superadmin/metricas', label: 'Métricas', icon: '📈' },
     { to: '/superadmin/sistema', label: 'Sistema', icon: '🛠️' },
 ];
 
-function Item({ item, onNavigate }) {
+function Item({ item, onNavigate, count }) {
     return (
         <NavLink
             to={item.to}
@@ -28,7 +32,10 @@ function Item({ item, onNavigate }) {
             }
         >
             <span aria-hidden="true">{item.icon}</span>
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {count > 0 && (
+                <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{count}</span>
+            )}
         </NavLink>
     );
 }
@@ -41,6 +48,14 @@ export default function AdminLayout() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
+
+    // Pending-docs badge on the "Monitor Docs" nav item.
+    const { data: docStats } = useQuery({
+        queryKey: ['admin', 'documents', 'stats'],
+        queryFn: async () => (await api.get('/superadmin/documents/stats')).data,
+        refetchInterval: 120000,
+    });
+    const pendingDocs = docStats?.pendientes ?? 0;
 
     return (
         <div className="flex h-full bg-slate-900 text-slate-100">
@@ -61,7 +76,12 @@ export default function AdminLayout() {
                 </div>
                 <nav className="space-y-1">
                     {NAV.map((item) => (
-                        <Item key={item.to} item={item} onNavigate={() => setOpen(false)} />
+                        <Item
+                            key={item.to}
+                            item={item}
+                            onNavigate={() => setOpen(false)}
+                            count={item.badge === 'docs-pending' ? pendingDocs : 0}
+                        />
                     ))}
                 </nav>
                 <div className="mt-8 border-t border-slate-800 pt-4">

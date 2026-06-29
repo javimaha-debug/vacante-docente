@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import api from '../../lib/api';
+import { typeMeta } from '../../lib/calendar';
 
 const ESTADO_BOLSA_STYLES = {
     Activat: 'bg-green-100 text-green-700',
@@ -120,6 +121,36 @@ function Empty({ children }) {
     return <p className="text-sm text-slate-400">{children}</p>;
 }
 
+function plazoFecha(d) {
+    if (!d) return '';
+    try { return new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' }); }
+    catch { return d; }
+}
+
+function ProximosPlazosCard({ eventos }) {
+    return (
+        <Card
+            title="Próximos plazos"
+            action={<Link to="/dashboard/calendario" className="text-xs font-semibold text-brand-600 hover:underline">Ver calendario →</Link>}
+        >
+            {eventos.length === 0 ? (
+                <Empty>Sin fechas publicadas aún</Empty>
+            ) : (
+                <ul className="space-y-2">
+                    {eventos.slice(0, 5).map((ev) => (
+                        <li key={ev.id} className="flex items-center gap-2 text-sm">
+                            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${typeMeta(ev.event_type).dot}`} />
+                            <span className="flex-1 truncate text-slate-600">{ev.title}</span>
+                            {ev.is_estimated && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Estimado</span>}
+                            <span className="font-semibold text-slate-800">{plazoFecha(ev.event_date)}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </Card>
+    );
+}
+
 export default function DashboardHome() {
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['dashboard'],
@@ -129,6 +160,11 @@ export default function DashboardHome() {
     const { data: noticias } = useQuery({
         queryKey: ['gva-noticias'],
         queryFn: async () => (await api.get('/gva/noticias')).data,
+    });
+
+    const { data: calendar } = useQuery({
+        queryKey: ['calendar', 'dashboard'],
+        queryFn: async () => (await api.get('/calendar')).data,
     });
 
     if (isLoading) {
@@ -158,7 +194,6 @@ export default function DashboardHome() {
 
     const procesos = data?.procesos_activos ?? [];
     const especialidades = data?.mis_especialidades ?? [];
-    const plazos = data?.proximos_plazos ?? [];
     const favoritas = data?.mis_vacantes_favoritas ?? [];
     const resumen = data?.resumen_historial ?? {};
     const info = data?.info ?? {};
@@ -225,20 +260,7 @@ export default function DashboardHome() {
                 )}
             </Card>
 
-            <Card title="Próximos plazos">
-                {plazos.length === 0 ? (
-                    <Empty>Sin fechas publicadas aún</Empty>
-                ) : (
-                    <ul className="space-y-2">
-                        {plazos.slice(0, 5).map((pl, i) => (
-                            <li key={i} className="flex items-center justify-between text-sm">
-                                <span className="text-slate-600">{pl.proceso}</span>
-                                <span className="font-semibold text-slate-800">{pl.fecha}</span>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </Card>
+            <ProximosPlazosCard eventos={calendar?.upcoming ?? []} />
 
             <Card title="Mi último destino">
                 {resumen?.ultimo_centro ? (
