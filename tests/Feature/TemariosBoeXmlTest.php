@@ -52,7 +52,7 @@ class TemariosBoeXmlTest extends TestCase
         Queue::fake();
         Http::fake(['www.boe.es/diario_boe/xml.php*' => Http::response($this->xml(), 200)]);
 
-        $this->artisan('temarios:sync-boe', ['--no-enrich' => true, '--cuerpo' => 'maestros'])
+        $this->artisan('temarios:sync-boe', ['--cuerpo' => 'maestros'])
             ->assertSuccessful();
 
         // 2 especialidades → 2 temarios; 3 main temas total (subpoints excluded).
