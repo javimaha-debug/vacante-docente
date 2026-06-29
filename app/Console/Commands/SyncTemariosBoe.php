@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 class SyncTemariosBoe extends Command
 {
-    protected $signature = 'temarios:sync-boe {--cuerpo= : Only sync this cuerpo (maestros|secundaria)} {--no-enrich : Skip dispatching AI enrichment}';
+    protected $signature = 'temarios:sync-boe {--cuerpo= : Only sync this cuerpo (maestros|secundaria)} {--enrich : Dispatch AI enrichment jobs after sync (off by default to avoid bulk cost)}';
 
     protected $description = 'Sync the official BOE temarios (EDU/3136/2011, EDU/3138/2011) from the structured BOE XML.';
 
@@ -35,7 +35,7 @@ class SyncTemariosBoe extends Command
     public function handle(TemarioSyncService $sync): int
     {
         $only = $this->option('cuerpo');
-        $enrich = ! $this->option('no-enrich');
+        $enrich = (bool) $this->option('enrich');
         $totals = ['temarios' => 0, 'temas' => 0, 'especialidades' => 0];
 
         foreach (self::SOURCES as $cuerpo => $src) {
