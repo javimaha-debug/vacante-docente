@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OposicionEspecialidad;
 use App\Models\OposicionSesion;
 use App\Models\OposicionTema;
+use App\Models\Specialty;
 use App\Models\TemaOficial;
 use App\Models\TemarioOficial;
 use Illuminate\Http\JsonResponse;
@@ -229,6 +230,12 @@ class OposicionPreparacionController extends Controller
             ->where('especialidad_code', $data['especialidad_code'])
             ->when($data['cuerpo'] ?? null, fn ($q, $c) => $q->where('cuerpo', $c))
             ->first();
+
+        // Fallback: regional (GVA Valencian) codes may differ from the national (BOE Spanish)
+        // code stored in temarios_oficiales. Look up by normalised specialty name.
+        if (! $temario) {
+            $temario = $this->findTemarioBySpecialtyName($data['especialidad_code'], $data['cuerpo'] ?? null);
+        }
 
         if (! $temario) {
             return response()->json(['exists' => false]);
@@ -523,5 +530,44 @@ class OposicionPreparacionController extends Controller
             'notas' => $s->notas,
             'created_at' => $s->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Find a TemarioOficial by the normalised name of the Specialty with the given code.
+     * Handles cases where the GVA (Valencian) specialty code differs from the national
+     * BOE code stored in temarios_oficiales (e.g. 218 "Orientació Educativa" vs
+     * 117 "Orientación Educativa" — same specialty, different language name).
+     */
+    private function findTemarioBySpecialtyName(string $code, ?string $cuerpo): ?TemarioOficial
+    {
+        $specialty = Specialty::where('code', $code)->first();
+        if (! $specialty) {
+            return null;
+        }
+
+        $needle = $this->normalizeTemarioName($specialty->name);
+
+        return TemarioOficial::query()
+            ->when($cuerpo, fn ($q, $c) => $q->where('cuerpo', $c))
+            ->get(['id', 'especialidad_nombre', 'cuerpo', 'especialidad_code',
+                'source_order', 'total_temas'])
+            ->first(function (TemarioOficial $t) use ($needle) {
+                $hay = $this->normalizeTemarioName($t->especialidad_nombre);
+                // Accept if ≥85% of characters match (handles "orientacion" vs "orientacio").
+                similar_text($needle, $hay, $pct);
+
+                return $pct >= 85;
+            });
+    }
+
+    private function normalizeTemarioName(string $name): string
+    {
+        $name = mb_strtolower(trim($name));
+
+        return strtr($name, [
+            'à' => 'a', 'á' => 'a', 'ä' => 'a', 'è' => 'e', 'é' => 'e', 'ë' => 'e',
+            'í' => 'i', 'ï' => 'i', 'ò' => 'o', 'ó' => 'o', 'ö' => 'o', 'ú' => 'u',
+            'ü' => 'u', 'ç' => 'c', 'ñ' => 'n',
+        ]);
     }
 }
