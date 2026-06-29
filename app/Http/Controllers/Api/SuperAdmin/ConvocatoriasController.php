@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Api\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Convocatoria;
+use App\Models\SyncState;
+use App\Models\User;
+use App\Notifications\ConvocatoriaStatusChanged;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Notification;
 
 class ConvocatoriasController extends Controller
 {
@@ -42,10 +47,65 @@ class ConvocatoriasController extends Controller
     {
         $data = $this->validatePayload($request, false);
 
-        $convocatoria->fill($data)->save();
+        $estadoAnterior = $convocatoria->estado;
+
+        // A superadmin touching the convocatoria means it has been reviewed.
+        $convocatoria->fill($data);
+        if (! array_key_exists('pendiente_revision', $data)) {
+            $convocatoria->pendiente_revision = false;
+        }
+        $convocatoria->save();
         $convocatoria->load('sourceDocument:id,title');
 
+        // Notify alerted users when the estado actually changed.
+        if ($convocatoria->estado !== $estadoAnterior) {
+            $this->notifyAlertedUsers($convocatoria, $estadoAnterior);
+        }
+
         return response()->json($this->adminArray($convocatoria));
+    }
+
+    /**
+     * Run the convocatorias monitor synchronously.
+     */
+    public function monitor(): JsonResponse
+    {
+        $exit = Artisan::call('convocatorias:monitor');
+
+        return response()->json([
+            'ran' => $exit === 0,
+            'output' => trim(Artisan::output()),
+            'state' => $this->stateArray(SyncState::where('clave', 'convocatorias_monitor')->first()),
+        ]);
+    }
+
+    /**
+     * Notify every user who activated an alert for this convocatoria.
+     */
+    private function notifyAlertedUsers(Convocatoria $convocatoria, string $estadoAnterior): void
+    {
+        $userIds = $convocatoria->alerts()->pluck('user_id');
+        if ($userIds->isEmpty()) {
+            return;
+        }
+
+        $users = User::whereIn('id', $userIds)->get();
+        Notification::send($users, new ConvocatoriaStatusChanged($convocatoria, $estadoAnterior));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function stateArray(?SyncState $state): ?array
+    {
+        if (! $state) {
+            return null;
+        }
+
+        return [
+            'last_run_at' => $state->last_run_at?->toIso8601String(),
+            'resumen' => $state->resumen,
+        ];
     }
 
     /**
@@ -72,6 +132,7 @@ class ConvocatoriasController extends Controller
             'especialidades' => ['sometimes', 'nullable', 'array'],
             'especialidades.*' => ['string', 'max:50'],
             'estado' => [$required, 'in:rumor,anunciada,convocada,en_proceso,resuelta'],
+            'pendiente_revision' => ['sometimes', 'boolean'],
             'fecha_estimada' => ['sometimes', 'nullable', 'date'],
             'fecha_oficial' => ['sometimes', 'nullable', 'date'],
             'url_oficial' => ['sometimes', 'nullable', 'url', 'max:500'],
@@ -91,6 +152,7 @@ class ConvocatoriasController extends Controller
             'cuerpo' => $c->cuerpo,
             'especialidades' => $c->especialidades ?? [],
             'estado' => $c->estado,
+            'pendiente_revision' => (bool) $c->pendiente_revision,
             'fecha_estimada' => $c->fecha_estimada?->toDateString(),
             'fecha_oficial' => $c->fecha_oficial?->toDateString(),
             'url_oficial' => $c->url_oficial,

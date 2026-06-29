@@ -44,3 +44,23 @@ Schedule::command('documents:monitor')
     ->timezone('Europe/Madrid')
     ->name('monitor-documents-weekend')
     ->withoutOverlapping();
+
+// Normativa sync (BOE + DOGV): once a week, Sundays at 06:00 Spain time.
+Schedule::command('normativa:sync-boe')
+    ->weeklyOn(0, '06:00')
+    ->timezone('Europe/Madrid')
+    ->name('normativa-sync-boe')
+    ->withoutOverlapping();
+
+Schedule::command('normativa:sync-dogv')
+    ->weeklyOn(0, '06:30')
+    ->timezone('Europe/Madrid')
+    ->name('normativa-sync-dogv')
+    ->withoutOverlapping();
+
+// Convocatorias monitor: weekly, Sundays at 07:00 Spain time.
+Schedule::command('convocatorias:monitor')
+    ->weeklyOn(0, '07:00')
+    ->timezone('Europe/Madrid')
+    ->name('convocatorias-monitor')
+    ->withoutOverlapping();

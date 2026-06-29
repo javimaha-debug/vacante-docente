@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\NormativaDocumento;
+use App\Models\SyncState;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 
 class NormativaController extends Controller
@@ -20,6 +22,63 @@ class NormativaController extends Controller
             ->get();
 
         return response()->json(['data' => $docs->map(fn ($d) => $this->adminArray($d))]);
+    }
+
+    /**
+     * Last sync timestamps per automated source (BOE / DOGV).
+     */
+    public function syncState(): JsonResponse
+    {
+        $states = SyncState::whereIn('clave', ['normativa_boe', 'normativa_dogv'])
+            ->get()->keyBy('clave');
+
+        return response()->json([
+            'boe' => $this->stateArray($states->get('normativa_boe')),
+            'dogv' => $this->stateArray($states->get('normativa_dogv')),
+        ]);
+    }
+
+    /**
+     * Run the BOE normativa sync synchronously.
+     */
+    public function syncBoe(): JsonResponse
+    {
+        $exit = Artisan::call('normativa:sync-boe');
+
+        return response()->json([
+            'ran' => $exit === 0,
+            'output' => trim(Artisan::output()),
+            'state' => $this->stateArray(SyncState::where('clave', 'normativa_boe')->first()),
+        ]);
+    }
+
+    /**
+     * Run the DOGV normativa sync synchronously.
+     */
+    public function syncDogv(): JsonResponse
+    {
+        $exit = Artisan::call('normativa:sync-dogv');
+
+        return response()->json([
+            'ran' => $exit === 0,
+            'output' => trim(Artisan::output()),
+            'state' => $this->stateArray(SyncState::where('clave', 'normativa_dogv')->first()),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function stateArray(?SyncState $state): ?array
+    {
+        if (! $state) {
+            return null;
+        }
+
+        return [
+            'last_run_at' => $state->last_run_at?->toIso8601String(),
+            'resumen' => $state->resumen,
+        ];
     }
 
     /**
@@ -115,6 +174,8 @@ class NormativaController extends Controller
             'pdf_url' => $d->pdf_path ? Storage::disk('public')->url($d->pdf_path) : null,
             'fecha_publicacion' => $d->fecha_publicacion?->toDateString(),
             'vigente' => (bool) $d->vigente,
+            'fuente' => $d->fuente ?? 'manual',
+            'idioma' => $d->idioma,
             'updated_at' => $d->updated_at?->toIso8601String(),
         ];
     }

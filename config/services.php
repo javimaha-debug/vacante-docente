@@ -93,4 +93,28 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Normativa / convocatorias automated sources
+    |--------------------------------------------------------------------------
+    |
+    | BOE search endpoint and the DOGV/union pages scraped by the sync commands.
+    | Overridable via env so the exact URLs can be tuned without a code change.
+    | The commands fall back to sensible defaults when these are unset.
+    |
+    */
+
+    'boe' => [
+        'search_url' => env('BOE_SEARCH_URL', 'https://www.boe.es/datosabiertos/api/boe/api/search'),
+    ],
+
+    'dogv' => [
+        'search_urls' => array_filter(explode(',', (string) env('DOGV_SEARCH_URLS', ''))),
+    ],
+
+    'convocatorias' => [
+        // Optional JSON array of {url, comunidad, estado}; defaults baked into the command.
+        'sources' => json_decode((string) env('CONVOCATORIAS_SOURCES', '[]'), true) ?: [],
+    ],
+
 ];

@@ -9,7 +9,8 @@ const CUERPOS = ['', 'maestros', 'secundaria', 'fp', 'otros'];
 
 const EMPTY = {
     titulo: '', comunidad_autonoma: 'valenciana', cuerpo: '', estado: 'rumor',
-    fecha_estimada: '', fecha_oficial: '', url_oficial: '', boe_url: '', notas: '', source_document_id: '',
+    fecha_estimada: '', fecha_oficial: '', url_oficial: '', boe_url: '', notas: '',
+    source_document_id: '', especialidades: '',
 };
 
 export default function AdminConvocatorias() {
@@ -31,13 +32,30 @@ export default function AdminConvocatorias() {
     // /superadmin/documents is paginated → detected documents live under data.data.
     const noticias = docs?.data ?? [];
 
+    const monitor = useMutation({
+        mutationFn: async () => (await api.post('/superadmin/convocatorias/monitor')).data,
+        onSuccess: refresh,
+    });
+
+    const pendientes = (data?.data ?? []).filter((c) => c.pendiente_revision).length;
+
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-slate-200">Convocatorias</h2>
-                <button onClick={() => setCreating(true)} className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-500">
-                    + Nueva convocatoria
-                </button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-base font-semibold text-slate-200">Convocatorias</h2>
+                    {pendientes > 0 && (
+                        <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs font-semibold text-rose-300">{pendientes} por revisar</span>
+                    )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={() => monitor.mutate()} disabled={monitor.isPending} className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50">
+                        {monitor.isPending ? 'Buscando…' : 'Buscar convocatorias'}
+                    </button>
+                    <button onClick={() => setCreating(true)} className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-500">
+                        + Nueva convocatoria
+                    </button>
+                </div>
             </div>
 
             {isLoading ? (
@@ -61,7 +79,12 @@ export default function AdminConvocatorias() {
                             {data.data.map((c) => (
                                 <tr key={c.id} className="align-top hover:bg-slate-800/40">
                                     <td className="px-4 py-2">
-                                        <p className="font-medium text-slate-200">{c.titulo}</p>
+                                        <p className="font-medium text-slate-200">
+                                            {c.titulo}
+                                            {c.pendiente_revision && (
+                                                <span className="ml-2 rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300">por revisar</span>
+                                            )}
+                                        </p>
                                         {c.cuerpo && <p className="text-xs capitalize text-slate-500">{c.cuerpo}</p>}
                                     </td>
                                     <td className="px-4 py-2 capitalize text-slate-300">{c.comunidad_autonoma}</td>
@@ -113,6 +136,7 @@ function ConvocatoriaForm({ convocatoria, noticias, onClose, onSaved }) {
                 boe_url: convocatoria.boe_url ?? '',
                 notas: convocatoria.notas ?? '',
                 source_document_id: convocatoria.source_document_id ?? '',
+                especialidades: (convocatoria.especialidades ?? []).join(', '),
             }
             : {}),
     }));
@@ -120,6 +144,10 @@ function ConvocatoriaForm({ convocatoria, noticias, onClose, onSaved }) {
     const save = useMutation({
         mutationFn: async () => {
             const payload = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v === '' ? null : v]));
+            // especialidades is edited as a comma-separated string → array.
+            payload.especialidades = form.especialidades
+                ? form.especialidades.split(',').map((s) => s.trim()).filter(Boolean)
+                : null;
             if (isNew) return (await api.post('/superadmin/convocatorias', payload)).data;
             return (await api.patch(`/superadmin/convocatorias/${convocatoria.id}`, payload)).data;
         },
@@ -161,6 +189,9 @@ function ConvocatoriaForm({ convocatoria, noticias, onClose, onSaved }) {
                     </div>
                     <Field label="URL oficial"><input value={form.url_oficial} onChange={set('url_oficial')} className={inputCls} /></Field>
                     <Field label="BOE / DOGV URL"><input value={form.boe_url} onChange={set('boe_url')} className={inputCls} /></Field>
+                    <Field label="Especialidades (códigos separados por comas)">
+                        <input value={form.especialidades} onChange={set('especialidades')} placeholder="121, 122, 218" className={inputCls} />
+                    </Field>
                     <Field label="Documento detectado (origen)">
                         <select value={form.source_document_id ?? ''} onChange={set('source_document_id')} className={inputCls}>
                             <option value="">— Sin vincular —</option>
