@@ -90,7 +90,18 @@ class GvaAutoImportService
     public function importInto(GvaNoticia $noticia, string $kind, Proceso $proceso): string
     {
         if (! in_array($kind, ['participantes', 'vacantes'], true)) {
-            $kind = $this->resolveKind($noticia->url.' '.$noticia->titulo) ?? 'participantes';
+            // Never silently default to a kind: a wrong guess can wipe the wrong
+            // table (e.g. importing a vacancy PDF as participantes). If we can't
+            // classify it confidently, route it to manual review instead.
+            $kind = $this->resolveKind($noticia->url.' '.$noticia->titulo);
+            if ($kind === null) {
+                $noticia->forceFill([
+                    'import_estado' => 'sin_proceso',
+                    'import_resumen' => 'No se pudo determinar si es lista de participantes o de vacantes; requiere importación manual con tipo explícito.',
+                ])->save();
+
+                return $noticia->import_resumen;
+            }
         }
 
         return $this->runImport($noticia, $kind, $proceso);
@@ -198,6 +209,14 @@ class GvaAutoImportService
 
     private function resolveKind(string $text): ?string
     {
+        // Denylist of document types that are NOT importable participant/vacancy
+        // listings (offered-posts definitive lists, scoring scales, credentials,
+        // shift/turn allocations, annexes, corrections, instructions). These have
+        // caused destructive misclassifications, so route them to manual review.
+        if (preg_match('#pue_def|llocs oferits|llocs definit|barem|credencial|(?<![a-z])torn(s)?(?![a-z])|annex|anexo|correcci|instrucc#u', $text)) {
+            return null;
+        }
+
         if (preg_match('/participant|llistat de participants|(?<![a-z])par(?![a-z])|_lis_|borsa|bolsa/u', $text)) {
             return 'participantes';
         }

@@ -17,7 +17,7 @@ use Symfony\Component\Process\Process;
 
 class ImportParticipantesPdf extends Command
 {
-    protected $signature = 'participantes:import-pdf {pdf_path} {proceso_id} {--dry-run}';
+    protected $signature = 'participantes:import-pdf {pdf_path} {proceso_id} {--dry-run} {--allow-empty}';
 
     protected $description = 'Parse a GVA participant-list PDF and import positions/status for a proceso.';
 
@@ -97,6 +97,22 @@ class ImportParticipantesPdf extends Command
             $this->line('Dry run — no se escribe nada.');
 
             return self::SUCCESS;
+        }
+
+        // Safety guard: a PDF that parses to 0 rows is almost always a parse
+        // failure or a misclassified document (e.g. a "llocs oferits" listing fed
+        // to the participant parser). Importing it as-is would DELETE every
+        // existing participant for this proceso and insert nothing. Abort instead,
+        // unless the caller explicitly opted in with --allow-empty.
+        if (count($rows) === 0 && ! $this->option('allow-empty')) {
+            $existing = ParticipanteProceso::where('proceso_id', $proceso->id)->count();
+            $this->error(
+                "El PDF no produjo ninguna fila de participantes. Importación abortada para no borrar "
+                ."los {$existing} registros existentes del proceso «{$proceso->nombre}». "
+                .'Si el listado realmente está vacío, reejecuta con --allow-empty.'
+            );
+
+            return self::FAILURE;
         }
 
         // Drop exact duplicate (persona × especialidad) rows that a malformed
@@ -213,7 +229,7 @@ class ImportParticipantesPdf extends Command
         return Storage::disk('local')->path($relative);
     }
 
-    private function extractText(string $path): ?string
+    protected function extractText(string $path): ?string
     {
         $process = new Process(['pdftotext', '-layout', '-enc', 'UTF-8', $path, '-']);
         $process->setTimeout(120);

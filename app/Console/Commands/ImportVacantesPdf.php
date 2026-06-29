@@ -14,7 +14,8 @@ class ImportVacantesPdf extends Command
 {
     protected $signature = 'vacantes:import-pdf {path : Path to the GVA vacancies PDF}
                             {proceso_id : Proceso the vacancies belong to}
-                            {--dry-run : Parse and report without writing to the database}';
+                            {--dry-run : Parse and report without writing to the database}
+                            {--allow-empty : Allow an import that resolves to 0 rows (will wipe existing vacancies)}';
 
     protected $description = 'Parse a GVA vacancies PDF and import its rows for a proceso.';
 
@@ -55,10 +56,19 @@ class ImportVacantesPdf extends Command
 
         $parsed = $this->parseText($text);
 
-        if (empty($parsed)) {
-            $this->warn('No vacancy rows could be parsed from the PDF.');
+        // Safety guard: a PDF that parses to 0 rows is almost always a parse
+        // failure or a misclassified document. Abort before the destructive
+        // delete-and-reinsert below would wipe this proceso's vacancies, unless
+        // the caller explicitly opted in with --allow-empty.
+        if (empty($parsed) && ! $this->option('allow-empty')) {
+            $existing = Vacancy::where('proceso_id', $proceso->id)->count();
+            $this->error(
+                "El PDF no produjo ninguna fila de vacantes. Importación abortada para no borrar "
+                ."las {$existing} vacantes existentes del proceso «{$proceso->nombre}». "
+                .'Si el listado realmente está vacío, reejecuta con --allow-empty.'
+            );
 
-            return self::SUCCESS;
+            return self::FAILURE;
         }
 
         $rows = [];
@@ -115,6 +125,20 @@ class ImportVacantesPdf extends Command
             $this->line('Dry run — nothing was written.');
 
             return self::SUCCESS;
+        }
+
+        // Parsed rows but none resolved to a known specialty → same destructive
+        // risk as a 0-row parse. Abort unless explicitly allowed.
+        if (empty($rows) && ! $this->option('allow-empty')) {
+            $existing = Vacancy::where('proceso_id', $proceso->id)->count();
+            $parsedCount = count($parsed);
+            $this->error(
+                "Ninguna de las {$parsedCount} filas se resolvió a una especialidad conocida. "
+                ."Importación abortada para no borrar las {$existing} vacantes existentes del proceso "
+                ."«{$proceso->nombre}». Revisa el mapeo de especialidades o usa --allow-empty."
+            );
+
+            return self::FAILURE;
         }
 
         // Diff vs the previous listing (keyed by lloc) to flag new/modified
@@ -206,7 +230,7 @@ class ImportVacantesPdf extends Command
     /**
      * Run pdftotext over the PDF and return its plain-text layout.
      */
-    private function extractText(string $path): ?string
+    protected function extractText(string $path): ?string
     {
         $process = new Process(['pdftotext', '-layout', '-enc', 'UTF-8', $path, '-']);
         $process->setTimeout(120);
