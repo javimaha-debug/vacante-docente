@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import api from '../../lib/api';
 import { typeMeta } from '../../lib/calendar';
+import DashboardHero from './DashboardHero';
 
 const ESTADO_BOLSA_STYLES = {
     Activat: 'bg-emerald-50 text-emerald-700',
@@ -193,10 +194,8 @@ export default function DashboardHome() {
     }
 
     const procesos = data?.procesos_activos ?? [];
-    const especialidades = data?.mis_especialidades ?? [];
     const favoritas = data?.mis_vacantes_favoritas ?? [];
     const resumen = data?.resumen_historial ?? {};
-    const info = data?.info ?? {};
     const historial = data?.historial ?? [];
     const actualizaciones = data?.actualizaciones ?? { items: [] };
     const novedades = (noticias?.data ?? []).slice(0, 5);
@@ -207,7 +206,7 @@ export default function DashboardHome() {
 
     return (
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2">
-            <InfoCard info={info} />
+            <DashboardHero />
 
             <MiPosicionCard proceso={procesoPublicado} />
 
@@ -223,40 +222,6 @@ export default function DashboardHome() {
                             </li>
                         ))}
                     </ul>
-                )}
-            </Card>
-
-            <Card title="Mi posición en bolsa">
-                {especialidades.length === 0 ? (
-                    <Empty>Aún no has añadido especialidades.</Empty>
-                ) : (
-                    <>
-                        <ul className="space-y-3">
-                            {especialidades.map((e) => (
-                                <li key={`${e.specialty_id}-${e.anyo}`} className="flex items-center justify-between gap-2">
-                                    <div className="min-w-0">
-                                        <p className="truncate text-sm font-medium text-slate-700">{e.specialty_name}</p>
-                                        <p className="text-xs text-slate-400">Curso {e.anyo}</p>
-                                    </div>
-                                    <div className="flex shrink-0 items-center gap-2">
-                                        {e.estado_bolsa && (
-                                            <span className={clsx('rounded-full px-2 py-0.5 text-[11px] font-bold', ESTADO_BOLSA_STYLES[e.estado_bolsa] ?? 'bg-slate-100 text-slate-600')}>
-                                                {e.estado_bolsa}
-                                            </span>
-                                        )}
-                                        <span className="text-2xl font-extrabold tabular-nums text-brand-600">
-                                            {e.posicion_bolsa ?? '—'}
-                                        </span>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                        {procesoListado?.fecha && (
-                            <p className="mt-3 border-t border-slate-100 pt-2 text-[11px] text-slate-400">
-                                Según el listado del {formatListadoDate(procesoListado.fecha)}
-                            </p>
-                        )}
-                    </>
                 )}
             </Card>
 
@@ -425,39 +390,6 @@ function ActualizacionesCard({ actualizaciones }) {
                 </ul>
             )}
         </Card>
-    );
-}
-
-// Personal info summary card (full width).
-function InfoCard({ info }) {
-    const rows = [
-        ['Nombre', info.name],
-        ['Correo', info.email],
-        ['Nombre GVA', info.nombre_gva || '— (configúralo en Mi Perfil)'],
-        ['Colectivo', [info.colectivo, info.cuerpo].filter(Boolean).join(' · ') || '—'],
-        ['Comunidad', info.ccaa || '—'],
-        ['Domicilio', info.direccion_origen || '—'],
-        ['Especialidades', info.num_especialidades ?? 0],
-        ['Miembro desde', info.miembro_desde || '—'],
-    ];
-
-    return (
-        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:col-span-2">
-            <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-bold text-slate-700">Mi información</h2>
-                <Link to="/dashboard/perfil" className="text-xs font-semibold text-brand-600 hover:text-brand-700">
-                    Editar perfil →
-                </Link>
-            </div>
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-                {rows.map(([label, value]) => (
-                    <div key={label} className="flex items-baseline justify-between gap-3 border-b border-slate-50 pb-1">
-                        <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</dt>
-                        <dd className="truncate text-right text-sm text-slate-700" title={String(value)}>{value}</dd>
-                    </div>
-                ))}
-            </dl>
-        </section>
     );
 }
 

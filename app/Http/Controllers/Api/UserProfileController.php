@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\VacancyResource;
+use App\Models\AcademicCalendarEvent;
+use App\Models\OposicionTema;
 use App\Models\Proceso;
 use App\Models\User;
 use App\Models\UserEspecialidad;
@@ -820,5 +822,94 @@ class UserProfileController extends Controller
 
         $user->lat_origen = $result['lat'] ?? null;
         $user->lng_origen = $result['lng'] ?? null;
+    }
+
+    /**
+     * Dashboard hero data: greeting, mode-card stats, upcoming adjudicación countdown.
+     */
+    public function hero(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $now = Carbon::now();
+
+        // Time-of-day greeting
+        $hour = (int) $now->format('G');
+        if ($hour >= 6 && $hour < 14) {
+            $greeting = 'Buenos días';
+        } elseif ($hour >= 14 && $hour < 21) {
+            $greeting = 'Buenas tardes';
+        } else {
+            $greeting = 'Buenas noches';
+        }
+
+        // First-name from nombre_gva or user name
+        $rawName = $user->nombre_gva ?: $user->name ?: '';
+        $nombre = explode(' ', trim($rawName))[0] ?? '';
+
+        // Spanish date: e.g. "lunes, 29 de junio de 2026"
+        $meses = ['', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        $dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+        $fechaTexto = sprintf(
+            '%s, %d de %s de %d',
+            $dias[$now->dayOfWeek],
+            $now->day,
+            $meses[$now->month],
+            $now->year
+        );
+
+        // Bolsa stats
+        $especialidades = UserEspecialidad::where('user_id', $user->id)->get();
+        $posicionMejor = $especialidades->whereNotNull('posicion_bolsa')->min('posicion_bolsa');
+        $estadoMejor = $posicionMejor !== null
+            ? $especialidades->where('posicion_bolsa', $posicionMejor)->first()?->estado_bolsa
+            : null;
+
+        $bolsaStats = [
+            'total_especialidades' => $especialidades->count() ?: null,
+            'posicion_mejor' => $posicionMejor,
+            'estado_mejor' => $estadoMejor,
+        ];
+
+        // Oposición stats
+        $temaStats = OposicionTema::where('user_id', $user->id)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $oposicionStats = [
+            'temas_total' => $temaStats->sum(),
+            'temas_dominados' => (int) ($temaStats['dominado'] ?? 0),
+            'temas_progreso' => (int) ($temaStats['en_progreso'] ?? 0),
+        ];
+
+        // Next upcoming academic calendar event
+        $nextEvent = AcademicCalendarEvent::where('event_date', '>=', $now->toDateString())
+            ->where('visibility', '!=', 'superadmin_only')
+            ->orderBy('event_date')
+            ->first();
+
+        $adjudicacionProxima = null;
+        if ($nextEvent) {
+            $eventDate = Carbon::parse($nextEvent->event_date);
+            $diasRestantes = (int) $now->startOfDay()->diffInDays($eventDate, false);
+            $adjudicacionProxima = [
+                'fecha' => $nextEvent->event_date,
+                'dias_restantes' => max(0, $diasRestantes),
+                'titulo' => $nextEvent->title,
+                'tipo' => $nextEvent->event_type,
+            ];
+        }
+
+        return response()->json([
+            'greeting' => $greeting,
+            'nombre' => $nombre,
+            'fecha_texto' => $fechaTexto,
+            'stats' => [
+                'bolsa' => $bolsaStats,
+                'oposicion' => $oposicionStats,
+            ],
+            'adjudicacion_proxima' => $adjudicacionProxima,
+        ]);
     }
 }

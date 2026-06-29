@@ -38,7 +38,7 @@ export default function CalendarioPage() {
     });
 
     return (
-        <div className="mx-auto max-w-4xl space-y-5">
+        <div className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 className="text-lg font-bold text-slate-800">Calendario académico</h1>

@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             DocumentMonitorSeeder::class,
             NormativaSeeder::class,
             ConvocatoriaSeeder::class,
+            ResourceLinksSeeder::class,
         ]);
     }
 }

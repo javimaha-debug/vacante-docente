@@ -43,12 +43,14 @@ import AdminAiUsage from './components/superadmin/AdminAiUsage';
 import AdminConvocatorias from './components/superadmin/AdminConvocatorias';
 import AdminNormativa from './components/superadmin/AdminNormativa';
 import AdminTemarios from './components/superadmin/AdminTemarios';
+import AdminRecursos from './components/superadmin/AdminRecursos';
 import CentrosList from './components/centros/CentrosList';
 import CentroDetail from './components/centros/CentroDetail';
 import TablonList from './components/tablon/TablonList';
 import TablonForm from './components/tablon/TablonForm';
 import MisAnuncios from './components/tablon/MisAnuncios';
 import TablonResponder from './components/tablon/TablonResponder';
+import RecursosPage from './components/dashboard/RecursosPage';
 
 import { useUserList } from './hooks/useUserList';
 import { useVacancies } from './hooks/useVacancies';
@@ -565,7 +567,7 @@ function AppRoutes() {
                 <Route path="convocatorias" element={<Convocatorias />} />
                 <Route path="asistente" element={<Asistente />} />
                 {/* Sections not yet built (docente). */}
-                <Route path="recursos" element={<ComingSoon title="Banco de recursos" />} />
+                <Route path="recursos" element={<RecursosPage />} />
             </Route>
 
             {/* Super-admin panel: separate dark SPA at /superadmin/*. */}
@@ -584,6 +586,7 @@ function AppRoutes() {
                 <Route path="convocatorias" element={<AdminConvocatorias />} />
                 <Route path="normativa" element={<AdminNormativa />} />
                 <Route path="temarios" element={<AdminTemarios />} />
+                <Route path="recursos" element={<AdminRecursos />} />
                 <Route path="importaciones" element={<SuperAdminImportaciones />} />
                 <Route path="monitor-docs" element={<AdminMonitorDocs />} />
                 <Route path="calendario" element={<AdminCalendario />} />

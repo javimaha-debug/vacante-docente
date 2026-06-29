@@ -84,7 +84,7 @@ export default function TablonList() {
     const anuncios = data?.data ?? [];
 
     return (
-        <div className="mx-auto max-w-3xl">
+        <div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h1 className="font-heading text-xl font-bold text-slate-800">Tablón de anuncios</h1>
                 <div className="flex gap-2">
