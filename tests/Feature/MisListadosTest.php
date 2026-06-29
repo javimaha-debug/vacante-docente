@@ -26,13 +26,14 @@ class MisListadosTest extends TestCase
         ]);
     }
 
-    public function test_requires_nombre_gva(): void
+    public function test_requires_nombre_gva_when_not_searching(): void
     {
         Sanctum::actingAs(User::factory()->create());
 
         $this->getJson('/api/v1/user/mis-listados')
             ->assertOk()
-            ->assertJsonPath('configured', false);
+            ->assertJsonPath('configured', false)
+            ->assertJsonPath('is_search', false);
     }
 
     public function test_finds_user_position_across_listings(): void
@@ -46,7 +47,7 @@ class MisListadosTest extends TestCase
             'estado' => 'Adjudicat', 'especialidad_codigo' => '590', 'centro_nombre' => 'IES TEST',
             'localitat' => 'VALÈNCIA', 'lloc_adjudicado' => '900001',
         ]);
-        // Someone else — must not match.
+        // Someone else — must not match an exact own-name lookup.
         ParticipanteProceso::create([
             'proceso_id' => $proceso->id, 'posicion' => 7, 'nombre_gva' => 'OTRO NOMBRE, X',
             'estado' => 'No adjudicat', 'especialidad_codigo' => '590',
@@ -57,13 +58,16 @@ class MisListadosTest extends TestCase
         $res = $this->getJson('/api/v1/user/mis-listados')
             ->assertOk()
             ->assertJsonPath('configured', true)
+            ->assertJsonPath('is_search', false)
             ->assertJsonPath('nombre_gva', 'GARCIA LOPEZ, ANA')
             ->json();
 
-        $this->assertCount(1, $res['procesos']);
-        $this->assertSame(42, $res['procesos'][0]['posicion']);
-        $this->assertSame('Adjudicat', $res['procesos'][0]['estado']);
-        $this->assertSame('IES TEST', $res['procesos'][0]['adjudicacion']['centro_nombre']);
+        $this->assertCount(1, $res['resultados']);
+        $this->assertSame('GARCIA LOPEZ, ANA', $res['resultados'][0]['nombre_gva']);
+        $this->assertCount(1, $res['resultados'][0]['procesos']);
+        $this->assertSame(42, $res['resultados'][0]['procesos'][0]['posicion']);
+        $this->assertSame('Adjudicat', $res['resultados'][0]['procesos'][0]['estado']);
+        $this->assertSame('IES TEST', $res['resultados'][0]['procesos'][0]['adjudicacion']['centro_nombre']);
     }
 
     public function test_name_match_is_case_insensitive_and_scoped(): void
@@ -81,6 +85,58 @@ class MisListadosTest extends TestCase
 
         $this->getJson('/api/v1/user/mis-listados')
             ->assertOk()
-            ->assertJsonPath('procesos.0.posicion', 5);
+            ->assertJsonPath('resultados.0.procesos.0.posicion', 5);
+    }
+
+    public function test_free_search_finds_other_people_by_partial_name(): void
+    {
+        $proceso = $this->proceso();
+        // The logged-in user has no own listing.
+        $user = User::factory()->create();
+        $user->forceFill(['nombre_gva' => 'YO MISMO, NADIE'])->save();
+
+        ParticipanteProceso::create([
+            'proceso_id' => $proceso->id, 'posicion' => 3, 'nombre_gva' => 'GARCIA LOPEZ, ANA',
+            'estado' => 'Activat', 'especialidad_codigo' => '590',
+        ]);
+        ParticipanteProceso::create([
+            'proceso_id' => $proceso->id, 'posicion' => 9, 'nombre_gva' => 'GARCIA PEREZ, LUIS',
+            'estado' => 'Activat', 'especialidad_codigo' => '590',
+        ]);
+        ParticipanteProceso::create([
+            'proceso_id' => $proceso->id, 'posicion' => 12, 'nombre_gva' => 'MARTINEZ, EVA',
+            'estado' => 'Activat', 'especialidad_codigo' => '590',
+        ]);
+
+        Sanctum::actingAs($user->fresh());
+
+        $res = $this->getJson('/api/v1/user/mis-listados?q=garcia')
+            ->assertOk()
+            ->assertJsonPath('is_search', true)
+            ->json();
+
+        // Two GARCIA people, not the MARTINEZ one.
+        $names = collect($res['resultados'])->pluck('nombre_gva')->all();
+        $this->assertCount(2, $names);
+        $this->assertContains('GARCIA LOPEZ, ANA', $names);
+        $this->assertContains('GARCIA PEREZ, LUIS', $names);
+        $this->assertNotContains('MARTINEZ, EVA', $names);
+    }
+
+    public function test_search_works_without_own_name_configured(): void
+    {
+        $proceso = $this->proceso();
+        Sanctum::actingAs(User::factory()->create()); // no nombre_gva
+
+        ParticipanteProceso::create([
+            'proceso_id' => $proceso->id, 'posicion' => 1, 'nombre_gva' => 'SANCHIS, GEMMA',
+            'estado' => 'Activat', 'especialidad_codigo' => '590',
+        ]);
+
+        $this->getJson('/api/v1/user/mis-listados?q=sanchis')
+            ->assertOk()
+            ->assertJsonPath('configured', false)
+            ->assertJsonPath('is_search', true)
+            ->assertJsonPath('resultados.0.nombre_gva', 'SANCHIS, GEMMA');
     }
 }

@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../../lib/api';
 
@@ -16,104 +17,68 @@ function EstadoBadge({ estado }) {
     return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>{estado ?? '—'}</span>;
 }
 
-export default function MiPosicion() {
-    const { data, isLoading, isError, error, refetch } = useQuery({
-        queryKey: ['mis-listados'],
-        queryFn: async () => (await api.get('/user/mis-listados')).data,
-    });
-
-    if (isLoading) {
-        return <div className="mx-auto max-w-3xl"><p className="text-sm text-slate-400">Buscándote en los listados…</p></div>;
-    }
-    if (isError) {
-        return (
-            <div className="mx-auto max-w-3xl">
-                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error?.friendlyMessage ?? 'No se pudo cargar.'}</p>
-                <button onClick={() => refetch()} className="mt-2 text-sm font-semibold text-brand-600">Reintentar</button>
-            </div>
-        );
-    }
-
-    // Needs nombre_gva configured.
-    if (!data.configured) {
-        return (
-            <div className="mx-auto max-w-md rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-2xl">📍</div>
-                <h1 className="mt-3 text-lg font-bold text-slate-800">¿Estoy en las listas?</h1>
-                <p className="mt-1 text-sm text-slate-500">{data.message}</p>
-                <Link to="/dashboard/perfil" className="mt-4 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
-                    Configurar mi nombre GVA
-                </Link>
-            </div>
-        );
-    }
-
-    const { procesos = [], continuas = [] } = data;
-    const nada = procesos.length === 0 && continuas.length === 0;
-
+function ProcesoCard({ p }) {
     return (
-        <div className="mx-auto max-w-3xl space-y-5">
-            <div>
-                <h1 className="text-lg font-bold text-slate-800">Mi posición en las listas</h1>
-                <p className="text-sm text-slate-500">Buscando como <span className="font-semibold text-slate-700">{data.nombre_gva}</span> · <Link to="/dashboard/perfil" className="text-brand-600 hover:underline">cambiar</Link></p>
+        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                    <h3 className="font-semibold text-slate-800">{p.proceso}</h3>
+                    {p.listado_fecha && <p className="text-xs text-slate-400">Listado del {fecha(p.listado_fecha)}</p>}
+                </div>
+                <EstadoBadge estado={p.estado} />
             </div>
 
-            {nada && (
-                <div className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
-                    <p className="text-sm text-slate-500">No apareces todavía en ningún listado importado.</p>
-                    <p className="mt-1 text-xs text-slate-400">Cuando la GVA publique las listas y se importen, aparecerás aquí con tu posición. Revisa que tu nombre coincida exactamente con el oficial.</p>
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+                <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Posición</p>
+                    <p className="text-2xl font-bold text-brand-700">{p.posicion ?? '—'}</p>
+                </div>
+                {p.especialidad_codigo && (
+                    <div>
+                        <p className="text-xs uppercase tracking-wide text-slate-400">Especialidad</p>
+                        <p className="font-semibold text-slate-700">{p.especialidad_codigo}</p>
+                    </div>
+                )}
+            </div>
+
+            {p.adjudicacion && (
+                <div className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    ✅ <span className="font-semibold">Adjudicado</span>: {p.adjudicacion.centro_nombre}
+                    {p.adjudicacion.localitat ? ` · ${p.adjudicacion.localitat}` : ''}
+                    {p.adjudicacion.jornada ? ` · ${p.adjudicacion.jornada}` : ''}
                 </div>
             )}
 
-            {/* Procesos (listas de adjudicación / participantes) */}
-            {procesos.map((p) => (
-                <div key={p.proceso_id} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                            <h2 className="font-semibold text-slate-800">{p.proceso}</h2>
-                            {p.listado_fecha && <p className="text-xs text-slate-400">Listado del {fecha(p.listado_fecha)}</p>}
-                        </div>
-                        <EstadoBadge estado={p.estado} />
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap items-center gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Posición</p>
-                            <p className="text-2xl font-bold text-brand-700">{p.posicion ?? '—'}</p>
-                        </div>
-                        {p.especialidad_codigo && (
-                            <div>
-                                <p className="text-xs uppercase tracking-wide text-slate-400">Especialidad</p>
-                                <p className="font-semibold text-slate-700">{p.especialidad_codigo}</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {p.adjudicacion && (
-                        <div className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                            ✅ <span className="font-semibold">Adjudicado</span>: {p.adjudicacion.centro_nombre}
-                            {p.adjudicacion.localitat ? ` · ${p.adjudicacion.localitat}` : ''}
-                            {p.adjudicacion.jornada ? ` · ${p.adjudicacion.jornada}` : ''}
-                        </div>
-                    )}
-
-                    {p.otras?.length > 1 && (
-                        <div className="mt-3 border-t border-slate-100 pt-2">
-                            <p className="text-xs font-medium text-slate-400">También apareces en:</p>
-                            <ul className="mt-1 space-y-0.5 text-sm text-slate-600">
-                                {p.otras.map((o, i) => (
-                                    <li key={i}>Esp. {o.especialidad_codigo} — posición {o.posicion ?? '—'} ({o.estado ?? '—'})</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
+            {p.otras?.length > 1 && (
+                <div className="mt-3 border-t border-slate-100 pt-2">
+                    <p className="text-xs font-medium text-slate-400">También aparece en:</p>
+                    <ul className="mt-1 space-y-0.5 text-sm text-slate-600">
+                        {p.otras.map((o, i) => (
+                            <li key={i}>Esp. {o.especialidad_codigo} — posición {o.posicion ?? '—'} ({o.estado ?? '—'})</li>
+                        ))}
+                    </ul>
                 </div>
-            ))}
+            )}
+        </div>
+    );
+}
 
-            {/* Adjudicaciones contínues semanales */}
+function PersonaResultado({ persona, isOwn }) {
+    const { procesos = [], continuas = [] } = persona;
+    if (procesos.length === 0 && continuas.length === 0) return null;
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-800">{persona.nombre_gva}</h2>
+                {isOwn && <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700">Tú</span>}
+            </div>
+
+            {procesos.map((p) => <ProcesoCard key={p.proceso_id} p={p} />)}
+
             {continuas.length > 0 && (
                 <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-                    <h2 className="font-semibold text-slate-800">Adjudicaciones semanales (contínues)</h2>
+                    <h3 className="font-semibold text-slate-800">Adjudicaciones semanales (contínues)</h3>
                     <ul className="mt-2 divide-y divide-slate-100 text-sm">
                         {continuas.map((c, i) => (
                             <li key={i} className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -129,6 +94,107 @@ export default function MiPosicion() {
                             </li>
                         ))}
                     </ul>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function MiPosicion() {
+    // `input` is the live text box; `query` is the submitted search (empty = my name).
+    const [input, setInput] = useState('');
+    const [query, setQuery] = useState('');
+
+    const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
+        queryKey: ['mis-listados', query],
+        queryFn: async () => (await api.get('/user/mis-listados', { params: query ? { q: query } : {} })).data,
+        placeholderData: keepPreviousData,
+    });
+
+    const submit = (e) => {
+        e.preventDefault();
+        setQuery(input.trim());
+    };
+    const clear = () => { setInput(''); setQuery(''); };
+
+    const ownName = data?.nombre_gva ?? null;
+    const isSearch = Boolean(data?.is_search);
+    const resultados = data?.resultados ?? [];
+
+    return (
+        <div className="mx-auto max-w-3xl space-y-5">
+            <div>
+                <h1 className="text-lg font-bold text-slate-800">Buscar en las listas</h1>
+                <p className="text-sm text-slate-500">
+                    Consulta la posición de cualquier persona en los listados importados.
+                    {ownName && !isSearch && <> Mostrando tu posición como <span className="font-semibold text-slate-700">{ownName}</span>.</>}
+                </p>
+            </div>
+
+            {/* Search box: any name. Empty search falls back to your own name. */}
+            <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[16rem]">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
+                    <input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Apellidos, Nombre (p. ej. GARCIA LOPEZ, ANA)"
+                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+                    />
+                </div>
+                <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+                    Buscar
+                </button>
+                {query && (
+                    <button type="button" onClick={clear} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100">
+                        {ownName ? 'Ver mi posición' : 'Limpiar'}
+                    </button>
+                )}
+            </form>
+
+            {!ownName && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    Configura tu nombre GVA en <Link to="/dashboard/perfil" className="font-semibold underline">tu perfil</Link> para
+                    ver tu posición automáticamente sin tener que buscarte.
+                </p>
+            )}
+
+            {isLoading && <p className="text-sm text-slate-400">Buscando en los listados…</p>}
+
+            {isError && (
+                <div>
+                    <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error?.friendlyMessage ?? 'No se pudo cargar.'}</p>
+                    <button onClick={() => refetch()} className="mt-2 text-sm font-semibold text-brand-600">Reintentar</button>
+                </div>
+            )}
+
+            {!isLoading && !isError && (
+                <div className={`space-y-6 ${isFetching ? 'opacity-60' : ''}`}>
+                    {resultados.length === 0 && (
+                        <div className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
+                            <p className="text-sm text-slate-500">
+                                {isSearch
+                                    ? `No se encontró «${data?.query}» en ningún listado importado.`
+                                    : 'No apareces todavía en ningún listado importado.'}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-400">
+                                Revisa que el nombre coincida con el formato oficial (APELLIDOS, NOMBRE). Cuando la GVA publique
+                                nuevas listas y se importen, aparecerán aquí.
+                            </p>
+                        </div>
+                    )}
+
+                    {data?.truncated && (
+                        <p className="text-xs text-slate-400">Mostrando los primeros {data.total_personas} resultados. Afina la búsqueda para ver menos.</p>
+                    )}
+
+                    {resultados.map((persona, i) => (
+                        <PersonaResultado
+                            key={`${persona.nombre_gva}-${i}`}
+                            persona={persona}
+                            isOwn={!isSearch && ownName != null && persona.nombre_gva?.toLowerCase() === ownName.toLowerCase()}
+                        />
+                    ))}
                 </div>
             )}
         </div>

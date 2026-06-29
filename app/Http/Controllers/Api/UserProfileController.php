@@ -339,28 +339,118 @@ class UserProfileController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->nombre_gva) {
+        // A free-text search (?q=) lets you look up ANY name in the lists, not
+        // only your own. With no query we default to the user's own nombre_gva.
+        $q = trim((string) $request->query('q', ''));
+        $isSearch = $q !== '';
+        $term = $isSearch ? $q : (string) $user->nombre_gva;
+
+        // Not configured AND not searching → prompt to set the GVA name. The
+        // search box still works without it (handled client-side).
+        if ($term === '') {
             return response()->json([
                 'configured' => false,
-                'message' => 'Configura tu nombre GVA en el perfil para localizarte en las listas.',
+                'is_search' => false,
+                'query' => '',
+                'nombre_gva' => $user->nombre_gva,
+                'message' => 'Configura tu nombre GVA en el perfil para localizarte en las listas, o busca cualquier nombre arriba.',
+                'resultados' => [],
             ]);
         }
 
-        $name = mb_strtolower($user->nombre_gva);
+        $needle = mb_strtolower($term);
+
+        // Exact match for the user's own name; partial (LIKE) for free searches
+        // so a surname or partial name finds people.
+        $matchName = function ($query, string $column = 'nombre_gva') use ($isSearch, $needle) {
+            return $isSearch
+                ? $query->whereRaw('LOWER('.$column.') LIKE ?', ['%'.$this->escapeLike($needle).'%'])
+                : $query->whereRaw('LOWER('.$column.') = ?', [$needle]);
+        };
 
         $userCodes = $user->especialidades()->with('specialty')->get()
             ->flatMap(fn (UserEspecialidad $e) => [$e->specialty?->codigo, $e->specialty?->code])
             ->filter()->map(fn ($c) => (string) $c)->all();
 
-        // All participant-list matches across every proceso, in one query.
-        $matches = \App\Models\ParticipanteProceso::query()
-            ->whereRaw('LOWER(nombre_gva) = ?', [$name])
+        // All participant-list matches across every proceso, grouped by person.
+        $rows = \App\Models\ParticipanteProceso::query()
+            ->where(fn ($query) => $matchName($query))
             ->with('proceso:id,nombre')
-            ->get()
-            ->groupBy('proceso_id');
+            ->orderBy('nombre_gva')
+            ->limit(3000) // safety cap for very broad searches
+            ->get();
 
+        // Continua matches, also grouped by person.
+        $continuasRows = \App\Models\AdjudicacionContinua::query()
+            ->where(function ($query) use ($matchName, $isSearch, $user) {
+                $matchName($query);
+                if (! $isSearch) {
+                    $query->orWhere('user_id', $user->id);
+                }
+            })
+            ->orderByDesc('fecha')->limit(2000)->get();
+
+        // Pre-load the latest listing date per proceso once.
+        $procesoIds = $rows->pluck('proceso_id')->unique()->all();
+        $fechas = \App\Models\ParticipanteImportacion::query()
+            ->whereIn('proceso_id', $procesoIds)
+            ->orderByDesc('importado_en')->get()
+            ->groupBy('proceso_id')
+            ->map(fn ($g) => $g->first()?->importado_en?->toDateString());
+
+        $personasParticipantes = $rows->groupBy(fn ($p) => trim((string) $p->nombre_gva));
+        $personasContinuas = $continuasRows->groupBy(fn ($a) => trim((string) ($a->nombre_gva ?? '')));
+
+        // Union of names found in either source, capped.
+        $maxPersonas = 30;
+        $nombres = collect($personasParticipantes->keys())
+            ->merge($personasContinuas->keys())
+            ->filter(fn ($n) => $n !== '')
+            ->unique()->sort()->values();
+        $truncated = $nombres->count() > $maxPersonas;
+        $nombres = $nombres->take($maxPersonas);
+
+        $resultados = [];
+        foreach ($nombres as $nombre) {
+            $resultados[] = [
+                'nombre_gva' => $nombre,
+                'procesos' => $this->buildProcesoCards($personasParticipantes->get($nombre, collect()), $userCodes, $fechas),
+                'continuas' => collect($personasContinuas->get($nombre, collect()))
+                    ->map(fn ($a) => [
+                        'fecha' => $a->fecha?->toDateString(),
+                        'cuerpo' => $a->cuerpo,
+                        'estado' => $a->estado,
+                        'especialidad_codigo' => $a->especialidad_codigo,
+                        'posicion' => $a->posicion,
+                        'centro' => $a->centro_nombre,
+                        'localitat' => $a->localitat,
+                    ])->values()->all(),
+            ];
+        }
+
+        return response()->json([
+            'configured' => (bool) $user->nombre_gva,
+            'is_search' => $isSearch,
+            'query' => $term,
+            'nombre_gva' => $user->nombre_gva,
+            'total_personas' => $truncated ? $maxPersonas : count($resultados),
+            'truncated' => $truncated,
+            'resultados' => $resultados,
+        ]);
+    }
+
+    /**
+     * Build the per-proceso position cards for a single person's participant rows.
+     *
+     * @param  \Illuminate\Support\Collection  $personRows
+     * @param  array<int, string>  $userCodes
+     * @param  \Illuminate\Support\Collection  $fechas  proceso_id => listado date
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildProcesoCards($personRows, array $userCodes, $fechas): array
+    {
         $procesos = [];
-        foreach ($matches as $rows) {
+        foreach (collect($personRows)->groupBy('proceso_id') as $procesoId => $rows) {
             $proceso = $rows->first()->proceso;
             if (! $proceso) {
                 continue;
@@ -375,15 +465,14 @@ class UserProfileController extends Controller
                 'estado' => $row->estado,
                 'cambio' => $row->cambio,
                 'especialidad_codigo' => $row->especialidad_codigo,
-                'listado_fecha' => \App\Models\ParticipanteImportacion::where('proceso_id', $proceso->id)
-                    ->orderByDesc('importado_en')->first()?->importado_en?->toDateString(),
+                'listado_fecha' => $fechas[$procesoId] ?? null,
                 'adjudicacion' => $row->estado === 'Adjudicat' ? [
                     'lloc' => $row->lloc_adjudicado,
                     'centro_nombre' => $row->centro_nombre,
                     'localitat' => $row->localitat,
                     'jornada' => $row->jornada,
                 ] : null,
-                // When the user appears in several specialties of the same proceso.
+                // When the person appears in several specialties of the same proceso.
                 'otras' => $rows->count() > 1
                     ? $rows->map(fn ($p) => [
                         'especialidad_codigo' => $p->especialidad_codigo,
@@ -394,27 +483,13 @@ class UserProfileController extends Controller
             ];
         }
 
-        // Weekly continuous adjudications.
-        $continuas = \App\Models\AdjudicacionContinua::query()
-            ->where(fn ($q) => $q->where('user_id', $user->id)
-                ->orWhereRaw('LOWER(nombre_gva) = ?', [$name]))
-            ->orderByDesc('fecha')->limit(20)->get()
-            ->map(fn ($a) => [
-                'fecha' => $a->fecha?->toDateString(),
-                'cuerpo' => $a->cuerpo,
-                'estado' => $a->estado,
-                'especialidad_codigo' => $a->especialidad_codigo,
-                'posicion' => $a->posicion,
-                'centro' => $a->centro_nombre,
-                'localitat' => $a->localitat,
-            ])->all();
+        return $procesos;
+    }
 
-        return response()->json([
-            'configured' => true,
-            'nombre_gva' => $user->nombre_gva,
-            'procesos' => $procesos,
-            'continuas' => $continuas,
-        ]);
+    /** Escape LIKE wildcards in a user-supplied search term. */
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 
     /**
