@@ -40,6 +40,8 @@ class User extends Authenticatable
         'onboarding_completed',
         'last_active_at',
         'trial_ends_at',
+        // 'storage_used_bytes' is NOT mass-assignable; it is maintained by the
+        // document upload/delete flow via increment()/decrement().
         // 'is_admin' is intentionally NOT mass-assignable (privilege escalation).
         // 'role', 'plan', 'plan_status', 'plan_expires_at', 'stripe_customer_id'
         // and 'stripe_subscription_id' are also intentionally NOT mass-assignable;
@@ -58,6 +60,8 @@ class User extends Authenticatable
         'plan_status' => 'none',
         'modo_activo' => 'bolsa',
         'onboarding_completed' => false,
+        'storage_used_bytes' => 0,
+        'storage_limit_bytes' => 2147483648, // 2 GB
     ];
 
     /**
@@ -93,7 +97,36 @@ class User extends Authenticatable
             'last_active_at' => 'datetime',
             'trial_ends_at' => 'datetime',
             'suspended_at' => 'datetime',
+            'storage_used_bytes' => 'integer',
+            'storage_limit_bytes' => 'integer',
         ];
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(UserDocument::class);
+    }
+
+    public function folders(): HasMany
+    {
+        return $this->hasMany(UserFolder::class);
+    }
+
+    public function integrations(): HasMany
+    {
+        return $this->hasMany(UserIntegration::class);
+    }
+
+    /** Remaining storage in bytes (never negative). */
+    public function storageRemaining(): int
+    {
+        return max(0, (int) $this->storage_limit_bytes - (int) $this->storage_used_bytes);
+    }
+
+    /** Whether an upload of $bytes would exceed the user's quota. */
+    public function exceedsStorage(int $bytes): bool
+    {
+        return ((int) $this->storage_used_bytes + $bytes) > (int) $this->storage_limit_bytes;
     }
 
     /**

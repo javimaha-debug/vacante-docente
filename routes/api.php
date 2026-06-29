@@ -33,6 +33,11 @@ use App\Http\Controllers\AuthController;
 use App\Http\Middleware\UpdateLastActive;
 use App\Models\Colectivo;
 use App\Models\Plan;
+use App\Http\Controllers\Api\UserDocumentController;
+use App\Http\Controllers\Api\UserFolderController;
+use App\Http\Controllers\Api\UserDocumentTagController;
+use App\Http\Controllers\Api\Integrations\GoogleDriveController;
+use App\Http\Controllers\Api\Integrations\Microsoft365Controller;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -96,6 +101,19 @@ Route::prefix('v1')->group(function () {
     // GVA monitor (public): latest official notices.
     Route::get('gva/noticias', [GvaController::class, 'index']);
 
+    // Document view/thumbnail: authenticated by a short-lived signed URL (so the
+    // file can open in a new tab without a bearer token). Storage paths never
+    // leave the server.
+    Route::get('documents/{document}/view', [UserDocumentController::class, 'view'])
+        ->middleware('signed')->name('documents.view');
+    Route::get('documents/{document}/thumbnail', [UserDocumentController::class, 'thumbnail'])
+        ->middleware('signed')->name('documents.thumbnail');
+
+    // Cloud integration OAuth callbacks (hit by the provider; user recovered
+    // from the signed `state`, so no bearer token here).
+    Route::get('integrations/google-drive/callback', [GoogleDriveController::class, 'callback']);
+    Route::get('integrations/microsoft/callback', [Microsoft365Controller::class, 'callback']);
+
     // Procesos (public): list + per-proceso vacancies with filters.
     Route::get('procesos', [ProcesoController::class, 'index']);
     Route::get('procesos/{proceso}/vacantes', [ProcesoController::class, 'vacantes']);
@@ -144,6 +162,39 @@ Route::prefix('v1')->group(function () {
         // Academic calendar (confirmed, user-visible events) + published docs.
         Route::get('calendar', [CalendarController::class, 'index']);
         Route::get('published-documents', [CalendarController::class, 'publishedDocuments']);
+
+        // Personal document area (Sprint A).
+        Route::get('documents', [UserDocumentController::class, 'index']);
+        Route::post('documents/upload', [UserDocumentController::class, 'upload']);
+        Route::get('documents/{document}', [UserDocumentController::class, 'show']);
+        Route::patch('documents/{document}', [UserDocumentController::class, 'update']);
+        Route::delete('documents/{document}', [UserDocumentController::class, 'destroy']);
+        Route::post('documents/{document}/move', [UserDocumentController::class, 'move']);
+
+        Route::get('folders', [UserFolderController::class, 'index']);
+        Route::post('folders', [UserFolderController::class, 'store']);
+        Route::patch('folders/{folder}', [UserFolderController::class, 'update']);
+        Route::delete('folders/{folder}', [UserFolderController::class, 'destroy']);
+
+        Route::get('document-tags', [UserDocumentTagController::class, 'index']);
+        Route::post('document-tags', [UserDocumentTagController::class, 'store']);
+        Route::delete('document-tags/{tag}', [UserDocumentTagController::class, 'destroy']);
+
+        // Cloud integrations (connect returns a consent URL; files/import use tokens).
+        Route::get('integrations/google-drive/connect', [GoogleDriveController::class, 'connect']);
+        Route::get('integrations/google-drive/files', [GoogleDriveController::class, 'files']);
+        Route::post('integrations/google-drive/import', [GoogleDriveController::class, 'import']);
+        Route::get('integrations/microsoft/connect', [Microsoft365Controller::class, 'connect']);
+        Route::get('integrations/microsoft/files', [Microsoft365Controller::class, 'files']);
+        Route::post('integrations/microsoft/import', [Microsoft365Controller::class, 'import']);
+        Route::get('integrations/status', function (\Illuminate\Http\Request $request) {
+            $providers = \App\Models\UserIntegration::where('user_id', $request->user()->id)->pluck('provider')->all();
+
+            return response()->json([
+                'google_drive' => in_array('google_drive', $providers, true),
+                'microsoft_365' => in_array('microsoft_365', $providers, true),
+            ]);
+        });
 
         // Authenticated vacancy list (kanban) synced to the account.
         Route::get('user/lista', [UserProfileController::class, 'lista']);

@@ -26,6 +26,7 @@ import CalendarioPage from './components/dashboard/CalendarioPage';
 import MiPreparacion from './components/oposicion/MiPreparacion';
 import Normativa from './components/oposicion/Normativa';
 import Convocatorias from './components/oposicion/Convocatorias';
+import MisDocumentos from './components/dashboard/MisDocumentos';
 
 import AdminLayout from './components/superadmin/AdminLayout';
 import AdminDashboard from './components/superadmin/AdminDashboard';
@@ -556,6 +557,7 @@ function AppRoutes() {
                 <Route path="calendario" element={<CalendarioPage />} />
                 {/* Modo Oposición sections. */}
                 <Route path="oposicion" element={<MiPreparacion />} />
+                <Route path="mis-documentos" element={<MisDocumentos />} />
                 <Route path="normativa" element={<Normativa />} />
                 <Route path="convocatorias" element={<Convocatorias />} />
                 {/* Sections not yet built (asistente IA / docente). */}
