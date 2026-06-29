@@ -23,11 +23,12 @@ export default function AdminConvocatorias() {
     });
 
     const { data: docs } = useQuery({
-        queryKey: ['gva', 'noticias'],
-        queryFn: async () => (await api.get('/gva/noticias')).data,
+        queryKey: ['admin', 'documents', 'for-convocatorias'],
+        queryFn: async () => (await api.get('/superadmin/documents')).data,
     });
 
     const refresh = () => qc.invalidateQueries({ queryKey: ['admin', 'convocatorias'] });
+    // /superadmin/documents is paginated → detected documents live under data.data.
     const noticias = docs?.data ?? [];
 
     return (
@@ -163,7 +164,7 @@ function ConvocatoriaForm({ convocatoria, noticias, onClose, onSaved }) {
                     <Field label="Documento detectado (origen)">
                         <select value={form.source_document_id ?? ''} onChange={set('source_document_id')} className={inputCls}>
                             <option value="">— Sin vincular —</option>
-                            {noticias.map((n) => <option key={n.id} value={n.id}>{n.titulo}</option>)}
+                            {noticias.map((n) => <option key={n.id} value={n.id}>{n.title}</option>)}
                         </select>
                     </Field>
                     <Field label="Notas"><textarea value={form.notas} onChange={set('notas')} rows={2} className={inputCls} /></Field>

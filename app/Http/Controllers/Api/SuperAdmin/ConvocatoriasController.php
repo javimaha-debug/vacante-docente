@@ -15,7 +15,7 @@ class ConvocatoriasController extends Controller
     public function index(Request $request): JsonResponse
     {
         $convocatorias = Convocatoria::query()
-            ->with('sourceDocument:id,titulo')
+            ->with('sourceDocument:id,title')
             ->orderByDesc('updated_at')
             ->get();
 
@@ -30,7 +30,7 @@ class ConvocatoriasController extends Controller
         $data = $this->validatePayload($request, true);
 
         $convocatoria = Convocatoria::create($data);
-        $convocatoria->load('sourceDocument:id,titulo');
+        $convocatoria->load('sourceDocument:id,title');
 
         return response()->json($this->adminArray($convocatoria), 201);
     }
@@ -43,7 +43,7 @@ class ConvocatoriasController extends Controller
         $data = $this->validatePayload($request, false);
 
         $convocatoria->fill($data)->save();
-        $convocatoria->load('sourceDocument:id,titulo');
+        $convocatoria->load('sourceDocument:id,title');
 
         return response()->json($this->adminArray($convocatoria));
     }
@@ -77,7 +77,7 @@ class ConvocatoriasController extends Controller
             'url_oficial' => ['sometimes', 'nullable', 'url', 'max:500'],
             'boe_url' => ['sometimes', 'nullable', 'url', 'max:500'],
             'notas' => ['sometimes', 'nullable', 'string'],
-            'source_document_id' => ['sometimes', 'nullable', 'integer', 'exists:gva_noticias,id'],
+            'source_document_id' => ['sometimes', 'nullable', 'integer', 'exists:detected_documents,id'],
         ]);
     }
 
@@ -99,7 +99,7 @@ class ConvocatoriasController extends Controller
             'source_document_id' => $c->source_document_id,
             'source_document' => $c->sourceDocument ? [
                 'id' => $c->sourceDocument->id,
-                'titulo' => $c->sourceDocument->titulo,
+                'titulo' => $c->sourceDocument->title,
             ] : null,
             'updated_at' => $c->updated_at?->toIso8601String(),
         ];
