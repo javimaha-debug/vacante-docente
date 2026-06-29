@@ -123,6 +123,46 @@ class MisListadosTest extends TestCase
         $this->assertNotContains('MARTINEZ, EVA', $names);
     }
 
+    public function test_search_matches_accented_names_regardless_of_accents(): void
+    {
+        $proceso = $this->proceso();
+        Sanctum::actingAs(User::factory()->create());
+
+        ParticipanteProceso::create([
+            'proceso_id' => $proceso->id, 'posicion' => 8, 'nombre_gva' => 'PÉREZ GARCÍA, JOSÉ',
+            'estado' => 'Activat', 'especialidad_codigo' => '590',
+        ]);
+
+        // Typed without accents — must still find the accented record.
+        $this->getJson('/api/v1/user/mis-listados?q=perez')
+            ->assertOk()
+            ->assertJsonPath('resultados.0.nombre_gva', 'PÉREZ GARCÍA, JOSÉ');
+
+        // Typed with accents — must also find it.
+        $this->getJson('/api/v1/user/mis-listados?q='.urlencode('pérez'))
+            ->assertOk()
+            ->assertJsonPath('resultados.0.nombre_gva', 'PÉREZ GARCÍA, JOSÉ');
+    }
+
+    public function test_user_with_accented_name_finds_themselves(): void
+    {
+        $proceso = $this->proceso();
+        $user = User::factory()->create();
+        $user->forceFill(['nombre_gva' => 'PÉREZ GARCÍA, JOSÉ'])->save();
+
+        ParticipanteProceso::create([
+            'proceso_id' => $proceso->id, 'posicion' => 8, 'nombre_gva' => 'PÉREZ GARCÍA, JOSÉ',
+            'estado' => 'Activat', 'especialidad_codigo' => '590',
+        ]);
+
+        Sanctum::actingAs($user->fresh());
+
+        $this->getJson('/api/v1/user/mis-listados')
+            ->assertOk()
+            ->assertJsonPath('is_search', false)
+            ->assertJsonPath('resultados.0.procesos.0.posicion', 8);
+    }
+
     public function test_search_works_without_own_name_configured(): void
     {
         $proceso = $this->proceso();
