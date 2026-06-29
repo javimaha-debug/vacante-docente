@@ -20,101 +20,6 @@ function formatListadoDate(iso) {
     }
 }
 
-// Official position read from the LATEST participant listing for a proceso,
-// via the authenticated /participantes/{proceso}/mi-posicion endpoint.
-function MiPosicionCard({ proceso, especialidades = [] }) {
-    const { data, isLoading, isError, error } = useQuery({
-        queryKey: ['mi-posicion', proceso?.id],
-        enabled: Boolean(proceso?.id),
-        retry: false,
-        queryFn: async () => (await api.get(`/participantes/${proceso.id}/mi-posicion`)).data,
-    });
-
-    if (!proceso) return null;
-
-    const needsNombre = isError && error?.response?.status === 422;
-    const adj = data?.adjudicacion;
-    const listadoFecha = formatListadoDate(data?.listado_fecha ?? proceso.fecha);
-    // Fallback: user's stored posicion_bolsa from user_especialidades
-    const fallback = especialidades.find((e) => e.posicion_bolsa != null);
-
-    return (
-        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:col-span-2">
-            <div className="mb-3 flex items-start justify-between gap-2">
-                <div>
-                    <h2 className="text-sm font-bold text-slate-700">Mi posición en la lista — {proceso.nombre}</h2>
-                    {listadoFecha && (
-                        <p className="mt-0.5 text-[11px] text-slate-400">Según el listado del {listadoFecha}</p>
-                    )}
-                </div>
-                {data?.found && data.estado && (
-                    <span className={clsx('shrink-0 rounded-full px-2 py-0.5 text-xs font-bold', ESTADO_BOLSA_STYLES[data.estado] ?? 'bg-slate-100 text-slate-600')}>
-                        {data.estado}
-                    </span>
-                )}
-            </div>
-
-            {isLoading ? (
-                <p className="text-sm text-slate-400">Cargando…</p>
-            ) : needsNombre ? (
-                <p className="text-sm text-slate-500">
-                    Configura tu <span className="font-semibold">Nombre GVA</span> en{' '}
-                    <Link to="/dashboard/perfil" className="text-brand-600 hover:underline">tu perfil</Link>{' '}
-                    para localizarte en la lista.
-                </p>
-            ) : isError ? (
-                <p className="text-sm text-rose-600">{error?.friendlyMessage ?? 'No se pudo consultar tu posición.'}</p>
-            ) : !data?.found ? (
-                fallback ? (
-                    <div className="space-y-1">
-                        <div className="flex flex-wrap items-end gap-6">
-                            <div>
-                                <p className="text-xs text-slate-400">Posición en bolsa</p>
-                                <p className="text-3xl font-extrabold tabular-nums text-brand-600">{fallback.posicion_bolsa}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-slate-400">Especialidad</p>
-                                <p className="text-sm font-medium text-slate-700">{fallback.specialty_name}</p>
-                                {fallback.estado_bolsa && (
-                                    <span className={clsx('mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold', ESTADO_BOLSA_STYLES[fallback.estado_bolsa] ?? 'bg-slate-100 text-slate-600')}>
-                                        {fallback.estado_bolsa}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        <p className="text-[11px] text-slate-400">Dato de tu perfil · el listado oficial de este proceso aún no está cargado</p>
-                    </div>
-                ) : (
-                    <p className="text-sm text-slate-400">No apareces en la lista publicada de este proceso (o aún no está cargada).</p>
-                )
-            ) : (
-                <div className="space-y-3">
-                    {data.cambio && (
-                        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 ring-1 ring-amber-200">
-                            📣 {data.cambio === 'nuevo' ? 'Apareces por primera vez en el último listado.' : 'Tu situación ha cambiado en el último listado.'}
-                        </p>
-                    )}
-                    <div className="flex flex-wrap items-end gap-6">
-                    <div>
-                        <p className="text-xs text-slate-400">Posición</p>
-                        <p className="text-3xl font-extrabold tabular-nums text-brand-600">{data.posicion ?? '—'}</p>
-                    </div>
-                    {adj && (
-                        <div className="text-sm text-slate-600">
-                            <p className="text-xs font-semibold uppercase text-blue-600">Adjudicación</p>
-                            <p className="font-medium text-slate-800">{adj.centro_nombre ?? adj.lloc ?? '—'}</p>
-                            <p className="text-xs text-slate-500">
-                                {[adj.localitat, adj.especialidad_codigo, adj.jornada].filter(Boolean).join(' · ')}
-                            </p>
-                        </div>
-                    )}
-                    </div>
-                </div>
-            )}
-        </section>
-    );
-}
-
 const ESTADO_STYLES = {
     pendiente: 'bg-slate-100 text-slate-600',
     publicado: 'bg-emerald-50 text-emerald-700',
@@ -222,16 +127,10 @@ export default function DashboardHome() {
     const historial = data?.historial ?? [];
     const actualizaciones = data?.actualizaciones ?? { items: [] };
     const novedades = (noticias?.data ?? []).slice(0, 5);
-    // Read the official position from the LATEST participant listing; fall back
-    // to a published proceso if no listing has been imported yet.
-    const procesoListado = data?.proceso_listado ?? null;
-    const procesoPublicado = procesoListado ?? procesos.find((p) => p.estado === 'publicado') ?? procesos[0] ?? null;
 
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <DashboardHero />
-
-            <MiPosicionCard proceso={procesoPublicado} especialidades={data?.mis_especialidades ?? []} />
 
             <Card title="Procesos activos">
                 {procesos.length === 0 ? (

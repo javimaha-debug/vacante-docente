@@ -13,7 +13,9 @@ export default function DashboardHero() {
     });
 
     const greeting = data?.greeting ?? 'Hola';
-    const nombre = data?.nombre ?? user?.name?.split(' ')[0] ?? '';
+    // Backend returns a capitalised first name; capitalise the fallback too.
+    const rawNombre = data?.nombre ?? user?.name?.split(' ')[0] ?? '';
+    const nombre = rawNombre ? rawNombre.charAt(0).toUpperCase() + rawNombre.slice(1).toLowerCase() : '';
     const fecha = data?.fecha_texto ?? '';
     const bolsa = data?.stats?.bolsa ?? {};
     const oposicion = data?.stats?.oposicion ?? {};

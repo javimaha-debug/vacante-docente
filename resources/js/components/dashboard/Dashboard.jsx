@@ -239,7 +239,9 @@ export default function Dashboard() {
             </header>
 
             <main className="scroll-thin min-h-0 flex-1 overflow-y-auto bg-slate-100">
-                <div className="p-4 sm:p-6">
+                {/* Horizontal padding matches the nav bar (px-4) so content lines
+                    up with it and spans the same full width as the Vacantes page. */}
+                <div className="px-4 py-4 sm:py-6">
                     <Outlet />
                 </div>
                 <Footer />

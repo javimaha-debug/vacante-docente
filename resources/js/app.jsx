@@ -492,7 +492,7 @@ function VacancyExplorer({ initialView = 'kanban', focused = false }) {
     }
 
     return (
-        <div className="-m-4 h-full sm:-m-6">
+        <div className="-mx-4 -my-4 h-full sm:-my-6">
             <Organizer
                 specialtyId={specialtyId}
                 onChangeSpecialty={handleChangeSpecialty}

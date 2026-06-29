@@ -848,9 +848,14 @@ class UserProfileController extends Controller
             $greeting = 'Buenas noches';
         }
 
-        // First-name from nombre_gva or user name
-        $rawName = $user->nombre_gva ?: $user->name ?: '';
-        $nombre = explode(' ', trim($rawName))[0] ?? '';
+        // First name from the user's account name (not nombre_gva), capitalised:
+        // "javier" / "JAVIER" → "Javier".
+        $rawName = $user->name ?: '';
+        $nombre = trim(explode(' ', trim($rawName))[0] ?? '');
+        if ($nombre !== '') {
+            $lower = mb_strtolower($nombre);
+            $nombre = mb_strtoupper(mb_substr($lower, 0, 1)).mb_substr($lower, 1);
+        }
 
         // Spanish date: e.g. "lunes, 29 de junio de 2026"
         $meses = ['', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
