@@ -22,7 +22,7 @@ function formatListadoDate(iso) {
 
 // Official position read from the LATEST participant listing for a proceso,
 // via the authenticated /participantes/{proceso}/mi-posicion endpoint.
-function MiPosicionCard({ proceso }) {
+function MiPosicionCard({ proceso, especialidades = [] }) {
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['mi-posicion', proceso?.id],
         enabled: Boolean(proceso?.id),
@@ -35,6 +35,8 @@ function MiPosicionCard({ proceso }) {
     const needsNombre = isError && error?.response?.status === 422;
     const adj = data?.adjudicacion;
     const listadoFecha = formatListadoDate(data?.listado_fecha ?? proceso.fecha);
+    // Fallback: user's stored posicion_bolsa from user_especialidades
+    const fallback = especialidades.find((e) => e.posicion_bolsa != null);
 
     return (
         <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:col-span-2">
@@ -63,7 +65,28 @@ function MiPosicionCard({ proceso }) {
             ) : isError ? (
                 <p className="text-sm text-rose-600">{error?.friendlyMessage ?? 'No se pudo consultar tu posición.'}</p>
             ) : !data?.found ? (
-                <p className="text-sm text-slate-400">No apareces en la lista publicada de este proceso (o aún no está cargada).</p>
+                fallback ? (
+                    <div className="space-y-1">
+                        <div className="flex flex-wrap items-end gap-6">
+                            <div>
+                                <p className="text-xs text-slate-400">Posición en bolsa</p>
+                                <p className="text-3xl font-extrabold tabular-nums text-brand-600">{fallback.posicion_bolsa}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-slate-400">Especialidad</p>
+                                <p className="text-sm font-medium text-slate-700">{fallback.specialty_name}</p>
+                                {fallback.estado_bolsa && (
+                                    <span className={clsx('mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold', ESTADO_BOLSA_STYLES[fallback.estado_bolsa] ?? 'bg-slate-100 text-slate-600')}>
+                                        {fallback.estado_bolsa}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        <p className="text-[11px] text-slate-400">Dato de tu perfil · el listado oficial de este proceso aún no está cargado</p>
+                    </div>
+                ) : (
+                    <p className="text-sm text-slate-400">No apareces en la lista publicada de este proceso (o aún no está cargada).</p>
+                )
             ) : (
                 <div className="space-y-3">
                     {data.cambio && (
@@ -170,7 +193,7 @@ export default function DashboardHome() {
 
     if (isLoading) {
         return (
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2" role="status" aria-label="Cargando panel">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" role="status" aria-label="Cargando panel">
                 {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="animate-pulse rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
                         <div className="mb-4 h-4 w-1/3 rounded bg-slate-200" />
@@ -205,10 +228,10 @@ export default function DashboardHome() {
     const procesoPublicado = procesoListado ?? procesos.find((p) => p.estado === 'publicado') ?? procesos[0] ?? null;
 
     return (
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <DashboardHero />
 
-            <MiPosicionCard proceso={procesoPublicado} />
+            <MiPosicionCard proceso={procesoPublicado} especialidades={data?.mis_especialidades ?? []} />
 
             <Card title="Procesos activos">
                 {procesos.length === 0 ? (
