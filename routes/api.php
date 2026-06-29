@@ -21,6 +21,9 @@ use App\Http\Controllers\Api\SuperAdmin\SistemaController as AdminSistemaControl
 use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripcionesController;
 use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
 use App\Http\Controllers\Api\SuperAdmin\ImportacionesController as AdminImportacionesController;
+use App\Http\Controllers\Api\SuperAdmin\DocumentController as AdminDocumentController;
+use App\Http\Controllers\Api\SuperAdmin\CalendarController as AdminCalendarController;
+use App\Http\Controllers\Api\CalendarController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -129,6 +132,10 @@ Route::prefix('v1')->group(function () {
         Route::get('user/adjudicaciones-continuas', [UserProfileController::class, 'adjudicacionesContinuas']);
         Route::get('user/mis-listados', [UserProfileController::class, 'misListados']);
 
+        // Academic calendar (confirmed, user-visible events) + published docs.
+        Route::get('calendar', [CalendarController::class, 'index']);
+        Route::get('published-documents', [CalendarController::class, 'publishedDocuments']);
+
         // Authenticated vacancy list (kanban) synced to the account.
         Route::get('user/lista', [UserProfileController::class, 'lista']);
         Route::put('user/lista/sync', [UserProfileController::class, 'syncLista']);
@@ -180,6 +187,28 @@ Route::prefix('v1')->group(function () {
 
             Route::get('importaciones/health', [AdminImportacionesController::class, 'health']);
             Route::post('importaciones/run-monitor', [AdminImportacionesController::class, 'runMonitor']);
+
+            // Document monitor: detected documents review/validate/publish.
+            Route::get('documents', [AdminDocumentController::class, 'index']);
+            Route::get('documents/stats', [AdminDocumentController::class, 'stats']);
+            Route::post('documents/upload', [AdminDocumentController::class, 'upload']);
+            Route::get('documents/{document}', [AdminDocumentController::class, 'show']);
+            Route::get('documents/{document}/pdf', [AdminDocumentController::class, 'downloadPdf']);
+            Route::post('documents/{document}/validate', [AdminDocumentController::class, 'validateDoc']);
+            Route::post('documents/{document}/reject', [AdminDocumentController::class, 'reject']);
+            Route::post('documents/{document}/publish', [AdminDocumentController::class, 'publish']);
+
+            Route::get('sources', [AdminDocumentController::class, 'sources']);
+            Route::patch('sources/{source}', [AdminDocumentController::class, 'updateSource']);
+            Route::post('sources/{source}/check', [AdminDocumentController::class, 'checkSource']);
+
+            // Academic calendar management.
+            Route::get('calendar', [AdminCalendarController::class, 'index']);
+            Route::post('calendar', [AdminCalendarController::class, 'store']);
+            Route::patch('calendar/{event}', [AdminCalendarController::class, 'update']);
+            Route::delete('calendar/{event}', [AdminCalendarController::class, 'destroy']);
+            Route::post('calendar/{event}/confirm', [AdminCalendarController::class, 'confirm']);
+            Route::post('calendar/{event}/publish', [AdminCalendarController::class, 'publish']);
 
             Route::get('sistema/status', [AdminSistemaController::class, 'status']);
             Route::get('sistema/logs', [AdminSistemaController::class, 'logs']);

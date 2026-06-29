@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             VacancySeeder::class,
             PlanesSeeder::class,
             SuperAdminSeeder::class,
+            DocumentMonitorSeeder::class,
         ]);
     }
 }
