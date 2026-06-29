@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/api';
 import { useDocuments } from './useAsistente';
+import AiDisclaimer from '../../legal/AiDisclaimer';
 
 // Chat mode: a conversation thread with RAG citations under assistant turns.
 export default function ChatView({ conversationId, onConversationCreated }) {
@@ -72,6 +73,8 @@ export default function ChatView({ conversationId, onConversationCreated }) {
                     )}
                 </div>
             )}
+
+            <AiDisclaimer className="mt-3" />
 
             <div ref={scrollRef} className="scroll-thin flex-1 space-y-3 overflow-y-auto py-4">
                 {localMsgs.length === 0 && (

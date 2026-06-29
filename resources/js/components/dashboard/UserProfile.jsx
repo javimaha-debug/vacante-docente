@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import api from '../../lib/api';
 import { useDebounce } from '../../hooks/useDebounce';
 import PushToggle from './PushToggle';
+import PrivacidadCuenta from './PrivacidadCuenta';
 
 function Toggle({ checked, onChange, label }) {
     return (
@@ -225,6 +226,8 @@ export default function UserProfile() {
                 {mutation.isError && <span className="text-sm text-red-600">{mutation.error?.friendlyMessage}</span>}
             </div>
         </form>
+
+        <PrivacidadCuenta />
         </div>
     );
 }

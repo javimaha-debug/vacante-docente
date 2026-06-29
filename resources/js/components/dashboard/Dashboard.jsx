@@ -7,6 +7,7 @@ import NotificationBell from './NotificationBell';
 import OnboardingWizard from '../onboarding/OnboardingWizard';
 import ImpersonationBanner from '../shared/ImpersonationBanner';
 import { LogoHorizontalTeal } from '../brand/DoccentiaLogo';
+import Footer from '../legal/Footer';
 
 // Sidebar/nav items per active mode (Part 12).
 const NAV_BY_MODE = {
@@ -234,8 +235,11 @@ export default function Dashboard() {
                 )}
             </header>
 
-            <main className="scroll-thin min-h-0 flex-1 overflow-y-auto bg-slate-100 p-4 sm:p-6">
-                <Outlet />
+            <main className="scroll-thin min-h-0 flex-1 overflow-y-auto bg-slate-100">
+                <div className="p-4 sm:p-6">
+                    <Outlet />
+                </div>
+                <Footer />
             </main>
         </div>
     );

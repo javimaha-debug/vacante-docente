@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Policies\FeaturePolicy;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,6 +36,7 @@ class User extends Authenticatable
         'notificaciones_email',
         'avatar_url',
         'locale',
+        'terms_accepted_at',
         'modo_activo',
         'ccaa_preferidas',
         'onboarding_completed',
@@ -95,6 +97,7 @@ class User extends Authenticatable
             'onboarding_completed' => 'boolean',
             'plan_expires_at' => 'datetime',
             'last_active_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
             'trial_ends_at' => 'datetime',
             'suspended_at' => 'datetime',
             'storage_used_bytes' => 'integer',
@@ -176,7 +179,7 @@ class User extends Authenticatable
      */
     public function hasFeature(string $feature): bool
     {
-        return app(\App\Policies\FeaturePolicy::class)->hasFeature($this, $feature);
+        return app(FeaturePolicy::class)->hasFeature($this, $feature);
     }
 
     /**

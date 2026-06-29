@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\AiConversationController;
 use App\Http\Controllers\Api\CalendarController;
@@ -161,6 +162,13 @@ Route::prefix('v1')->group(function () {
         Route::get('user/me', [UserProfileController::class, 'me']);
         Route::get('user/profile', [UserProfileController::class, 'show']);
         Route::put('user/profile', [UserProfileController::class, 'update']);
+
+        // Data-subject rights (RGPD): export a copy of all personal data
+        // (portability, art. 20) and permanently delete the account (erasure,
+        // art. 17).
+        Route::get('user/export', [AccountController::class, 'export'])->middleware('throttle:6,1');
+        Route::delete('user/account', [AccountController::class, 'destroy']);
+
         Route::put('user/modo', [UserProfileController::class, 'updateModo']);
         Route::put('user/onboarding', [UserProfileController::class, 'onboarding']);
         // Exit an impersonation session (called with the impersonation token).

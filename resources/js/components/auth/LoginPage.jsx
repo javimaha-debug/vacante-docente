@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { LogoHorizontalTeal } from '../brand/DoccentiaLogo';
+import Footer from '../legal/Footer';
 
 const PROVIDER_META = {
     google: { label: 'Google', icon: GoogleIcon },
@@ -12,6 +14,7 @@ export default function LoginPage() {
     const { login } = useAuth();
     const [mode, setMode] = useState('login'); // 'login' | 'register'
     const [form, setForm] = useState({ name: '', email: '', password: '', password_confirmation: '' });
+    const [acepto, setAcepto] = useState(false);
     const [providers, setProviders] = useState([]);
     const [error, setError] = useState(null);
     const [busy, setBusy] = useState(false);
@@ -39,7 +42,7 @@ export default function LoginPage() {
         try {
             const path = mode === 'register' ? '/auth/register' : '/auth/login';
             const payload = mode === 'register'
-                ? form
+                ? { ...form, acepto_condiciones: acepto }
                 : { email: form.email, password: form.password };
             const { data } = await api.post(path, payload);
             await login(data.token);
@@ -56,7 +59,8 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-full items-center justify-center bg-gradient-to-b from-brand-50 to-slate-100 px-4 py-12">
+        <div className="flex min-h-full flex-col bg-gradient-to-b from-brand-50 to-slate-100">
+            <div className="flex flex-1 items-center justify-center px-4 py-12">
             <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200 sm:p-10">
                 <div className="text-center">
                     <LogoHorizontalTeal className="mx-auto h-10 w-auto" />
@@ -97,11 +101,29 @@ export default function LoginPage() {
                         <Field label="Repite la contraseña" type="password" autoComplete="new-password" value={form.password_confirmation} onChange={(v) => set('password_confirmation', v)} required />
                     )}
 
+                    {mode === 'register' && (
+                        <label className="flex items-start gap-2 pt-1 text-xs text-slate-600">
+                            <input
+                                type="checkbox"
+                                checked={acepto}
+                                onChange={(e) => setAcepto(e.target.checked)}
+                                required
+                                className="mt-0.5 h-4 w-4 rounded text-brand-600 focus:ring-brand-500"
+                            />
+                            <span>
+                                He leído y acepto los{' '}
+                                <Link to="/legal/terminos" target="_blank" className="font-semibold text-brand-700 underline">Términos y condiciones</Link>{' '}
+                                y la{' '}
+                                <Link to="/legal/privacidad" target="_blank" className="font-semibold text-brand-700 underline">Política de privacidad</Link>.
+                            </span>
+                        </label>
+                    )}
+
                     {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
 
                     <button
                         type="submit"
-                        disabled={busy}
+                        disabled={busy || (mode === 'register' && !acepto)}
                         className="w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-60"
                     >
                         {busy ? 'Un momento…' : mode === 'register' ? 'Crear cuenta' : 'Entrar'}
@@ -136,9 +158,12 @@ export default function LoginPage() {
                 )}
 
                 <p className="mt-6 text-center text-xs text-slate-400">
-                    Tus datos son privados y no se comparten con terceros
+                    Tratamos tus datos conforme a nuestra{' '}
+                    <Link to="/legal/privacidad" className="font-medium text-brand-600 underline">Política de privacidad</Link>.
                 </p>
             </div>
+            </div>
+            <Footer />
         </div>
     );
 }
