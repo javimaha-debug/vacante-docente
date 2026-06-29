@@ -72,3 +72,18 @@ Schedule::command('temarios:sync-boe')
     ->timezone('Europe/Madrid')
     ->name('temarios-sync-boe')
     ->withoutOverlapping();
+
+// Curriculum content sync (BOE/DOGV): first Sunday of each month at 04:00.
+Schedule::command('curriculo:sync-boe')
+    ->weeklyOn(0, '04:00')
+    ->when(fn () => (int) now('Europe/Madrid')->day <= 7)
+    ->timezone('Europe/Madrid')
+    ->name('curriculo-sync-boe')
+    ->withoutOverlapping();
+
+Schedule::command('curriculo:sync-dogv')
+    ->weeklyOn(0, '04:30')
+    ->when(fn () => (int) now('Europe/Madrid')->day <= 7)
+    ->timezone('Europe/Madrid')
+    ->name('curriculo-sync-dogv')
+    ->withoutOverlapping();

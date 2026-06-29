@@ -29,10 +29,12 @@ const NAV_BY_MODE = {
         { to: '/dashboard/asistente', label: 'Asistente IA', icon: '✨' },
     ],
     docente: [
-        { to: '/dashboard/aula', label: 'Mi aula', icon: '🧑‍🏫', comingSoon: true },
-        { to: '/dashboard/normativa', label: 'Normativa', icon: '📄', comingSoon: true },
-        { to: '/dashboard/asistente', label: 'Asistente IA', icon: '✨', comingSoon: true },
-        { to: '/dashboard/recursos', label: 'Banco de recursos', icon: '📚' },
+        { to: '/dashboard/docente/programacion', label: 'Mi programación', icon: '📖' },
+        { to: '/dashboard/docente/horario', label: 'Mi horario', icon: '🗓️' },
+        { to: '/dashboard/docente/recursos', label: 'Mis recursos', icon: '🛠️' },
+        { to: '/dashboard/docente/banco', label: 'Banco compartido', icon: '📚' },
+        { to: '/dashboard/docente/meritos', label: 'Mis méritos', icon: '🏅' },
+        { to: '/dashboard/docente/asistente', label: 'Asistente IA', icon: '✨' },
     ],
 };
 
