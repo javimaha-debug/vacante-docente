@@ -20,9 +20,9 @@ const NAV_BY_MODE = {
         { to: '/dashboard/tablon', label: 'Tablón', icon: '📌' },
     ],
     oposicion: [
-        { to: '/dashboard/oposicion', label: 'Mi preparación', icon: '📖', comingSoon: true },
-        { to: '/dashboard/normativa', label: 'Normativa', icon: '📄', comingSoon: true },
-        { to: '/dashboard/convocatorias', label: 'Convocatorias', icon: '📅', comingSoon: true },
+        { to: '/dashboard/oposicion', label: 'Mi preparación', icon: '📖' },
+        { to: '/dashboard/normativa', label: 'Normativa', icon: '📄' },
+        { to: '/dashboard/convocatorias', label: 'Convocatorias', icon: '📅' },
         { to: '/dashboard/asistente', label: 'Asistente IA', icon: '✨', comingSoon: true },
     ],
     docente: [

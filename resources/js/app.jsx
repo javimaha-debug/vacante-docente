@@ -23,6 +23,9 @@ import MisEspecialidades from './components/dashboard/MisEspecialidades';
 import PlanesPage from './components/dashboard/PlanesPage';
 import MiPosicion from './components/dashboard/MiPosicion';
 import CalendarioPage from './components/dashboard/CalendarioPage';
+import MiPreparacion from './components/oposicion/MiPreparacion';
+import Normativa from './components/oposicion/Normativa';
+import Convocatorias from './components/oposicion/Convocatorias';
 
 import AdminLayout from './components/superadmin/AdminLayout';
 import AdminDashboard from './components/superadmin/AdminDashboard';
@@ -34,6 +37,8 @@ import AdminMetricas from './components/superadmin/AdminMetricas';
 import AdminSistema from './components/superadmin/AdminSistema';
 import AdminMonitorDocs from './components/superadmin/AdminMonitorDocs';
 import AdminCalendario from './components/superadmin/AdminCalendario';
+import AdminConvocatorias from './components/superadmin/AdminConvocatorias';
+import AdminNormativa from './components/superadmin/AdminNormativa';
 import CentrosList from './components/centros/CentrosList';
 import CentroDetail from './components/centros/CentroDetail';
 import TablonList from './components/tablon/TablonList';
@@ -549,9 +554,11 @@ function AppRoutes() {
                 <Route path="tablon/nuevo" element={<TablonForm />} />
                 <Route path="tablon/mis-anuncios" element={<MisAnuncios />} />
                 <Route path="calendario" element={<CalendarioPage />} />
-                {/* Mode-specific sections not yet built (oposición / docente). */}
-                <Route path="normativa" element={<ComingSoon title="Normativa" />} />
-                <Route path="convocatorias" element={<ComingSoon title="Convocatorias" />} />
+                {/* Modo Oposición sections. */}
+                <Route path="oposicion" element={<MiPreparacion />} />
+                <Route path="normativa" element={<Normativa />} />
+                <Route path="convocatorias" element={<Convocatorias />} />
+                {/* Sections not yet built (asistente IA / docente). */}
                 <Route path="asistente" element={<ComingSoon title="Asistente IA" />} />
                 <Route path="recursos" element={<ComingSoon title="Banco de recursos" />} />
             </Route>
@@ -569,6 +576,8 @@ function AppRoutes() {
                 <Route path="usuarios" element={<AdminUsuarios />} />
                 <Route path="usuarios/:id" element={<AdminUsuarioDetalle />} />
                 <Route path="suscripciones" element={<AdminSuscripciones />} />
+                <Route path="convocatorias" element={<AdminConvocatorias />} />
+                <Route path="normativa" element={<AdminNormativa />} />
                 <Route path="importaciones" element={<SuperAdminImportaciones />} />
                 <Route path="monitor-docs" element={<AdminMonitorDocs />} />
                 <Route path="calendario" element={<AdminCalendario />} />

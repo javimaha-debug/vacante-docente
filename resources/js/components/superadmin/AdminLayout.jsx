@@ -11,6 +11,8 @@ const NAV = [
     { to: '/superadmin', label: 'Dashboard', end: true, icon: '📊' },
     { to: '/superadmin/usuarios', label: 'Usuarios', icon: '👥' },
     { to: '/superadmin/suscripciones', label: 'Suscripciones', icon: '💳' },
+    { to: '/superadmin/convocatorias', label: 'Convocatorias', icon: '📅' },
+    { to: '/superadmin/normativa', label: 'Normativa', icon: '📄' },
     { to: '/superadmin/importaciones', label: 'Importaciones', icon: '🔄' },
     { to: '/superadmin/monitor-docs', label: 'Monitor Docs', icon: '📑', badge: 'docs-pending' },
     { to: '/superadmin/calendario', label: 'Calendario', icon: '📅' },
