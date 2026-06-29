@@ -86,7 +86,7 @@ export default function TablonList() {
     return (
         <div className="mx-auto max-w-3xl">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <h1 className="text-lg font-bold text-slate-800">Tablón de anuncios</h1>
+                <h1 className="font-heading text-xl font-bold text-slate-800">Tablón de anuncios</h1>
                 <div className="flex gap-2">
                     <Link to="/dashboard/tablon/mis-anuncios" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">Mis anuncios</Link>
                     {canPublish ? (

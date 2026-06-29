@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -52,9 +53,14 @@ abstract class AbstractCloudImportController extends Controller
             return response()->json(['message' => 'Esta integración no está configurada todavía.'], 503);
         }
 
+        // Single-use nonce: stored server-side now, consumed (pulled) once at
+        // callback so a captured state/code can't be replayed.
+        $nonce = Str::random(40);
+        Cache::put('cloud_oauth_nonce:'.$nonce, $request->user()->id, now()->addMinutes(10));
+
         $state = Crypt::encryptString(json_encode([
             'uid' => $request->user()->id,
-            'nonce' => Str::random(16),
+            'nonce' => $nonce,
             'exp' => now()->addMinutes(10)->timestamp,
         ]));
 
@@ -130,11 +136,19 @@ abstract class AbstractCloudImportController extends Controller
         }
 
         $bytes = strlen($file['contents']);
+
+        // Server-side validation (the cloud APIs are untrusted): enforce the
+        // same extension allow-list, size cap and real-content MIME check as
+        // direct uploads, so a .php/.html/oversized file can't be imported.
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'bin');
+        abort_unless(in_array($ext, (array) config('documents.allowed_ext'), true), 422, 'Tipo de archivo no permitido.');
+        abort_if($bytes > (int) config('documents.max_kb') * 1024, 422, 'El archivo supera el tamaño máximo permitido.');
+        $this->assertContentMatchesExtension($file['contents'], $ext);
+
         if ($user->exceedsStorage($bytes)) {
             return response()->json(['message' => 'No tienes espacio suficiente para importar este archivo.'], 422);
         }
 
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'bin');
         $path = "users/{$user->id}/docs/".Str::uuid()->toString().'.'.$ext;
         Storage::disk(config('documents.disk'))->put($path, $file['contents']);
 
@@ -194,7 +208,46 @@ abstract class AbstractCloudImportController extends Controller
             return null;
         }
 
-        return (int) ($payload['uid'] ?? 0) ?: null;
+        // Single-use: the nonce must still exist and map to the same user.
+        $nonce = $payload['nonce'] ?? null;
+        $uid = (int) ($payload['uid'] ?? 0);
+        if (! is_string($nonce) || $nonce === '') {
+            return null;
+        }
+        $cachedUid = Cache::pull('cloud_oauth_nonce:'.$nonce);
+        if ($cachedUid === null || (int) $cachedUid !== $uid) {
+            return null;
+        }
+
+        return $uid ?: null;
+    }
+
+    /**
+     * Verify the downloaded bytes' real MIME (via finfo) matches the claimed
+     * extension — never trust the remote API's declared name/type. Aborts 422
+     * on mismatch (e.g. a .php renamed to .pdf).
+     */
+    protected function assertContentMatchesExtension(string $contents, string $ext): void
+    {
+        $mime = (string) (finfo_buffer(finfo_open(FILEINFO_MIME_TYPE), $contents) ?: '');
+
+        // Office/zip-based formats are detected inconsistently across libmagic
+        // versions, so allow their known aliases (incl. a generic fallback).
+        $allowed = [
+            'pdf' => ['application/pdf'],
+            'doc' => ['application/msword', 'application/octet-stream'],
+            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/octet-stream'],
+            'jpg' => ['image/jpeg'],
+            'jpeg' => ['image/jpeg'],
+            'png' => ['image/png'],
+            'webp' => ['image/webp', 'image/webp', 'application/octet-stream'],
+        ];
+
+        abort_unless(
+            in_array($mime, $allowed[$ext] ?? [], true),
+            422,
+            'El contenido del archivo no coincide con su tipo declarado.'
+        );
     }
 
     protected function typeFromExt(string $ext): string

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProcessDocumentJob;
 use App\Models\UserDocument;
 use App\Models\UserDocumentTag;
+use App\Models\UserFolder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -172,7 +173,10 @@ class UserDocumentController extends Controller
     /** Signed, short-lived streaming endpoint — never exposes the storage path. */
     public function view(Request $request, UserDocument $document): StreamedResponse
     {
-        // Signature already validated by the 'signed' middleware.
+        // Signature already validated by the 'signed' middleware. Defense in
+        // depth: the link is bound to the owner's id (signed, so untamperable).
+        abort_unless((int) $request->query('uid') === (int) $document->user_id, 403);
+
         $disk = Storage::disk($this->disk());
         abort_unless($disk->exists($document->disk_path), 404);
 
@@ -184,6 +188,8 @@ class UserDocumentController extends Controller
     /** Stream the stored thumbnail (signed). */
     public function thumbnail(Request $request, UserDocument $document): StreamedResponse
     {
+        abort_unless((int) $request->query('uid') === (int) $document->user_id, 403);
+
         $disk = Storage::disk($this->disk());
         abort_unless($document->thumbnail_path && $disk->exists($document->thumbnail_path), 404);
 
@@ -211,7 +217,7 @@ class UserDocumentController extends Controller
             'notes' => $d->notes,
             'has_thumbnail' => (bool) $d->thumbnail_path,
             'thumbnail_url' => $d->thumbnail_path
-                ? URL::temporarySignedRoute('documents.thumbnail', now()->addMinutes((int) config('documents.view_ttl_minutes')), ['document' => $d->id])
+                ? URL::temporarySignedRoute('documents.thumbnail', now()->addMinutes((int) config('documents.view_ttl_minutes')), ['document' => $d->id, 'uid' => $d->user_id])
                 : null,
             'tags' => $d->relationLoaded('tags') ? $d->tags : [],
             'created_at' => $d->created_at,
@@ -222,7 +228,7 @@ class UserDocumentController extends Controller
             $base['view_url'] = URL::temporarySignedRoute(
                 'documents.view',
                 now()->addMinutes((int) config('documents.view_ttl_minutes')),
-                ['document' => $d->id],
+                ['document' => $d->id, 'uid' => $d->user_id],
             );
         }
 
@@ -247,7 +253,7 @@ class UserDocumentController extends Controller
     private function assertOwnsFolder(Request $request, int $folderId): void
     {
         abort_unless(
-            \App\Models\UserFolder::where('id', $folderId)->where('user_id', $request->user()->id)->exists(),
+            UserFolder::where('id', $folderId)->where('user_id', $request->user()->id)->exists(),
             403,
         );
     }

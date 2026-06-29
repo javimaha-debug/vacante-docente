@@ -96,3 +96,20 @@ export function Badge({ children, tone = 'slate' }) {
 export function statusTone(status) {
     return { active: 'green', trialing: 'blue', past_due: 'amber', canceled: 'red', none: 'slate' }[status] ?? 'slate';
 }
+
+/** Spanish labels for the raw backend enum values shown in the admin panel. */
+export const ENUM_LABELS = {
+    status: { active: 'Activa', trialing: 'En prueba', past_due: 'Pago pendiente', canceled: 'Cancelada', none: 'Sin suscripción' },
+    plan_status: { active: 'Activo', trialing: 'En prueba', past_due: 'Pago pendiente', canceled: 'Cancelado', none: 'Sin suscripción' },
+    role: { user: 'Usuario', admin: 'Administrador', superadmin: 'Superadmin' },
+    estado: { rumor: 'Rumor', anunciada: 'Anunciada', convocada: 'Convocada', en_proceso: 'En proceso', resuelta: 'Resuelta' },
+    document_status: { pending: 'Pendiente', validated: 'Validado', rejected: 'Rechazado', published: 'Publicado' },
+    document_type: { listado_provisional: 'Lista provisional', listado_definitivo: 'Lista definitiva', vacantes: 'Vacantes', resolucion: 'Resolución', convocatoria: 'Convocatoria', otro: 'Otro' },
+};
+
+/** Translate a raw enum value to its Spanish label (falls back to the value). */
+export function enumLabel(group, value) {
+    if (value == null || value === '') return '—';
+
+    return ENUM_LABELS[group]?.[value] ?? value;
+}

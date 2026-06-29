@@ -120,7 +120,7 @@ class GvaAutoImportTest extends TestCase
         \Laravel\Sanctum\Sanctum::actingAs($plain);
         $this->getJson('/api/v1/admin/gva-importaciones')->assertForbidden();
 
-        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        $admin = \App\Models\User::factory()->create(['role' => 'superadmin']);
         \Laravel\Sanctum\Sanctum::actingAs($admin);
         $this->getJson('/api/v1/admin/gva-importaciones')
             ->assertOk()
@@ -138,7 +138,7 @@ class GvaAutoImportTest extends TestCase
 
         Http::fake(['ceice.gva.es/*' => Http::response('%PDF-fake', 200)]);
 
-        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        $admin = \App\Models\User::factory()->create(['role' => 'superadmin']);
         \Laravel\Sanctum\Sanctum::actingAs($admin);
 
         // Import is attempted into the chosen proceso (parse will fail without a
@@ -154,7 +154,7 @@ class GvaAutoImportTest extends TestCase
         $this->seed(\Database\Seeders\CcaaSeeder::class);
         $this->seed(\Database\Seeders\ColectivoSeeder::class);
 
-        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        $admin = \App\Models\User::factory()->create(['role' => 'superadmin']);
         \Laravel\Sanctum\Sanctum::actingAs($admin);
 
         $this->postJson('/api/v1/admin/procesos', ['anyo' => 2024])
@@ -169,7 +169,7 @@ class GvaAutoImportTest extends TestCase
         \Illuminate\Support\Facades\Queue::fake();
         $proceso = $this->makeProceso('INTERINO', 'SECUNDARIA', 'Interins Secundària 2024-2025', 2024);
 
-        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        $admin = \App\Models\User::factory()->create(['role' => 'superadmin']);
         \Laravel\Sanctum\Sanctum::actingAs($admin);
 
         $this->postJson('/api/v1/admin/importaciones/manual', [
@@ -200,7 +200,7 @@ class GvaAutoImportTest extends TestCase
         config(['gva.auto_import' => true]);
 
         $this->makeProceso('INTERINO', 'MAESTROS', 'Interins Mestres 2026-2027');
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['role' => 'superadmin']);
 
         $html = '<html><body><a href="/docs/ini_2026_par_pro_int_lis_mae.pdf">Llistat participants mestres</a></body></html>';
 

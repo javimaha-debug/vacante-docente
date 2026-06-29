@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import api from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
     CUERPO_LABEL,
     StatusBadge,
@@ -550,9 +551,10 @@ function MiniCalendar({ studiedDays }) {
 
 function ModalShell({ title, onClose, children }) {
     useEscapeKey(onClose);
+    const trapRef = useFocusTrap();
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
-            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div ref={trapRef} role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between">
                     <h3 className="font-heading text-base font-bold text-slate-800">{title}</h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>

@@ -67,6 +67,27 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(40)->by($request->ip());
         });
 
+        // AI assistant: paid LLM calls. Per-minute cap per user on top of the
+        // existing per-day cap, so a script can't burn the budget in seconds.
+        RateLimiter::for('ai', function (Request $request) {
+            return Limit::perMinute(10)->by((string) ($request->user()?->id ?? $request->ip()));
+        });
+
+        // Flashcard/simulacro generation is heavier — tighter per-minute cap.
+        RateLimiter::for('ai-generate', function (Request $request) {
+            return Limit::perMinute(5)->by((string) ($request->user()?->id ?? $request->ip()));
+        });
+
+        // Document uploads/imports spawn processing jobs — cap per hour per user.
+        RateLimiter::for('uploads', function (Request $request) {
+            return Limit::perHour(20)->by((string) ($request->user()?->id ?? $request->ip()));
+        });
+
+        // School directory search — DoS guard that still allows fluid browsing.
+        RateLimiter::for('centros', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
         // Scope the {userList} route binding to its owner so one session can't
         // read or mutate another's list (and home address) by guessing its
         // sequential id (IDOR — audit finding SEC-C1). Ownership is proven by

@@ -64,7 +64,7 @@ export default function CentrosList() {
     return (
         <div className="mx-auto max-w-5xl">
             <div className="mb-4 flex items-center justify-between">
-                <h1 className="text-lg font-bold text-slate-800">Centros</h1>
+                <h1 className="font-heading text-xl font-bold text-slate-800">Centros</h1>
                 <div className="flex rounded-lg bg-slate-100 p-0.5">
                     <button
                         type="button"

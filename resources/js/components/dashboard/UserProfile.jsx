@@ -150,7 +150,7 @@ export default function UserProfile() {
         <div className="mx-auto max-w-2xl space-y-6">
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-                <h1 className="text-lg font-bold text-slate-800">Mi Perfil</h1>
+                <h1 className="font-heading text-xl font-bold text-slate-800">Mi Perfil</h1>
                 <p className="mt-1 text-sm text-slate-500">Estos datos personalizan tu panel y los cálculos de distancia.</p>
 
                 <div className="mt-5 space-y-5">

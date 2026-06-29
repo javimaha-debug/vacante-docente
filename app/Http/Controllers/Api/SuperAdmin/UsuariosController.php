@@ -186,7 +186,10 @@ class UsuariosController extends Controller
             return response()->json(['message' => 'No puedes suplantarte a ti mismo.'], 422);
         }
 
-        $newToken = $usuario->createToken('impersonation');
+        // 2-hour DB-level expiry so the token auto-expires even if the cache
+        // marker is evicted; the marker is only for audit/recognition.
+        $expiresAt = now()->addHours(2);
+        $newToken = $usuario->createToken('impersonation', ['*'], $expiresAt);
         $token = $newToken->plainTextToken;
         $tokenId = $newToken->accessToken->getKey();
 
@@ -194,7 +197,7 @@ class UsuariosController extends Controller
             'admin_id' => $admin->id,
             'admin_name' => $admin->name,
             'user_id' => $usuario->id,
-        ], now()->addHours(2));
+        ], $expiresAt);
 
         AdminNota::create([
             'user_id' => $usuario->id,

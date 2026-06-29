@@ -5,9 +5,9 @@ import api from '../../lib/api';
 import { typeMeta } from '../../lib/calendar';
 
 const ESTADO_BOLSA_STYLES = {
-    Activat: 'bg-green-100 text-green-700',
+    Activat: 'bg-emerald-50 text-emerald-700',
     Desactivat: 'bg-slate-100 text-slate-600',
-    Adjudicat: 'bg-blue-100 text-blue-700',
+    Adjudicat: 'bg-blue-50 text-blue-700',
 };
 
 function formatListadoDate(iso) {
@@ -93,8 +93,8 @@ function MiPosicionCard({ proceso }) {
 
 const ESTADO_STYLES = {
     pendiente: 'bg-slate-100 text-slate-600',
-    publicado: 'bg-green-100 text-green-700',
-    cerrado: 'bg-red-100 text-red-700',
+    publicado: 'bg-emerald-50 text-emerald-700',
+    cerrado: 'bg-rose-50 text-rose-700',
 };
 
 function EstadoBadge({ estado }) {
@@ -370,8 +370,8 @@ function AdjudicacionesContinuasCard() {
 }
 
 const ESTADO_HISTORIAL_STYLES = {
-    Adjudicat: 'bg-blue-100 text-blue-700',
-    Activat: 'bg-green-100 text-green-700',
+    Adjudicat: 'bg-blue-50 text-blue-700',
+    Activat: 'bg-emerald-50 text-emerald-700',
     Desactivat: 'bg-slate-100 text-slate-600',
 };
 

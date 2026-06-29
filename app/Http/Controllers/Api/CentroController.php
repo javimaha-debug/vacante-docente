@@ -57,6 +57,21 @@ class CentroController extends Controller
         $page = (int) ($data['page'] ?? 1);
 
         if ($hasOrigin) {
+            // Bound the candidate set with a SQL bounding box before the PHP
+            // Haversine pass, so a proximity search no longer scans the whole
+            // centros table. ~111 km per degree of latitude; longitude scaled
+            // by cos(lat). When no radius is given we use a generous default
+            // box so results stay relevant without reading every row.
+            $radiusKm = ! empty($data['radius']) ? (float) $data['radius'] : 100.0;
+            $lat = (float) $data['lat'];
+            $lng = (float) $data['lng'];
+            $deltaLat = $radiusKm / 111.0;
+            $deltaLng = $radiusKm / max(1.0, 111.0 * cos(deg2rad($lat)));
+
+            $query->whereNotNull('latitude')->whereNotNull('longitude')
+                ->whereBetween('latitude', [$lat - $deltaLat, $lat + $deltaLat])
+                ->whereBetween('longitude', [$lng - $deltaLng, $lng + $deltaLng]);
+
             // Proximity search: compute distances in PHP, filter by radius, sort.
             $collection = $query->orderBy('nombre')->get()
                 ->map(function (Centro $c) use ($data) {

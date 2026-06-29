@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import { SkeletonRows, ErrorState, Badge, statusTone } from './ui';
+import { SkeletonRows, ErrorState, Badge, statusTone, enumLabel } from './ui';
 
 const PLANES = ['', 'free', 'interino', 'opositor', 'docente_pro', 'todo_en_uno'];
 
@@ -72,9 +72,9 @@ export default function AdminUsuarios() {
                                         <td className="px-4 py-2">
                                             {u.suspended
                                                 ? <Badge tone="red">Suspendido</Badge>
-                                                : <Badge tone={statusTone(u.plan_status)}>{u.plan_status}</Badge>}
+                                                : <Badge tone={statusTone(u.plan_status)}>{enumLabel('plan_status', u.plan_status)}</Badge>}
                                         </td>
-                                        <td className="px-4 py-2 text-slate-400">{u.role}</td>
+                                        <td className="px-4 py-2 text-slate-400">{enumLabel('role', u.role)}</td>
                                         <td className="px-4 py-2 text-xs text-slate-500">
                                             {u.last_active_at ? new Date(u.last_active_at).toLocaleDateString('es-ES') : '—'}
                                         </td>

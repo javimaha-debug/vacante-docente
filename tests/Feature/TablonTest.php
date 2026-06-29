@@ -131,7 +131,7 @@ class TablonTest extends TestCase
             $this->getJson('/api/v1/admin/gva-noticias')->assertForbidden();
         }
 
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['role' => 'superadmin']);
         Sanctum::actingAs($admin);
         $this->getJson('/api/v1/admin/gva-noticias')->assertOk()->assertJsonCount(1, 'data');
     }

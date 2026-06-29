@@ -74,7 +74,7 @@ export default function CentroDetail() {
             <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
                 <div className="flex items-start justify-between gap-2">
                     <div>
-                        <h1 className="text-lg font-bold text-slate-800">{centro.nombre}</h1>
+                        <h1 className="font-heading text-xl font-bold text-slate-800">{centro.nombre}</h1>
                         <p className="text-sm text-slate-500">{centro.localidad} · {centro.provincia}</p>
                     </div>
                     <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-700">{centro.tipo}</span>

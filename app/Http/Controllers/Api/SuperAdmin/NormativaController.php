@@ -89,7 +89,7 @@ class NormativaController extends Controller
         $data = $this->validatePayload($request, true);
 
         if ($request->hasFile('pdf')) {
-            $data['pdf_path'] = $request->file('pdf')->store('normativa', 'public');
+            $data['pdf_path'] = $request->file('pdf')->store('normativa', 'local');
         }
 
         $data['published_by'] = $request->user()->id;
@@ -109,9 +109,9 @@ class NormativaController extends Controller
 
         if ($request->hasFile('pdf')) {
             if ($normativa->pdf_path) {
-                Storage::disk('public')->delete($normativa->pdf_path);
+                Storage::disk('local')->delete($normativa->pdf_path);
             }
-            $data['pdf_path'] = $request->file('pdf')->store('normativa', 'public');
+            $data['pdf_path'] = $request->file('pdf')->store('normativa', 'local');
         }
 
         $normativa->fill($data)->save();
@@ -125,7 +125,7 @@ class NormativaController extends Controller
     public function destroy(NormativaDocumento $normativa): JsonResponse
     {
         if ($normativa->pdf_path) {
-            Storage::disk('public')->delete($normativa->pdf_path);
+            Storage::disk('local')->delete($normativa->pdf_path);
         }
 
         $normativa->delete();
@@ -171,7 +171,7 @@ class NormativaController extends Controller
             'especialidad_code' => $d->especialidad_code,
             'cuerpo' => $d->cuerpo,
             'url_oficial' => $d->url_oficial,
-            'pdf_url' => $d->pdf_path ? Storage::disk('public')->url($d->pdf_path) : null,
+            'pdf_url' => \App\Http\Controllers\Api\NormativaController::pdfUrl($d),
             'fecha_publicacion' => $d->fecha_publicacion?->toDateString(),
             'vigente' => (bool) $d->vigente,
             'fuente' => $d->fuente ?? 'manual',

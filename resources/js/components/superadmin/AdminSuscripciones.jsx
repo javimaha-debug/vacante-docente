@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { SkeletonRows, ErrorState, Badge, statusTone } from './ui';
+import { SkeletonRows, ErrorState, Badge, statusTone, enumLabel } from './ui';
 
 export default function AdminSuscripciones() {
     const [status, setStatus] = useState('');
@@ -52,7 +52,7 @@ export default function AdminSuscripciones() {
                                             <p className="text-xs text-slate-500">{s.email}</p>
                                         </td>
                                         <td className="px-4 py-2 text-slate-300">{s.plan_codigo}</td>
-                                        <td className="px-4 py-2"><Badge tone={statusTone(s.status)}>{s.status}</Badge></td>
+                                        <td className="px-4 py-2"><Badge tone={statusTone(s.status)}>{enumLabel('status', s.status)}</Badge></td>
                                         <td className="px-4 py-2 text-xs text-slate-500">
                                             {s.current_period_end ? new Date(s.current_period_end).toLocaleDateString('es-ES') : '—'}
                                             {s.cancel_at_period_end && <span className="ml-1 text-amber-400">(cancela)</span>}
