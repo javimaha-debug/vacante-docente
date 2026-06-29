@@ -80,6 +80,7 @@ function ModeSelector() {
     const { user, refresh, patchUser } = useAuth();
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
+    const navigate = useNavigate();
     const active = MODOS.find((m) => m.value === user?.modo_activo) ?? MODOS[0];
 
     useClickOutside(ref, () => setOpen(false));
@@ -89,11 +90,15 @@ function ModeSelector() {
         if (modo === user?.modo_activo) return;
         const previous = user?.modo_activo;
         patchUser({ modo_activo: modo }); // optimistic
+        const defaultRoute = (NAV_BY_MODE[modo] ?? NAV_BY_MODE.bolsa)[0].to;
+        navigate(defaultRoute);
         try {
             await api.put('/user/modo', { modo_activo: modo });
             await refresh();
         } catch {
             patchUser({ modo_activo: previous }); // revert on failure
+            const fallback = (NAV_BY_MODE[previous] ?? NAV_BY_MODE.bolsa)[0].to;
+            navigate(fallback);
         }
     };
 
