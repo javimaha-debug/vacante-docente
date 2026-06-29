@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Convocatoria;
+use App\Models\DetectedDocument;
 use App\Models\NormativaDocumento;
 use App\Models\OposicionEspecialidad;
 use App\Models\OposicionSesion;
@@ -157,6 +158,39 @@ class OposicionTest extends TestCase
             ->assertOk()->assertJsonPath('vigente', false);
 
         $this->deleteJson("/api/v1/superadmin/convocatorias/{$conv->id}")->assertOk();
+    }
+
+    public function test_convocatoria_links_to_a_detected_document(): void
+    {
+        $admin = User::factory()->create(['role' => 'superadmin']);
+        Sanctum::actingAs($admin);
+
+        $doc = DetectedDocument::create([
+            'title' => 'Convocatoria oposiciones 2025 (PDF)',
+            'document_type' => 'convocatoria',
+            'status' => 'published',
+            'source_url' => 'https://example.com/convocatoria.pdf',
+        ]);
+
+        $this->postJson('/api/v1/superadmin/convocatorias', [
+            'titulo' => 'Vinculada', 'comunidad_autonoma' => 'valenciana',
+            'estado' => 'convocada', 'source_document_id' => $doc->id,
+        ])->assertCreated()
+            ->assertJsonPath('source_document_id', $doc->id)
+            ->assertJsonPath('source_document.titulo', $doc->title);
+
+        // The public detail surfaces the linked document's title + url.
+        $conv = Convocatoria::first();
+        $this->getJson("/api/v1/convocatorias/{$conv->id}")
+            ->assertOk()
+            ->assertJsonPath('source_document.titulo', $doc->title)
+            ->assertJsonPath('source_document.url', $doc->source_url);
+
+        // A non-existent document id is rejected.
+        $this->postJson('/api/v1/superadmin/convocatorias', [
+            'titulo' => 'Mala', 'comunidad_autonoma' => 'valenciana',
+            'estado' => 'rumor', 'source_document_id' => 99999,
+        ])->assertStatus(422);
     }
 
     public function test_regular_user_cannot_access_superadmin_endpoints(): void
