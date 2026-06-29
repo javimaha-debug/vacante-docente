@@ -60,6 +60,42 @@ class GvaAutoImportTest extends TestCase
         $this->assertNull(app(GvaAutoImportService::class)->resolveTarget($noticia));
     }
 
+    public function test_provisional_participant_list_with_barem_is_importable(): void
+    {
+        // The provisional bolsa list ("amb barem") is a legitimate participant
+        // listing — it must NOT be denylisted.
+        $proceso = $this->makeProceso('INTERINO', 'MAESTROS', 'Interins Mestres 2026-2027');
+
+        $noticia = GvaNoticia::create([
+            'titulo' => 'Relació provisional de participants amb barem - Mestres interins 2026',
+            'url' => 'https://ceice.gva.es/docs/ini_2026_par_pro_int_lis_mae.pdf',
+            'tipo' => 'PDF',
+        ]);
+
+        $this->assertTrue(app(GvaAutoImportService::class)->isImportable($noticia));
+
+        $target = app(GvaAutoImportService::class)->resolveTarget($noticia);
+        $this->assertNotNull($target);
+        $this->assertSame('participantes', $target['kind']);
+        $this->assertSame($proceso->id, $target['proceso']->id);
+    }
+
+    public function test_offered_posts_and_credentials_are_denylisted(): void
+    {
+        $this->makeProceso('INTERINO', 'MAESTROS', 'Interins Mestres 2026-2027');
+        $service = app(GvaAutoImportService::class);
+
+        foreach ([
+            ['Llistat definitiu de llocs oferits per a Mestres', 'https://ceice.gva.es/docs/260602_pue_def.pdf'],
+            ['Relació de credencials en Direcció Territorial', 'https://ceice.gva.es/docs/credencials.pdf'],
+            ['TORNS', 'https://ceice.gva.es/docs/221222_torns.pdf'],
+        ] as [$titulo, $url]) {
+            $noticia = GvaNoticia::create(['titulo' => $titulo, 'url' => $url, 'tipo' => 'PDF']);
+            $this->assertFalse($service->isImportable($noticia), "Should denylist: {$titulo}");
+            $this->assertNull($service->resolveTarget($noticia), "Should not map: {$titulo}");
+        }
+    }
+
     public function test_import_marks_sin_proceso_when_unmappable(): void
     {
         $noticia = GvaNoticia::create([
