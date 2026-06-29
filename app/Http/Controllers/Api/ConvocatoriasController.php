@@ -38,13 +38,13 @@ class ConvocatoriasController extends Controller
      */
     public function show(Convocatoria $convocatoria): JsonResponse
     {
-        $convocatoria->load('sourceDocument:id,titulo,url');
+        $convocatoria->load('sourceDocument:id,title,source_url');
 
         return response()->json($this->convocatoriaArray($convocatoria) + [
             'source_document' => $convocatoria->sourceDocument ? [
                 'id' => $convocatoria->sourceDocument->id,
-                'titulo' => $convocatoria->sourceDocument->titulo,
-                'url' => $convocatoria->sourceDocument->url,
+                'titulo' => $convocatoria->sourceDocument->title,
+                'url' => $convocatoria->sourceDocument->source_url,
             ] : null,
         ]);
     }

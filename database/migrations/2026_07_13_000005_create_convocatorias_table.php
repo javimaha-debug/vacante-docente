@@ -20,8 +20,8 @@ return new class extends Migration
             $table->string('url_oficial')->nullable();
             $table->string('boe_url')->nullable();
             $table->text('notas')->nullable();
-            // The "detected document" concept in this codebase lives in gva_noticias.
-            $table->foreignId('source_document_id')->nullable()->constrained('gva_noticias')->nullOnDelete();
+            // Optional link to the detected document the convocatoria came from.
+            $table->foreignId('source_document_id')->nullable()->constrained('detected_documents')->nullOnDelete();
             $table->timestamps();
 
             $table->index('estado');
