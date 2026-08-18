@@ -375,7 +375,7 @@ Route::prefix('v1')->group(function () {
 
         // ── EPSO — Tests de razonamiento y flashcards UE ─────────────────────
         Route::prefix('epso')->group(function () {
-            // Pregunta aleatoria por tipo
+            // Pregunta aleatoria por tipo (incluye datos para análisis post-test)
             Route::get('test/{tipo}', function ($tipo) {
                 $test = TestRazonamiento::porTipo($tipo)->inRandomOrder()->first();
                 if (!$test) {
@@ -388,7 +388,51 @@ Route::prefix('v1')->group(function () {
                     'opciones'                 => $test->opciones,
                     'tiempo_esperado_segundos' => $test->tiempo_esperado_segundos,
                     'respuesta_correcta'       => $test->respuesta_correcta,
+                    'explicacion'              => $test->explicacion,
+                    'tipo_error'               => $test->tipo_error,
+                    'dificultad'               => $test->dificultad,
                 ]);
+            });
+
+            // Guardar sesión completa al finalizar un test
+            Route::post('sesion/guardar', function (Request $request) {
+                $data = $request->validate([
+                    'tipo_razonamiento'        => ['required', 'in:verbal,numerico,abstracto'],
+                    'fecha_inicio'             => ['required', 'date'],
+                    'fecha_fin'                => ['required', 'date'],
+                    'preguntas_respondidas'    => ['required', 'integer', 'min:1'],
+                    'correctas'                => ['required', 'integer', 'min:0'],
+                    'tiempo_total_segundos'    => ['required', 'integer', 'min:0'],
+                    'errores'                  => ['nullable', 'array'],
+                    'errores.*.pregunta_id'    => ['required', 'integer'],
+                    'errores.*.tipo_error'     => ['nullable', 'string', 'max:100'],
+                ]);
+
+                $total  = $data['preguntas_respondidas'];
+                $correctas = $data['correctas'];
+                $sesion = SesionTest::create([
+                    'user_id'                  => $request->user()->id,
+                    'tipo_razonamiento'        => $data['tipo_razonamiento'],
+                    'fecha_inicio'             => $data['fecha_inicio'],
+                    'fecha_fin'                => $data['fecha_fin'],
+                    'preguntas_respondidas'    => $total,
+                    'correctas'                => $correctas,
+                    'tiempo_total_segundos'    => $data['tiempo_total_segundos'],
+                    'tiempo_promedio_pregunta' => $total > 0 ? $data['tiempo_total_segundos'] / $total : 0,
+                    'errores'                  => $data['errores'] ?? [],
+                    'score'                    => $total > 0 ? round(($correctas / $total) * 100, 1) : 0,
+                ]);
+
+                return response()->json(['id' => $sesion->id, 'score' => $sesion->score], 201);
+            });
+
+            // Historial de sesiones del usuario (últimas 20)
+            Route::get('historial', function (Request $request) {
+                $sesiones = SesionTest::where('user_id', $request->user()->id)
+                    ->orderByDesc('fecha_fin')
+                    ->limit(20)
+                    ->get(['id', 'tipo_razonamiento', 'fecha_fin', 'preguntas_respondidas', 'correctas', 'score', 'tiempo_total_segundos']);
+                return response()->json($sesiones);
             });
 
             // Flashcards pendientes de repaso (spaced repetition)
@@ -416,19 +460,26 @@ Route::prefix('v1')->group(function () {
                 return response()->json(['ok' => true, 'proxima' => $card->fecha_proxima_repaso]);
             });
 
-            // Dashboard de progreso del usuario (Semana 4+)
+            // Dashboard de progreso del usuario
             Route::get('progreso', function (Request $request) {
                 $userId = $request->user()->id;
                 $tipos  = ['verbal', 'numerico', 'abstracto'];
                 $data   = [];
                 foreach ($tipos as $tipo) {
-                    $sesiones = SesionTest::where('user_id', $userId)
+                    $sesion = SesionTest::where('user_id', $userId)
                         ->where('tipo_razonamiento', $tipo)
-                        ->selectRaw('SUM(preguntas_respondidas) as total, SUM(correctas) as correctas')
+                        ->selectRaw('SUM(preguntas_respondidas) as total, SUM(correctas) as correctas, AVG(score) as score_medio, COUNT(*) as num_sesiones')
                         ->first();
+                    $ultima = SesionTest::where('user_id', $userId)
+                        ->where('tipo_razonamiento', $tipo)
+                        ->orderByDesc('fecha_fin')
+                        ->value('score');
                     $data[$tipo] = [
-                        'total'    => (int) ($sesiones->total ?? 0),
-                        'correctas'=> (int) ($sesiones->correctas ?? 0),
+                        'total'       => (int) ($sesion->total ?? 0),
+                        'correctas'   => (int) ($sesion->correctas ?? 0),
+                        'score_medio' => $sesion->score_medio ? round($sesion->score_medio, 1) : null,
+                        'num_sesiones'=> (int) ($sesion->num_sesiones ?? 0),
+                        'ultima_score'=> $ultima,
                     ];
                 }
                 return response()->json($data);

@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 
 const CONFIG = {
-    verbal:   { preguntas: 4, minutos: 7,  label: 'Verbal',   icon: '📝' },
-    numerico: { preguntas: 3, minutos: 10, label: 'Numérico', icon: '📊' },
-    abstracto:{ preguntas: 2, minutos: 6,  label: 'Abstracto',icon: '🔷' },
+    verbal:    { preguntas: 4, minutos: 7,  label: 'Verbal',    icon: '📝' },
+    numerico:  { preguntas: 3, minutos: 10, label: 'Numérico',  icon: '📊' },
+    abstracto: { preguntas: 2, minutos: 6,  label: 'Abstracto', icon: '🔷' },
 };
 
 const LETRAS = ['A', 'B', 'C', 'D', 'E'];
@@ -13,18 +14,21 @@ const LETRAS = ['A', 'B', 'C', 'D', 'E'];
 function useTemporizador() {
     const [segundos, setSegundos] = useState(0);
     const [activo, setActivo] = useState(false);
+    const ref = useRef(0);
 
     useEffect(() => {
         if (!activo) return;
-        const id = setInterval(() => setSegundos(s => s + 1), 1000);
+        const id = setInterval(() => {
+            ref.current += 1;
+            setSegundos(ref.current);
+        }, 1000);
         return () => clearInterval(id);
     }, [activo]);
 
-    const iniciar = useCallback(() => { setSegundos(0); setActivo(true); }, []);
-    const parar   = useCallback(() => { setActivo(false); return segundos; }, [segundos]);
-    const reset   = useCallback(() => { setSegundos(0); }, []);
+    const iniciar = useCallback(() => { ref.current = 0; setSegundos(0); setActivo(true); }, []);
+    const parar   = useCallback(() => { setActivo(false); return ref.current; }, []);
 
-    return { segundos, iniciar, parar, reset };
+    return { segundos, iniciar, parar };
 }
 
 function fmt(s) {
@@ -34,85 +38,122 @@ function fmt(s) {
 }
 
 function BarraProgreso({ actual, total }) {
-    const pct = total > 0 ? ((actual) / total) * 100 : 0;
     return (
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
             <div
                 className="bg-brand-500 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${pct}%` }}
+                style={{ width: total > 0 ? `${(actual / total) * 100}%` : '0%' }}
             />
         </div>
     );
 }
 
-function PantallaFinal({ resultados, tipo, onRepetir, onVolver }) {
-    const cfg = CONFIG[tipo] || CONFIG.verbal;
-    const correctas = resultados.filter(r => r.correcta).length;
-    const total = resultados.length;
-    const tiempoTotal = resultados.reduce((acc, r) => acc + r.segundos, 0);
-    const promedio = total > 0 ? Math.round(tiempoTotal / total) : 0;
-    const pct = total > 0 ? Math.round((correctas / total) * 100) : 0;
+/* ── Pantalla de resultados ─────────────────────────────────────────────── */
 
-    const emoji = pct >= 80 ? '🎉' : pct >= 60 ? '💪' : '📚';
+function DetalleRespuesta({ r, i }) {
+    const [mostrarExp, setMostrarExp] = useState(false);
+    const correctaLetra = LETRAS[r.respuesta_correcta] ?? '—';
+    const usuarioLetra  = LETRAS[r.respuesta_usuario] ?? '—';
 
     return (
-        <div className="max-w-lg mx-auto px-4 py-12 text-center space-y-8">
-            <div className="space-y-2">
-                <div className="text-6xl">{emoji}</div>
+        <div className={`rounded-xl border-2 overflow-hidden ${r.correcta ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
+            <div className={`flex items-start gap-3 px-4 py-3 ${r.correcta ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+                <span className="text-xl mt-0.5 flex-shrink-0">{r.correcta ? '✅' : '❌'}</span>
+                <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-snug">
+                        {i + 1}. {r.pregunta}
+                    </p>
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+                        <span>⏱ {r.segundos}s</span>
+                        {!r.correcta && (
+                            <>
+                                <span>Tu resp: <strong className="text-red-600 dark:text-red-400">{usuarioLetra}</strong></span>
+                                <span>Correcta: <strong className="text-green-600 dark:text-green-400">{correctaLetra}</strong></span>
+                            </>
+                        )}
+                        {!r.correcta && r.tipo_error && (
+                            <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
+                                {r.tipo_error}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {!r.correcta && r.explicacion && (
+                <div className="px-4 py-2 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
+                    {mostrarExp ? (
+                        <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                            {r.explicacion}
+                            <button
+                                onClick={() => setMostrarExp(false)}
+                                className="block mt-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"
+                            >
+                                Ocultar explicación ▲
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setMostrarExp(true)}
+                            className="text-xs text-brand-600 dark:text-brand-400 hover:underline py-0.5"
+                        >
+                            Ver explicación ▼
+                        </button>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function PantallaFinal({ resultados, tipo, guardado, onRepetir, onVolver }) {
+    const cfg = CONFIG[tipo] || CONFIG.verbal;
+    const correctas  = resultados.filter(r => r.correcta).length;
+    const total      = resultados.length;
+    const tiempoTotal = resultados.reduce((a, r) => a + r.segundos, 0);
+    const promedio   = total > 0 ? Math.round(tiempoTotal / total) : 0;
+    const pct        = total > 0 ? Math.round((correctas / total) * 100) : 0;
+    const emoji      = pct >= 80 ? '🎉' : pct >= 60 ? '💪' : '📚';
+    const colorBarra = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+
+    return (
+        <div className="max-w-lg mx-auto px-4 py-10 space-y-6">
+            {/* Cabecera */}
+            <div className="text-center space-y-1">
+                <div className="text-5xl">{emoji}</div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     Test completado
                 </h2>
-                <p className="text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                     {cfg.label} · {total} preguntas · {fmt(tiempoTotal)}
+                    {guardado && <span className="ml-2 text-green-600 dark:text-green-400">✓ Guardado</span>}
                 </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 space-y-4">
+            {/* Score */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center space-y-3">
                 <div className="text-5xl font-bold text-brand-600 dark:text-brand-400">
                     {correctas}/{total}
                 </div>
-                <div className="text-lg text-gray-600 dark:text-gray-300">
-                    {pct}% de acierto
-                </div>
+                <div className="text-lg text-gray-600 dark:text-gray-300">{pct}% de acierto</div>
                 <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3">
-                    <div
-                        className="h-3 rounded-full transition-all duration-700"
-                        style={{
-                            width: `${pct}%`,
-                            backgroundColor: pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444',
-                        }}
-                    />
+                    <div className="h-3 rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: colorBarra }} />
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Tiempo promedio: {promedio} seg/pregunta
+                    Tiempo promedio: <strong>{promedio} seg</strong>/pregunta
                 </p>
             </div>
 
-            {/* Desglose */}
-            <div className="space-y-2 text-left">
-                {resultados.map((r, i) => (
-                    <div
-                        key={i}
-                        className={`flex items-start gap-3 rounded-xl px-4 py-3 ${
-                            r.correcta
-                                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                                : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-                        }`}
-                    >
-                        <span className="text-lg mt-0.5">{r.correcta ? '✅' : '❌'}</span>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
-                                {r.pregunta}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {r.segundos}s · Resp. {LETRAS[r.respuestaUsuario ?? -1] ?? '—'}
-                            </p>
-                        </div>
-                    </div>
-                ))}
+            {/* Desglose por pregunta */}
+            <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    Análisis de respuestas
+                </h3>
+                {resultados.map((r, i) => <DetalleRespuesta key={i} r={r} i={i} />)}
             </div>
 
-            <div className="flex gap-3">
+            {/* Acciones */}
+            <div className="flex gap-3 pt-2">
                 <button
                     onClick={onVolver}
                     className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -130,30 +171,46 @@ function PantallaFinal({ resultados, tipo, onRepetir, onVolver }) {
     );
 }
 
+/* ── Componente principal ────────────────────────────────────────────────── */
+
 export default function TestRazonamiento() {
     const { tipo } = useParams();
     const navigate = useNavigate();
+    const qc = useQueryClient();
     const cfg = CONFIG[tipo] || CONFIG.verbal;
 
-    const [fase, setFase]             = useState('cargando'); // cargando | en_curso | fin
+    const [fase, setFase]             = useState('cargando');
     const [preguntas, setPreguntas]   = useState([]);
     const [indice, setIndice]         = useState(0);
     const [seleccion, setSeleccion]   = useState(null);
     const [resultados, setResultados] = useState([]);
-    const { segundos, iniciar, parar, reset } = useTemporizador();
+    const [guardado, setGuardado]     = useState(false);
+    const fechaInicioRef              = useRef(null);
+    const { segundos, iniciar, parar } = useTemporizador();
+
+    const guardarSesion = useMutation({
+        mutationFn: (payload) => api.post('/epso/sesion/guardar', payload),
+        onSuccess: () => {
+            setGuardado(true);
+            qc.invalidateQueries({ queryKey: ['epso-progreso'] });
+        },
+    });
 
     const cargarPreguntas = useCallback(async () => {
         setFase('cargando');
         setResultados([]);
         setIndice(0);
         setSeleccion(null);
+        setGuardado(false);
 
         try {
-            const peticiones = Array.from({ length: cfg.preguntas }, () =>
-                api.get(`/epso/test/${tipo}`).then(r => r.data)
+            const datos = await Promise.all(
+                Array.from({ length: cfg.preguntas }, () =>
+                    api.get(`/epso/test/${tipo}`).then(r => r.data)
+                )
             );
-            const datos = await Promise.all(peticiones);
             setPreguntas(datos);
+            fechaInicioRef.current = new Date().toISOString();
             setFase('en_curso');
             iniciar();
         } catch {
@@ -169,22 +226,49 @@ export default function TestRazonamiento() {
         if (seleccion === null || !preguntaActual) return;
         const tiempoRespuesta = parar();
         const correcta = seleccion === preguntaActual.respuesta_correcta;
-        setResultados(prev => [...prev, {
-            pregunta: preguntaActual.pregunta,
+
+        const nuevoResultado = {
+            pregunta          : preguntaActual.pregunta,
+            opciones          : preguntaActual.opciones,
+            respuesta_correcta: preguntaActual.respuesta_correcta,
+            respuesta_usuario : seleccion,
             correcta,
-            segundos: tiempoRespuesta,
-            respuestaUsuario: seleccion,
-        }]);
+            segundos          : tiempoRespuesta,
+            tipo_error        : preguntaActual.tipo_error ?? null,
+            explicacion       : preguntaActual.explicacion ?? null,
+            pregunta_id       : preguntaActual.id,
+        };
+
+        const nuevosResultados = [...resultados, nuevoResultado];
 
         if (indice + 1 < preguntas.length) {
+            setResultados(nuevosResultados);
             setIndice(i => i + 1);
             setSeleccion(null);
-            reset();
             iniciar();
         } else {
+            // Test completado — guardar sesión
+            setResultados(nuevosResultados);
             setFase('fin');
+
+            const tiempoTotal = nuevosResultados.reduce((a, r) => a + r.segundos, 0);
+            const errores = nuevosResultados
+                .filter(r => !r.correcta)
+                .map(r => ({ pregunta_id: r.pregunta_id, tipo_error: r.tipo_error }));
+
+            guardarSesion.mutate({
+                tipo_razonamiento      : tipo,
+                fecha_inicio           : fechaInicioRef.current,
+                fecha_fin              : new Date().toISOString(),
+                preguntas_respondidas  : nuevosResultados.length,
+                correctas              : nuevosResultados.filter(r => r.correcta).length,
+                tiempo_total_segundos  : tiempoTotal,
+                errores,
+            });
         }
     };
+
+    /* ── Pantallas ─────────────────────────────────────────────────────── */
 
     if (fase === 'cargando') {
         return (
@@ -201,7 +285,9 @@ export default function TestRazonamiento() {
         return (
             <div className="max-w-md mx-auto px-4 py-12 text-center space-y-4">
                 <div className="text-4xl">⚠️</div>
-                <p className="text-gray-700 dark:text-gray-300">No se pudieron cargar las preguntas de tipo <strong>{tipo}</strong>.</p>
+                <p className="text-gray-700 dark:text-gray-300">
+                    No se pudieron cargar preguntas de tipo <strong>{tipo}</strong>.
+                </p>
                 <button
                     onClick={() => navigate('/dashboard/epso')}
                     className="px-6 py-2 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors"
@@ -217,6 +303,7 @@ export default function TestRazonamiento() {
             <PantallaFinal
                 resultados={resultados}
                 tipo={tipo}
+                guardado={guardado}
                 onRepetir={cargarPreguntas}
                 onVolver={() => navigate('/dashboard/epso')}
             />
@@ -242,15 +329,11 @@ export default function TestRazonamiento() {
                         </svg>
                         Cancelar
                     </button>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                             {indice + 1} / {preguntas.length}
                         </span>
-                        <span
-                            className={`text-lg font-mono font-bold tabular-nums ${
-                                superado ? 'text-red-500 dark:text-red-400' : 'text-brand-600 dark:text-brand-400'
-                            }`}
-                        >
+                        <span className={`text-lg font-mono font-bold tabular-nums min-w-[3rem] text-right ${superado ? 'text-red-500 dark:text-red-400' : 'text-brand-600 dark:text-brand-400'}`}>
                             {fmt(segundos)}
                         </span>
                     </div>
@@ -277,31 +360,21 @@ export default function TestRazonamiento() {
             {/* Opciones */}
             <div className="space-y-3">
                 {opciones.map((opcion, i) => {
-                    const seleccionada = seleccion === i;
+                    const sel = seleccion === i;
                     return (
                         <button
                             key={i}
                             onClick={() => setSeleccion(i)}
                             className={`w-full flex items-start gap-4 rounded-xl border-2 p-4 text-left transition-all ${
-                                seleccionada
+                                sel
                                     ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
                                     : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-brand-300 dark:hover:border-brand-700'
                             }`}
                         >
-                            <span
-                                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                                    seleccionada
-                                        ? 'bg-brand-500 text-white'
-                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                }`}
-                            >
+                            <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${sel ? 'bg-brand-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
                                 {LETRAS[i]}
                             </span>
-                            <span className={`text-base leading-snug pt-0.5 ${
-                                seleccionada
-                                    ? 'text-brand-800 dark:text-brand-200 font-medium'
-                                    : 'text-gray-700 dark:text-gray-200'
-                            }`}>
+                            <span className={`text-base leading-snug pt-0.5 ${sel ? 'text-brand-800 dark:text-brand-200 font-medium' : 'text-gray-700 dark:text-gray-200'}`}>
                                 {opcion}
                             </span>
                         </button>
@@ -309,7 +382,7 @@ export default function TestRazonamiento() {
                 })}
             </div>
 
-            {/* Botón siguiente */}
+            {/* Siguiente */}
             <button
                 onClick={confirmarRespuesta}
                 disabled={seleccion === null}
