@@ -1,0 +1,135 @@
+[
+  {
+    "categoria": "instituciones",
+    "frente": "¿Cuál es el ejecutivo de la UE responsable de ejecutar las normas europeas?",
+    "reverso": "La Comisión Europea. Es el ejecutivo independiente de la UE que impulsa la legislación, vela por el cumplimiento del Derecho de la UE y negocia con terceros países.",
+    "dificultad": 1,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "instituciones",
+    "frente": "¿Cuántos miembros tiene el Parlamento Europeo y cada cuántos años se renuevan?",
+    "reverso": "705 miembros, renovados cada 5 años mediante elecciones directas del pueblo europeo. Es la única institución elegida directamente por los ciudadanos.",
+    "dificultad": 1,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "instituciones",
+    "frente": "¿Qué es el Consejo de la UE y qué funciones tiene?",
+    "reverso": "Representa los gobiernos de los Estados miembros. Negocia y aprueba leyes junto al Parlamento (codecisión), coordina políticas y resuelve conflictos entre gobiernos nacionales.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "instituciones",
+    "frente": "¿Cuáles son las tres sedes del Parlamento Europeo?",
+    "reverso": "Bruselas (sesiones de comisiones), Luxemburgo (servicio administrativo) y Estrasburgo (sesiones plenarias mensuales). Esto es objeto de debate por costes.",
+    "dificultad": 1,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "historia",
+    "frente": "¿Qué país fue el último en adherirse a la UE antes de la expansión de 2023?",
+    "reverso": "Croacia, que se adhirió el 1 de julio de 2013. Fue el 28º Estado miembro antes de las ampliaciones recientes.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "historia",
+    "frente": "¿Cuáles fueron los 6 países fundadores de la UE en 1957?",
+    "reverso": "Bélgica, Francia, Italia, Luxemburgo, Países Bajos y Alemania Occidental. Fundaron la Comunidad Económica Europea (CEE).",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "historia",
+    "frente": "¿En qué año se creó el Tratado de Maastricht y qué fue su principal aportación?",
+    "reverso": "1992. Transformó la CEE en la Unión Europea e introdujo la ciudadanía europea, la política exterior común y el camino hacia la Unión Económica y Monetaria.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "politicas",
+    "frente": "¿Qué es la política de cohesión de la UE?",
+    "reverso": "Busca reducir disparidades económicas y sociales entre regiones mediante fondos estructurales. Apoya infraestructura, empleo y competitividad en áreas menos desarrolladas.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "politicas",
+    "frente": "¿Cuál es el objetivo del Pacto Verde Europeo?",
+    "reverso": "Lograr la neutralidad climática de la UE para 2050. Integra políticas de energía, transporte, agricultura e industria para reducir emisiones netas de gases de efecto invernadero.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "politicas",
+    "frente": "¿Cuál es la moneda única de la UE y cuántos Estados miembros la usan?",
+    "reverso": "El Euro (EUR). Lo usan 20 países de la zona del euro. Los demás mantienen sus propias monedas (aunque están obligados a adoptarlo cuando cumplan criterios de Maastricht).",
+    "dificultad": 1,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "derecho",
+    "frente": "¿Qué es la Carta de Derechos Fundamentales de la UE?",
+    "reverso": "Documento adoptado en 2000 (vinculante desde 2009) que proclama derechos civiles, políticos, económicos y sociales. Incluye dignidad, libertad, igualdad, solidaridad, ciudadanía y justicia.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "derecho",
+    "frente": "¿Qué es la libre circulación de trabajadores y qué excepciones tiene?",
+    "reverso": "Derecho fundamental: un ciudadano europeo puede trabajar en cualquier Estado miembro sin discriminación. Excepciones en defensa, seguridad nacional y orden público.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "derecho",
+    "frente": "¿Cuál es el principal órgano judicial de la UE y qué hace?",
+    "reverso": "El Tribunal de Justicia de la Unión Europea (TJUE). Interpreta Derecho de la UE, resuelve disputas entre instituciones y Estados, y asegura cumplimiento de la ley europea.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "politicas",
+    "frente": "¿Qué es el Fondo de Recuperación NextGenerationEU?",
+    "reverso": "Paquete de 750 mil millones EUR creado en 2020 para ayudar a Estados miembros a recuperarse de COVID-19. Invierte en transición digital, ecológica y social.",
+    "dificultad": 3,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "instituciones",
+    "frente": "¿Qué es el Consejo Europeo?",
+    "reverso": "Reunión de presidentes/jefes de gobierno de los 27 Estados miembros + presidente Comisión. Define orientaciones políticas de la UE (NO es legislativo).",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "historia",
+    "frente": "¿En qué año entró en vigor el Tratado de Lisboa y qué cambios introdujo?",
+    "reverso": "2009. Reformó funcionamiento UE: mayor poder al Parlamento, codecisión ordinaria, entrada en vigor Carta Derechos, y reforma de procedimiento legislativo.",
+    "dificultad": 3,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "politicas",
+    "frente": "¿Cuál es el proceso legislativo ordinario de la UE?",
+    "reverso": "Codecisión: Comisión propone, Parlamento y Consejo debaten y aprueban conjuntamente en primera lectura (mayoría). Si desacuerdo, va a Comité de Conciliación.",
+    "dificultad": 3,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "derecho",
+    "frente": "¿Qué es el RGPD (Reglamento General de Protección de Datos)?",
+    "reverso": "Ley europea (2016, vigente 2018) que protege datos personales. Ciudadanos tienen derecho a: privacidad, acceso, rectificación y olvido de datos.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "categoria": "politicas",
+    "frente": "¿Qué es el Espacio Schengen?",
+    "reverso": "Acuerdo entre 27 Estados UE + 4 países asociados que permite libre circulación sin controles fronterizos internos. Mantiene controles en fronteras exteriores.",
+    "dificultad": 2,
+    "created_at": "2026-08-18T10:00:00Z"
+  }
+]

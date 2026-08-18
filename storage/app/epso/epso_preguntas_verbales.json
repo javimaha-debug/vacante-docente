@@ -1,0 +1,274 @@
+[
+  {
+    "tipo": "verbal",
+    "pregunta": "La política de cohesión de la UE aspira a reducir las disparidades económicas, sociales y territoriales entre los Estados miembros. Al dirigir fondos a regiones menos desarrolladas, la política busca apoyar proyectos de infraestructura, creación de empleo y competitividad empresarial. Aunque los críticos argumentan que la política crea dependencia en los países receptores, los defensores enfatizan que ayuda a integrar el mercado único, beneficiando finalmente a los Estados miembros más ricos a través de mayores oportunidades comerciales.",
+    "opciones": [
+      "Los Estados miembros ricos son los principales beneficiarios económicos de la política de cohesión.",
+      "La política de cohesión solo beneficia a las regiones menos desarrolladas, no a las ricas.",
+      "Los críticos creen que la política de cohesión ha eliminado completamente las disparidades territoriales.",
+      "La política de cohesión busca reducir las disparidades entre regiones mediante proyectos de infraestructura."
+    ],
+    "respuesta_correcta": 3,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "La opción 3 es la única que se deduce directamente del texto. Las opciones 0 y 1 son parciales/inferencias no explícitas. La opción 2 es falsa (el texto no dice que se hayan 'eliminado' las disparidades).",
+    "dificultad": 2,
+    "tipo_error": "Ninguno - respuesta correcta",
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "El Parlamento Europeo, ubicado en Bruselas, Luxemburgo y Estrasburgo, es la única institución directamente elegida por los ciudadanos de la UE. Sus 705 miembros son elegidos cada cinco años mediante sufragio universal directo. El Parlamento comparte la potestad legislativa con el Consejo de la UE y tiene poder presupuestario. Además, supervisa el trabajo de la Comisión Europea y puede censurarla con una mayoría de dos tercios.",
+    "opciones": [
+      "El Parlamento Europeo es elegido cada cuatro años.",
+      "Solo los ciudadanos españoles pueden elegir miembros del Parlamento Europeo.",
+      "El Parlamento Europeo tiene poder legislativo y presupuestario.",
+      "La Comisión Europea es elegida directamente por los ciudadanos."
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 85,
+    "explicacion": "Opción 2 es correcta (texto dice 'potestad legislativa' y 'poder presupuestario'). Opción 0 falsa (dice 'cinco años', no cuatro). Opción 1 falsa (sufragio 'universal', todos los ciudadanos UE). Opción 3 falsa (texto dice que el PE es elegido, no la Comisión).",
+    "dificultad": 2,
+    "tipo_error": "Cuantificador alterado (opción 0) y nacionalidad restringida (opción 1)",
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "Las pequeñas y medianas empresas (PYMEs) generan aproximadamente el 70% del empleo privado en Europa. Sin embargo, enfrentan barreras significativas para acceder al crédito bancario, especialmente las startups innovadoras que carecen de historiales financieros establecidos. La UE ha respondido creando fondos de riesgo y líneas de crédito garantizadas para apoyar su crecimiento. Algunos analistas argumentan que estas medidas son insuficientes dada la magnitud del problema.",
+    "opciones": [
+      "Todas las PYMEs tienen fácil acceso al crédito bancario.",
+      "Las startups innovadoras siempre rechazan el apoyo de la UE.",
+      "La UE ha creado algunos mecanismos para facilitar acceso a crédito de PYMEs.",
+      "El 70% del empleo europeo proviene exclusivamente de grandes multinacionales."
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "Opción 2 se deduce del texto ('fondos de riesgo', 'líneas de crédito garantizadas'). Opción 0 es falsa (texto dice 'barreras significativas'). Opción 1 no se puede deducir. Opción 3 contradice al texto ('70% empleo privado' = PYMEs, no solo multinacionales).",
+    "dificultad": 3,
+    "tipo_error": "Lectura atenta de excepciones (opción 0)",
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "La Carta de Derechos Fundamentales de la UE, adoptada en 2000 y vinculante desde 2009, proclama que los derechos fundamentales son universales, indivisibles e interdependientes. Sin embargo, algunos Estados miembros han expresado preocupación sobre ciertos artículos, particularmente aquellos relacionados con derechos reproductivos y libertad religiosa. A pesar de estas discrepancias, la Carta sigue siendo un pilar de la protección de derechos en la UE.",
+    "opciones": [
+      "La Carta de Derechos Fundamentales es vinculante desde el año 2000.",
+      "Todos los Estados miembros han aprobado unánimemente cada artículo de la Carta.",
+      "La Carta describe los derechos fundamentales como indivisibles e interdependientes.",
+      "Ningún Estado miembro ha expresado preocupación sobre artículos de la Carta."
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 95,
+    "explicacion": "Opción 2 es correcta (se menciona en el texto: 'universales, indivisibles e interdependientes'). Opción 0 falsa (dice 'desde 2009', no 2000). Opción 1 falsa (se menciona 'preocupación' de algunos Estados). Opción 3 también falsa (claramente algunos han expresado preocupación).",
+    "dificultad": 3,
+    "tipo_error": "Cambio de fechas clave",
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "El Acuerdo de París sobre cambio climático, ratificado por la UE en 2016, compromete a los Estados miembros a limitar el calentamiento global a 1,5 grados centígrados. Para lograr esto, la UE ha establecido metas de reducción de emisiones cada vez más estrictas. El Pacto Verde Europeo, lanzado en 2019, consolida estos objetivos e integra políticas de energía, transporte y agricultura. Aunque el progreso ha sido significativo, algunos críticos sostienen que las medidas son demasiado lentas para evitar una crisis climática.",
+    "opciones": [
+      "La UE ratificó el Acuerdo de París en 2019.",
+      "El objetivo del Acuerdo de París es limitar el calentamiento a exactamente 2 grados.",
+      "El Pacto Verde Europeo integra políticas de energía, transporte y agricultura.",
+      "El Acuerdo de París no incluye compromisos sobre emisiones de la UE."
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "Opción 2 es correcta (texto menciona 'Pacto Verde' con políticas de E, T, A). Opción 0 falsa (dice 2016, no 2019). Opción 1 falsa (dice 1,5 grados, no 2). Opción 3 falsa (claramente hay compromisos sobre reducciones).",
+    "dificultad": 2,
+    "tipo_error": "Fechas y números cambiados",
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "La libre circulación de trabajadores es un principio fundamental del mercado único europeo. Sin embargo, esta libertad viene acompañada de restricciones en ciertos sectores, como defensa y seguridad nacional. Además, algunos países han implementado medidas transitorias que limitan temporalmente el acceso de trabajadores de nuevos Estados miembros. Los críticos argumentan que estas restricciones contradicen el espíritu del mercado único.",
+    "opciones": [
+      "No existen restricciones a la libre circulación de trabajadores en la UE.",
+      "La libre circulación de trabajadores es limitada exclusivamente por razones económicas.",
+      "Existen excepciones a la libre circulación en sectores específicos como defensa.",
+      "Todos los Estados miembros han eliminado las medidas transitorias."
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 88,
+    "explicacion": "Opción 2 es correcta (se menciona restricciones en 'defensa y seguridad nacional'). Opción 0 falsa (se habla de 'restricciones' y 'limitaciones'). Opción 1 falsa (menciona también razones de seguridad). Opción 3 falsa (texto dice 'algunos países han implementado', presente continuo).",
+    "dificultad": 3,
+    "tipo_error": "Absolutos vs. excepciones",
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "El presupuesto de la UE, conocido como Marco Financiero Plurianual (MFP), se establece por períodos de siete años. El MFP actual (2021-2027) asigna fondos a áreas prioritarias como investigación, educación, cohesión territorial y acción por el clima. El Consejo de la UE aprueba el MFP mediante procedimiento legislativo especial. Aunque el proceso es transparente, algunos actores critican que el presupuesto no refleja adecuadamente las prioridades de los ciudadanos europeos.",
+    "opciones": [
+      "El Marco Financiero Plurianual se establece anualmente.",
+      "El MFP 2021-2027 asigna fondos a investigación, educación, cohesión e clima.",
+      "El Parlamento Europeo aprueba el MFP mediante legislación especial.",
+      "El presupuesto de la UE no tiene ninguna crítica sobre su adecuación."
+    ],
+    "respuesta_correcta": 1,
+    "tiempo_esperado_segundos": 92,
+    "explicacion": "Opción 1 es correcta (se enumeran las áreas prioritarias). Opción 0 falsa (dice 'siete años', no anualmente). Opción 2 falsa (dice 'Consejo', no 'Parlamento'). Opción 3 falsa (se mencionan críticas sobre adecuación).",
+    "dificultad": 2,
+    "tipo_error": "Confusión entre instituciones",
+    "created_at": "2026-08-18T10:00:00Z"
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "Since 1970, air travel has grown rapidly and air traffic has increased substantially. The rapid growth of air traffic has put pressure on air traffic control systems. Air traffic control has had to adapt to the changes in aviation - the increase in the volume of air traffic and the introduction of new aircraft. Air traffic control is already struggling to cope with air traffic in Europe and the USA.\n\nWhich of the following statements is best supported by the passage above?",
+    "opciones": [
+      "Air traffic control is finding it difficult to cope with the growth in air traffic.",
+      "Air traffic control systems are solely responsible for the increase in air traffic.",
+      "Air travel has only grown in Europe and the USA.",
+      "Air traffic control has not needed to adapt to changes in aviation.",
+      "New aircraft have reduced pressure on air traffic control systems."
+    ],
+    "respuesta_correcta": 0,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "El texto afirma que el control de tráfico aéreo 'ya está luchando para hacer frente al tráfico aéreo'. La opción A refleja directamente esto. Las demás opciones contradicen o van más allá del texto.",
+    "dificultad": 2,
+    "tipo_error": null
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "The use of rhetoric – the art of persuasion – can be traced back to ancient Greece. Aristotle believed that rhetoric had both a form and a content. He defined form as the way in which something is said, as well as content, meaning what is said. For Aristotle, rhetoric was about much more than just the words used to persuade. He believed that gestures and expressions are just as important as words.\n\nWhich of the following statements is best supported by the passage above?",
+    "opciones": [
+      "Rhetoric may be seen as the study of what is said in a speech and how it is said.",
+      "Aristotle thought that the only tools of persuasion were words.",
+      "Rhetoric was invented in ancient Rome.",
+      "For Aristotle, gestures were less important than words in rhetoric.",
+      "Content is more important than form in Aristotle's definition of rhetoric."
+    ],
+    "respuesta_correcta": 0,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "Aristóteles definía la forma como 'cómo se dice algo' y el contenido como 'qué se dice'. La opción A combina ambas dimensiones correctamente. Las demás opciones contradicen al texto.",
+    "dificultad": 2,
+    "tipo_error": null
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "The Schipperke is a small dog breed. All Schipperkes are black. All Schipperkes have no tail. My dog is black and has no tail.\n\nWhich of the following conclusions is certain based on the statements above?",
+    "opciones": [
+      "My dog must be a Schipperke.",
+      "A black dog with a tail could not be a Schipperke.",
+      "Not all Schipperkes are black.",
+      "My dog cannot be a Schipperke.",
+      "All tailless dogs are Schipperkes."
+    ],
+    "respuesta_correcta": 1,
+    "tiempo_esperado_segundos": 75,
+    "explicacion": "Si todos los Schipperkes son negros y no tienen cola, entonces un perro negro CON cola no puede ser Schipperke. La opción B se deduce lógicamente. Mi perro podría o no ser Schipperke (el texto no es suficiente para determinarlo).",
+    "dificultad": 3,
+    "tipo_error": "Razonamiento lógico - confusión entre necesario y suficiente"
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "The Internet has made it possible to make cheap telephone calls. Telephone companies are losing revenue because people are using the Internet rather than the phone network to make calls. The companies that offer Internet call services make money by selling advertising. Telephone companies are under pressure to provide cheap broadband services so that people can access the Internet.\n\nWhich of the following statements is best supported by the passage above?",
+    "opciones": [
+      "Internet telephone calls are always free.",
+      "Telephone companies support the growth of Internet telephony.",
+      "Telephone companies obtain revenue from the companies that offer Internet call services.",
+      "Internet call services generate income through advertising revenue.",
+      "Broadband companies are losing revenue due to Internet telephony."
+    ],
+    "respuesta_correcta": 3,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "El texto dice que las empresas de llamadas por Internet ganan dinero vendiendo publicidad. La opción D lo refleja directamente. Las demás o contradicen el texto o no se mencionan.",
+    "dificultad": 2,
+    "tipo_error": null
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "Easter is now primarily associated with Christianity, but many of its traditions have older, pagan origins. The word Easter is thought to have derived from Eastre, a pagan goddess of spring. The giving of eggs at Easter time is thought to be a pagan ritual that pre-dates Christianity. Many cultures have traditionally celebrated the spring equinox, as it represents the end of winter and the beginning of the growing season.\n\nWhich of the following statements is best supported by the passage above?",
+    "opciones": [
+      "Easter was invented by Christians to replace pagan rituals.",
+      "The celebration of the spring equinox has a long history.",
+      "The word Easter is definitely derived from a Roman goddess.",
+      "Giving eggs at Easter is an exclusively Christian tradition.",
+      "Pagan rituals were abandoned when Christianity spread."
+    ],
+    "respuesta_correcta": 1,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "El texto dice que 'muchas culturas han celebrado tradicionalmente el equinoccio de primavera', indicando una historia larga. La opción B se deduce directamente. Las demás afirmaciones contradicen o exceden el texto.",
+    "dificultad": 2,
+    "tipo_error": null
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "It is estimated that the world loses tens of thousands of species every year. One of the most important causes of species extinction is the introduction of invasive species into ecosystems where they are not native. Invasive species out-compete native species for food and habitat. Biodiversity is also under threat from pollution, over-exploitation and climate change. However, the impact of invasive species on biodiversity loss is now greater than it has ever been.\n\nWhich of the following statements is best supported by the passage above?",
+    "opciones": [
+      "Invasive species are the only cause of biodiversity loss.",
+      "Climate change is the main cause of species extinction.",
+      "The biodiversity loss caused by invasive species is now greater than ever before.",
+      "Native species always out-compete invasive species.",
+      "Pollution has no effect on biodiversity."
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "El texto afirma explícitamente que 'el impacto de las especies invasoras en la pérdida de biodiversidad es ahora mayor que nunca'. La opción C lo refleja directamente.",
+    "dificultad": 2,
+    "tipo_error": null
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "Baking a perfect cake depends on a number of factors: the quality of the ingredients, the accuracy of the measurements, and the temperature of the oven. If any one of these factors is not right, the cake will not rise properly. A cake will rise if and only if all three factors are correct.\n\nWhich of the following statements is best supported by the passage above?",
+    "opciones": [
+      "A cake can rise even if the oven temperature is wrong.",
+      "The quality of ingredients is the most important factor in cake baking.",
+      "There are three factors which determine how much a cake rises.",
+      "If the measurements are inaccurate, the cake will not rise.",
+      "Only oven temperature determines whether a cake rises."
+    ],
+    "respuesta_correcta": 3,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "El texto dice 'si alguno de estos factores no es correcto, el pastel no subirá bien'. Medidas incorrectas = el pastel no sube. La opción D se deduce directamente.",
+    "dificultad": 2,
+    "tipo_error": null
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "In 2006, a grizzly-polar bear hybrid was shot in the wild for the first time. The two species are closely related but have very different habitats, so wild hybrids are extremely rare. However, the warming of the Arctic may push polar bears south into grizzly territory, making such hybrids more common. There are also other limiting factors such as different mating seasons and behavioural differences which would prevent extensive interbreeding.\n\nWhich of the following statements is best supported by the passage above?",
+    "opciones": [
+      "Grizzly-polar bear hybrids are now common in the wild.",
+      "Polar bears and grizzly bears are completely unrelated species.",
+      "Climate change will definitely cause widespread hybridisation.",
+      "There are a number of different factors which limit the likelihood of grizzly-polar bear interbreeding.",
+      "The 2006 hybrid was bred in captivity."
+    ],
+    "respuesta_correcta": 3,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "El texto menciona múltiples factores limitantes: hábitats diferentes, estaciones de apareamiento distintas y diferencias de comportamiento. La opción D recoge esto correctamente. Las demás contradecen o exageran el texto.",
+    "dificultad": 3,
+    "tipo_error": null
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "In April 1815, Mount Tambora in Indonesia erupted in the largest volcanic eruption in recorded history. The eruption killed an estimated 10,000 people directly. However, the eruption also caused crop failures and famine across the world, leading to an estimated 70,000-80,000 further deaths. The eruption also caused a 'year without a summer' in 1816, as the volcanic ash blocked sunlight and reduced temperatures worldwide.\n\nWhich of the following statements is best supported by the passage above?",
+    "opciones": [
+      "The 1815 eruption was the most destructive in terms of direct deaths.",
+      "The majority of the death toll occurred in the time following the eruption.",
+      "The 'year without a summer' occurred in 1815.",
+      "Crop failures caused by the eruption only affected Indonesia.",
+      "10,000 people died from the volcanic ash blocking sunlight."
+    ],
+    "respuesta_correcta": 1,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "Muertes directas: ~10,000. Muertes posteriores (hambruna): 70,000-80,000. La mayoría ocurrió después de la erupción. La opción B se deduce directamente del texto.",
+    "dificultad": 2,
+    "tipo_error": null
+  },
+  {
+    "tipo": "verbal",
+    "pregunta": "A new aircraft design promises to cut fuel consumption by 20%. However, it is estimated that the number of air passengers will double in the next 20 years. Even if all planes were replaced by the new design, the total fuel consumption of the aviation industry would still increase. In addition, the cost of developing and producing the new aircraft is so high that it is uncertain whether airlines will choose to invest in the new design.\n\nWhich of the following statements is best supported by the passage above?",
+    "opciones": [
+      "The new aircraft design will definitely solve the problem of aviation's carbon footprint.",
+      "Airlines will certainly invest in the new aircraft design.",
+      "The fuel economy afforded by the new design does not guarantee its eventual construction.",
+      "The number of air passengers will triple in the next 20 years.",
+      "Fuel consumption in the aviation sector will fall due to the new design."
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "El texto dice que el alto coste hace 'incierto' si las aerolíneas invertirán. La opción C refleja esta incertidumbre. Las demás contradicen el texto (el consumo total seguirá aumentando, y la inversión es incierta).",
+    "dificultad": 3,
+    "tipo_error": null
+  }
+]

@@ -18,6 +18,7 @@ class ImportEpsoContent extends Command
 
         $this->importarVerbales();
         $this->importarNumericas();
+        $this->importarAbstracto();
         $this->importarFlashcards();
 
         $this->info('✅ Importación completada correctamente');
@@ -71,6 +72,31 @@ class ImportEpsoContent extends Command
         }
 
         $this->line('✓ ' . count($preguntas) . ' preguntas numéricas importadas');
+    }
+
+    private function importarAbstracto()
+    {
+        $this->info('🔷 Importando preguntas abstracto...');
+
+        $json = file_get_contents(storage_path('app/epso/epso_preguntas_abstracto.json'));
+        $preguntas = json_decode($json, true);
+
+        foreach ($preguntas as $pregunta) {
+            TestRazonamiento::firstOrCreate(
+                ['pregunta' => $pregunta['pregunta']],
+                [
+                    'tipo' => 'abstracto',
+                    'opciones' => $pregunta['opciones'],
+                    'respuesta_correcta' => $pregunta['respuesta_correcta'],
+                    'tiempo_esperado_segundos' => $pregunta['tiempo_esperado_segundos'],
+                    'explicacion' => $pregunta['explicacion'],
+                    'dificultad' => $pregunta['dificultad'],
+                    'tipo_error' => $pregunta['tipo_error'] ?? null,
+                ]
+            );
+        }
+
+        $this->line('✓ ' . count($preguntas) . ' preguntas abstracto importadas');
     }
 
     private function importarFlashcards()

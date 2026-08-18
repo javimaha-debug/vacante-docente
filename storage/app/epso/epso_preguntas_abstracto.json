@@ -1,0 +1,98 @@
+[
+  {
+    "tipo": "abstracto",
+    "pregunta": "Serie de figuras: Círculo → Triángulo → Cuadrado → Círculo → Triángulo → ?\n¿Qué figura sigue en la secuencia?",
+    "opciones": [
+      "Círculo",
+      "Triángulo",
+      "Cuadrado",
+      "Pentágono",
+      "Rombo"
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 60,
+    "explicacion": "La secuencia se repite cada 3 figuras: Círculo, Triángulo, Cuadrado. Después de Triángulo (posición 5) viene Cuadrado (posición 6).",
+    "dificultad": 1,
+    "tipo_error": null
+  },
+  {
+    "tipo": "abstracto",
+    "pregunta": "Serie numérica con formas: Una figura tiene 3 lados, la siguiente 6, la siguiente 9. ¿Cuántos lados tiene la figura siguiente?",
+    "opciones": [
+      "10",
+      "11",
+      "12",
+      "13",
+      "15"
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 60,
+    "explicacion": "La secuencia es múltiplos de 3: 3, 6, 9, 12. La siguiente figura tiene 12 lados.",
+    "dificultad": 1,
+    "tipo_error": null
+  },
+  {
+    "tipo": "abstracto",
+    "pregunta": "En una matriz 3×3: la fila 1 tiene 1 punto, 2 puntos, 3 puntos; la fila 2 tiene 2 puntos, 4 puntos, 6 puntos; la fila 3 tiene 3 puntos, 6 puntos, ?. ¿Qué va en la casilla vacía?",
+    "opciones": [
+      "7",
+      "8",
+      "9",
+      "10",
+      "12"
+    ],
+    "respuesta_correcta": 2,
+    "tiempo_esperado_segundos": 75,
+    "explicacion": "Cada celda = fila × columna. Fila 3, columna 3 = 3 × 3 = 9. El patrón es multiplicativo.",
+    "dificultad": 2,
+    "tipo_error": null
+  },
+  {
+    "tipo": "abstracto",
+    "pregunta": "Regla de transformación: Cuadrado grande lleno → Cuadrado pequeño vacío. Aplicando la misma regla a un Círculo grande lleno, ¿qué obtenemos?",
+    "opciones": [
+      "Círculo grande lleno",
+      "Círculo grande vacío",
+      "Círculo pequeño lleno",
+      "Círculo pequeño vacío",
+      "Triángulo pequeño vacío"
+    ],
+    "respuesta_correcta": 3,
+    "tiempo_esperado_segundos": 60,
+    "explicacion": "La regla cambia: grande→pequeño y lleno→vacío. Aplicado al Círculo grande lleno: Círculo pequeño vacío.",
+    "dificultad": 2,
+    "tipo_error": null
+  },
+  {
+    "tipo": "abstracto",
+    "pregunta": "Secuencia de letras basada en posición alfabética: A, C, F, J, ?\n(A=1, C=3 +2; F=6 +3; J=10 +4; ? +5)",
+    "opciones": [
+      "N",
+      "O",
+      "P",
+      "Q",
+      "R"
+    ],
+    "respuesta_correcta": 1,
+    "tiempo_esperado_segundos": 75,
+    "explicacion": "Los saltos aumentan: +2, +3, +4, +5. J=10, 10+5=15, la letra 15 es O.",
+    "dificultad": 3,
+    "tipo_error": "Patrón de diferencias crecientes"
+  },
+  {
+    "tipo": "abstracto",
+    "pregunta": "Un reloj analógico muestra las 3:00. Si se gira la imagen 90° en sentido horario, ¿qué hora parece mostrar el reloj?",
+    "opciones": [
+      "12:00",
+      "6:00",
+      "9:00",
+      "3:00",
+      "6:15"
+    ],
+    "respuesta_correcta": 1,
+    "tiempo_esperado_segundos": 90,
+    "explicacion": "A las 3:00 la manilla horaria apunta a la derecha (este). Girar 90° en sentido horario hace que apunte hacia abajo (sur), que equivale a las 6:00.",
+    "dificultad": 3,
+    "tipo_error": "Rotación mental"
+  }
+]
