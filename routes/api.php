@@ -58,6 +58,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Middleware\UpdateLastActive;
 use App\Models\Colectivo;
 use App\Models\Plan;
+use App\Models\TestRazonamiento;
 use App\Models\UserIntegration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -368,6 +369,23 @@ Route::prefix('v1')->group(function () {
             Route::post('banco/{recurso}/valorar', [DocenteBancoController::class, 'valorar']);
 
             Route::post('adaptar-texto', [DocenteAdaptadorController::class, 'adaptarTexto'])->middleware('throttle:ai-generate');
+        });
+
+        // ── EPSO — Tests de razonamiento y flashcards UE ─────────────────────
+        Route::prefix('epso')->group(function () {
+            Route::get('test/{tipo}', function ($tipo) {
+                $test = TestRazonamiento::porTipo($tipo)->inRandomOrder()->first();
+                if (!$test) {
+                    return response()->json(['error' => 'No hay tests de este tipo'], 404);
+                }
+                return response()->json([
+                    'id'                      => $test->id,
+                    'tipo'                    => $test->tipo,
+                    'pregunta'                => $test->pregunta,
+                    'opciones'                => $test->opciones,
+                    'tiempo_esperado_segundos'=> $test->tiempo_esperado_segundos,
+                ]);
+            });
         });
 
         // GVA admin review — role-based authorization via EnsureSuperAdmin
