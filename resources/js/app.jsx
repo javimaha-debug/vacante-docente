@@ -63,6 +63,9 @@ import BancoPage from './components/docente/BancoPage';
 import MeritosPage from './components/docente/MeritosPage';
 import AsistentePage from './components/docente/AsistentePage';
 import AdminModoDocente from './components/superadmin/AdminModoDocente';
+import EPSODashboard from './components/epso/EPSODashboard';
+import TestRazonamiento from './components/epso/TestRazonamiento';
+import FlashcardsUE from './components/epso/FlashcardsUE';
 
 import { useUserList } from './hooks/useUserList';
 import { useVacancies } from './hooks/useVacancies';
@@ -593,6 +596,10 @@ function AppRoutes() {
                 <Route path="docente/banco" element={<BancoPage />} />
                 <Route path="docente/meritos" element={<MeritosPage />} />
                 <Route path="docente/asistente" element={<AsistentePage />} />
+                {/* Modo EPSO routes */}
+                <Route path="epso" element={<EPSODashboard />} />
+                <Route path="epso/test/:tipo" element={<TestRazonamiento />} />
+                <Route path="epso/flashcards" element={<FlashcardsUE />} />
             </Route>
 
             {/* Super-admin panel: separate dark SPA at /superadmin/*. */}

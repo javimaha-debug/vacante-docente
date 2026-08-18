@@ -36,12 +36,20 @@ const NAV_BY_MODE = {
         { to: '/dashboard/docente/meritos', label: 'Mis méritos', icon: '🏅' },
         { to: '/dashboard/docente/asistente', label: 'Asistente IA', icon: '✨' },
     ],
+    epso: [
+        { to: '/dashboard/epso', label: 'Inicio EPSO', icon: '🇪🇺', end: true },
+        { to: '/dashboard/epso/test/verbal', label: 'Verbal', icon: '📝' },
+        { to: '/dashboard/epso/test/numerico', label: 'Numérico', icon: '📊' },
+        { to: '/dashboard/epso/test/abstracto', label: 'Abstracto', icon: '🔷' },
+        { to: '/dashboard/epso/flashcards', label: 'Flashcards UE', icon: '🎴' },
+    ],
 };
 
 const MODOS = [
     { value: 'bolsa', label: 'Bolsa', icon: '📋' },
     { value: 'oposicion', label: 'Oposición', icon: '🎓' },
     { value: 'docente', label: 'Docente', icon: '👩‍🏫' },
+    { value: 'epso', label: 'EPSO', icon: '🇪🇺' },
 ];
 
 function NavItem({ item, onNavigate }) {

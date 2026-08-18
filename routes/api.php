@@ -57,7 +57,9 @@ use App\Http\Controllers\Api\VacancyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Middleware\UpdateLastActive;
 use App\Models\Colectivo;
+use App\Models\FlashcardUe;
 use App\Models\Plan;
+use App\Models\SesionTest;
 use App\Models\TestRazonamiento;
 use App\Models\UserIntegration;
 use Illuminate\Http\Request;
@@ -373,18 +375,63 @@ Route::prefix('v1')->group(function () {
 
         // ── EPSO — Tests de razonamiento y flashcards UE ─────────────────────
         Route::prefix('epso')->group(function () {
+            // Pregunta aleatoria por tipo
             Route::get('test/{tipo}', function ($tipo) {
                 $test = TestRazonamiento::porTipo($tipo)->inRandomOrder()->first();
                 if (!$test) {
                     return response()->json(['error' => 'No hay tests de este tipo'], 404);
                 }
                 return response()->json([
-                    'id'                      => $test->id,
-                    'tipo'                    => $test->tipo,
-                    'pregunta'                => $test->pregunta,
-                    'opciones'                => $test->opciones,
-                    'tiempo_esperado_segundos'=> $test->tiempo_esperado_segundos,
+                    'id'                       => $test->id,
+                    'tipo'                     => $test->tipo,
+                    'pregunta'                 => $test->pregunta,
+                    'opciones'                 => $test->opciones,
+                    'tiempo_esperado_segundos' => $test->tiempo_esperado_segundos,
+                    'respuesta_correcta'       => $test->respuesta_correcta,
                 ]);
+            });
+
+            // Flashcards pendientes de repaso (spaced repetition)
+            Route::get('flashcards/proximas', function (Request $request) {
+                $query = FlashcardUe::proximas()->limit(15);
+                if ($request->query('categoria')) {
+                    $query->porCategoria($request->query('categoria'));
+                }
+                return response()->json($query->get());
+            });
+
+            // Registrar repaso de flashcard y actualizar fecha próxima
+            Route::post('flashcards/{id}/repasar', function (Request $request, $id) {
+                $card = FlashcardUe::findOrFail($id);
+                $dificultad = $request->input('dificultad', 'normal');
+                $dias = match ($dificultad) {
+                    'facil'  => 5,
+                    'normal' => 2,
+                    'dificil'=> 1,
+                    default  => 2,
+                };
+                $card->repeticiones += 1;
+                $card->fecha_proxima_repaso = now()->addDays($dias);
+                $card->save();
+                return response()->json(['ok' => true, 'proxima' => $card->fecha_proxima_repaso]);
+            });
+
+            // Dashboard de progreso del usuario (Semana 4+)
+            Route::get('progreso', function (Request $request) {
+                $userId = $request->user()->id;
+                $tipos  = ['verbal', 'numerico', 'abstracto'];
+                $data   = [];
+                foreach ($tipos as $tipo) {
+                    $sesiones = SesionTest::where('user_id', $userId)
+                        ->where('tipo_razonamiento', $tipo)
+                        ->selectRaw('SUM(preguntas_respondidas) as total, SUM(correctas) as correctas')
+                        ->first();
+                    $data[$tipo] = [
+                        'total'    => (int) ($sesiones->total ?? 0),
+                        'correctas'=> (int) ($sesiones->correctas ?? 0),
+                    ];
+                }
+                return response()->json($data);
             });
         });
 

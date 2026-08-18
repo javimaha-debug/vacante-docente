@@ -107,7 +107,7 @@ class UserProfileController extends Controller
     public function updateModo(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'modo_activo' => ['required', 'in:bolsa,oposicion,docente'],
+            'modo_activo' => ['required', 'in:bolsa,oposicion,docente,epso'],
         ]);
 
         $user = $request->user();
@@ -123,7 +123,7 @@ class UserProfileController extends Controller
     public function onboarding(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'modo_activo' => ['required', 'in:bolsa,oposicion,docente'],
+            'modo_activo' => ['required', 'in:bolsa,oposicion,docente,epso'],
             'especialidades' => ['required', 'array', 'min:1'],
             'especialidades.*' => ['integer', 'exists:specialties,id'],
             'ccaa_id' => ['sometimes', 'nullable', 'integer', 'exists:ccaas,id'],
