@@ -1,0 +1,443 @@
+{
+  "diagnostic_test_b2": {
+    "name": "Cambridge B2 Diagnostic Test",
+    "duration_minutes": 40,
+    "total_questions": 30,
+    "sections": [
+      {
+        "section": 1,
+        "name": "READING COMPREHENSION",
+        "time_minutes": 10,
+        "questions": 6,
+        "texts": [
+          {
+            "id": "reading_001",
+            "title": "The Future of Remote Work",
+            "text": "The pandemic accelerated a trend that was already underway: the shift toward remote work. According to recent surveys, 70% of knowledge workers now expect to work from home at least part-time after the crisis ends. Companies are realizing that remote work isn't just about flexibility—it's about productivity. Employees who work from home report higher job satisfaction and fewer distractions. However, some challenges remain. Building company culture, onboarding new employees, and maintaining team cohesion can be more difficult when everyone is distributed. The future likely involves a hybrid model, where employees split their time between home and the office.",
+            "questions": [
+              {
+                "question_id": "r001_q1",
+                "text": "According to the text, what percentage of knowledge workers expect to work from home at least part-time?",
+                "options": [
+                  "A) 50%",
+                  "B) 70%",
+                  "C) 85%",
+                  "D) 90%"
+                ],
+                "correct_answer": "B",
+                "skill": "reading_detail"
+              },
+              {
+                "question_id": "r001_q2",
+                "text": "What does the text suggest about the challenges of remote work?",
+                "options": [
+                  "A) Employee productivity decreases",
+                  "B) It's impossible to build company culture",
+                  "C) Maintaining team cohesion can be difficult",
+                  "D) Home workers are unhappy"
+                ],
+                "correct_answer": "C",
+                "skill": "reading_inference"
+              }
+            ]
+          },
+          {
+            "id": "reading_002",
+            "title": "Sustainable Fashion",
+            "text": "The fashion industry is one of the most polluting industries in the world. Textile production uses enormous quantities of water, pesticides, and creates significant carbon emissions. Additionally, the culture of 'fast fashion'—where cheap clothes are produced rapidly and discarded quickly—has led to massive amounts of textile waste. However, a growing movement toward sustainable fashion is gaining momentum. Designers are experimenting with eco-friendly materials, recycling programs, and ethical manufacturing practices. Consumers are increasingly willing to pay more for clothing that is produced responsibly. Though the transition will be gradual, the industry is slowly moving toward a more sustainable future.",
+            "questions": [
+              {
+                "question_id": "r002_q1",
+                "text": "What is the main idea of this text?",
+                "options": [
+                  "A) Fashion is becoming more expensive",
+                  "B) The fashion industry has environmental problems, but sustainable practices are emerging",
+                  "C) Consumers don't care about environment",
+                  "D) All textiles should be recycled"
+                ],
+                "correct_answer": "B",
+                "skill": "reading_main_idea"
+              },
+              {
+                "question_id": "r002_q2",
+                "text": "According to the text, 'fast fashion' contributes to the problem by:",
+                "options": [
+                  "A) Being too sustainable",
+                  "B) Creating products that last too long",
+                  "C) Producing cheap clothes rapidly and discarding them quickly",
+                  "D) Paying workers too much"
+                ],
+                "correct_answer": "C",
+                "skill": "reading_detail"
+              }
+            ]
+          },
+          {
+            "id": "reading_003",
+            "title": "Artificial Intelligence in Medicine",
+            "text": "Artificial intelligence (AI) is revolutionizing medical diagnosis. Machine learning algorithms can now detect certain cancers more accurately than human radiologists. These systems are trained on thousands of medical images, allowing them to recognize patterns that might escape human observation. The benefits are clear: faster diagnosis, earlier treatment, and potentially better outcomes. However, AI in medicine also raises ethical concerns. Questions about data privacy, algorithm bias, and who bears responsibility for incorrect diagnoses remain unanswered. Additionally, many doctors worry about job displacement. Despite these challenges, most medical professionals agree that AI will play an increasingly important role in healthcare, complementing rather than replacing human expertise.",
+            "questions": [
+              {
+                "question_id": "r003_q1",
+                "text": "What advantage of AI in medical diagnosis is mentioned in the text?",
+                "options": [
+                  "A) It's cheaper than human doctors",
+                  "B) It can detect certain cancers more accurately",
+                  "C) It replaces radiologists",
+                  "D) It eliminates the need for medical training"
+                ],
+                "correct_answer": "B",
+                "skill": "reading_detail"
+              },
+              {
+                "question_id": "r003_q2",
+                "text": "The word 'complementing' in the last sentence means:",
+                "options": [
+                  "A) Criticizing",
+                  "B) Complaining about",
+                  "C) Working alongside and enhancing",
+                  "D) Competing with"
+                ],
+                "correct_answer": "C",
+                "skill": "reading_vocabulary"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "section": 2,
+        "name": "GRAMMAR & VOCABULARY",
+        "time_minutes": 8,
+        "questions": 12,
+        "items": [
+          {
+            "id": "gv_001",
+            "type": "phrasal_verb",
+            "text": "She finally ___ her new job after years of looking.",
+            "options": [
+              "A) took on",
+              "B) took over",
+              "C) took up",
+              "D) took out"
+            ],
+            "correct_answer": "A",
+            "explanation": "Take on = to accept responsibility/a job"
+          },
+          {
+            "id": "gv_002",
+            "type": "colocacion",
+            "text": "We need to ___ a decision about the project timeline.",
+            "options": [
+              "A) make",
+              "B) do",
+              "C) take",
+              "D) have"
+            ],
+            "correct_answer": "A",
+            "explanation": "Make a decision (colocación estándar)"
+          },
+          {
+            "id": "gv_003",
+            "type": "word_formation",
+            "text": "The ___ of the project depends on proper planning.",
+            "options": [
+              "A) succeed",
+              "B) success",
+              "C) successful",
+              "D) successfully"
+            ],
+            "correct_answer": "B",
+            "explanation": "Se necesita nombre después de artículo 'the'"
+          },
+          {
+            "id": "gv_004",
+            "type": "phrasal_verb",
+            "text": "Can you help me ___ this document? I'm looking for specific information.",
+            "options": [
+              "A) go through",
+              "B) go over",
+              "C) go with",
+              "D) go on"
+            ],
+            "correct_answer": "A",
+            "explanation": "Go through = revisar, examinar documento"
+          },
+          {
+            "id": "gv_005",
+            "type": "preposition",
+            "text": "She's keen ___ learning new programming languages.",
+            "options": [
+              "A) on",
+              "B) in",
+              "C) for",
+              "D) at"
+            ],
+            "correct_answer": "A",
+            "explanation": "Be keen on = estar interesado en"
+          },
+          {
+            "id": "gv_006",
+            "type": "vocabulary",
+            "text": "His ___ to the project was invaluable; we couldn't have succeeded without him.",
+            "options": [
+              "A) contribution",
+              "B) contribution",
+              "C) contributor",
+              "D) contribute"
+            ],
+            "correct_answer": "A",
+            "explanation": "Necesitamos nombre: contribution (aportación)"
+          },
+          {
+            "id": "gv_007",
+            "type": "phrasal_verb",
+            "text": "I ___ my old friend at the supermarket yesterday. It was nice to catch up.",
+            "options": [
+              "A) ran into",
+              "B) ran over",
+              "C) ran away",
+              "D) ran up"
+            ],
+            "correct_answer": "A",
+            "explanation": "Run into = encontrarse con alguien por casualidad"
+          },
+          {
+            "id": "gv_008",
+            "type": "tense",
+            "text": "By the time she arrives, we ___ dinner already.",
+            "options": [
+              "A) will finish",
+              "B) will have finished",
+              "C) finish",
+              "D) have finished"
+            ],
+            "correct_answer": "B",
+            "explanation": "Future perfect: acción completada antes de otro evento"
+          },
+          {
+            "id": "gv_009",
+            "type": "colocacion",
+            "text": "The company is working hard to ___ its market share.",
+            "options": [
+              "A) increase",
+              "B) arise",
+              "C) raise",
+              "D) rise"
+            ],
+            "correct_answer": "A",
+            "explanation": "Increase market share (colocación estándar en negocios)"
+          },
+          {
+            "id": "gv_010",
+            "type": "word_formation",
+            "text": "His ___ was obvious when he saw the results of his hard work.",
+            "options": [
+              "A) satisfy",
+              "B) satisfactory",
+              "C) satisfaction",
+              "D) satisfied"
+            ],
+            "correct_answer": "C",
+            "explanation": "Nombre abstracto después de posesivo 'His'"
+          },
+          {
+            "id": "gv_011",
+            "type": "phrasal_verb",
+            "text": "We need to ___ the numbers more carefully before presenting to management.",
+            "options": [
+              "A) look at",
+              "B) look over",
+              "C) look up",
+              "D) look for"
+            ],
+            "correct_answer": "B",
+            "explanation": "Look over = revisar/examinar cuidadosamente"
+          },
+          {
+            "id": "gv_012",
+            "type": "conditional",
+            "text": "If I ___ about the meeting earlier, I would have attended.",
+            "options": [
+              "A) know",
+              "B) knew",
+              "C) had known",
+              "D) have known"
+            ],
+            "correct_answer": "C",
+            "explanation": "Tercer condicional (pasado): if + had + past participle"
+          }
+        ]
+      },
+      {
+        "section": 3,
+        "name": "LISTENING MINI",
+        "time_minutes": 6,
+        "questions": 6,
+        "audio_prompts": [
+          {
+            "id": "listen_001",
+            "type": "short_dialogue",
+            "duration_seconds": 30,
+            "scenario": "At a travel agency",
+            "script": "Client: 'Hi, I'd like to book a flight to Barcelona for next month. Can you help?' Agent: 'Of course! Are you looking for direct flights or are you open to connections?' Client: 'I prefer direct if possible, but it depends on the price.' Agent: 'Let me check our options. When exactly are you planning to travel?'",
+            "question": "What does the client prefer?",
+            "options": [
+              "A) Connections",
+              "B) Direct flights",
+              "C) The cheapest option",
+              "D) Flying next week"
+            ],
+            "correct_answer": "B"
+          },
+          {
+            "id": "listen_002",
+            "type": "short_dialogue",
+            "duration_seconds": 30,
+            "scenario": "At a restaurant",
+            "script": "Customer: 'Excuse me, do you have any vegetarian options?' Waiter: 'Yes, we have a great pasta dish with fresh vegetables, and also a fantastic salad. Both are very popular with our customers.' Customer: 'Perfect! I'll have the pasta. Is it prepared fresh or can I choose how it's cooked?'",
+            "question": "What does the customer order?",
+            "options": [
+              "A) Salad",
+              "B) Pasta",
+              "C) Fish",
+              "D) Vegetables"
+            ],
+            "correct_answer": "B"
+          },
+          {
+            "id": "listen_003",
+            "type": "short_dialogue",
+            "duration_seconds": 30,
+            "scenario": "At a gym",
+            "script": "Trainer: 'Welcome! First time here?' New member: 'Yes, I'm looking to improve my fitness. Where should I start?' Trainer: 'We can do an assessment first. Tell me, do you have any previous experience with exercise?' New member: 'I used to run, but I haven't been active for a couple of years.'",
+            "question": "Why hasn't the new member been active?",
+            "options": [
+              "A) The gym was closed",
+              "B) They didn't have time",
+              "C) They were injured",
+              "D) They hadn't been exercising for a couple of years"
+            ],
+            "correct_answer": "D"
+          },
+          {
+            "id": "listen_004",
+            "type": "monologue",
+            "duration_seconds": 120,
+            "scenario": "Podcast about productivity",
+            "script": "One of the biggest myths about productivity is that you need to work constantly to achieve results. In fact, research shows the opposite. Our brains need rest to function optimally. Taking regular breaks actually increases productivity and creativity. Studies suggest that working in 90-minute focused blocks, followed by 15-20 minute breaks, is one of the most effective patterns. During these breaks, you should do something completely different—go for a walk, drink some water, or meditate. Many successful companies now recognize this and encourage their employees to take breaks throughout the day.",
+            "questions": [
+              {
+                "question": "According to the podcast, what does research show about productivity?",
+                "options": [
+                  "A) Constant work increases productivity",
+                  "B) Breaks actually increase productivity",
+                  "C) Meditation is unnecessary",
+                  "D) Long work sessions are best"
+                ],
+                "correct_answer": "B"
+              },
+              {
+                "question": "What is the recommended work pattern mentioned?",
+                "options": [
+                  "A) 60 minutes work, 10 minutes break",
+                  "B) 90 minutes work, 15-20 minutes break",
+                  "C) 120 minutes work, 30 minutes break",
+                  "D) 45 minutes work, 5 minutes break"
+                ],
+                "correct_answer": "B"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "section": 4,
+        "name": "WRITING SAMPLE",
+        "time_minutes": 10,
+        "prompt": {
+          "id": "writing_diagnostic",
+          "format": "informal_email",
+          "word_limit": "140-190 words",
+          "scenario": "Your friend is planning to travel to your country for the first time. They've asked for advice about what to do and where to go.",
+          "task": "Write an email giving advice and recommendations. Include: 1) A warm greeting, 2) At least 2-3 specific recommendations, 3) Practical advice (transport, accommodation, when to visit), 4) Your reasons why they should follow your advice, 5) A friendly closing.",
+          "evaluation_criteria": [
+            "Content: All points addressed?",
+            "Organisation: Clear structure (intro, body, closing)?",
+            "Vocabulary: Variety and appropriateness?",
+            "Grammar: Correct tenses and structures?",
+            "Register: Appropriate tone for email to friend?"
+          ]
+        }
+      },
+      {
+        "section": 5,
+        "name": "SPEAKING SELF-RECORDING",
+        "time_minutes": 5,
+        "prompts": [
+          {
+            "id": "speaking_001",
+            "duration_seconds": 120,
+            "instruction": "Record yourself answering: 'Tell me about a hobby or interest you have. Why do you enjoy it? How long have you been doing it?' Speak for about 2 minutes.",
+            "evaluation_criteria": [
+              "Fluency: Is your speech smooth or hesitant?",
+              "Grammar: Did you use past/present correctly?",
+              "Vocabulary: Did you use descriptive words?",
+              "Pronunciation: Were words clear?",
+              "Coherence: Did your ideas connect logically?"
+            ]
+          },
+          {
+            "id": "speaking_002",
+            "duration_seconds": 90,
+            "instruction": "Record yourself giving your opinion: 'Do you think it's better to live in a big city or a small town? Give at least 2 reasons for your view.' Speak for about 1.5 minutes.",
+            "evaluation_criteria": [
+              "Does your answer directly address the question?",
+              "Do you provide clear reasons/examples?",
+              "Is your opinion stated clearly?",
+              "Do you use linking words (however, for example, moreover)?",
+              "Is your pronunciation clear enough to understand easily?"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scoring_bands": [
+    {
+      "band": 1,
+      "name": "A1 → A2",
+      "score_range": "0-30",
+      "description": "Elementary level. Need significant work on all skills.",
+      "recommendation": "Start with A2 foundation course before B2 prep."
+    },
+    {
+      "band": 2,
+      "name": "A2 → B1",
+      "score_range": "31-50",
+      "description": "Pre-intermediate. Some basics solid but gaps evident.",
+      "recommendation": "Complete B1 foundation (8-12 weeks) then start B2 prep."
+    },
+    {
+      "band": 3,
+      "name": "B1 → B2",
+      "score_range": "51-70",
+      "description": "Intermediate. Getting close to B2. Main weaknesses: vocabulary, listening speed, writing organization.",
+      "recommendation": "B2 intensive program (12 weeks) focusing on identified weak areas."
+    },
+    {
+      "band": 4,
+      "name": "B2 Ready",
+      "score_range": "71-85",
+      "description": "Upper intermediate. Ready for B2 exam with light polish.",
+      "recommendation": "6-week mock exam practice + refinement program."
+    },
+    {
+      "band": 5,
+      "name": "B2 → C1",
+      "score_range": "86-100",
+      "description": "Strong B2 level, approaching C1.",
+      "recommendation": "Consider C1 (CAE) exam instead of B2. Or 4-week B2 polish for perfect score."
+    }
+  ]
+}

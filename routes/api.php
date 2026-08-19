@@ -47,6 +47,13 @@ use App\Http\Controllers\Api\SuperAdmin\SistemaController as AdminSistemaControl
 use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripcionesController;
 use App\Http\Controllers\Api\SuperAdmin\TemariosController as AdminTemariosController;
 use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
+use App\Http\Controllers\B2AchievementController;
+use App\Http\Controllers\B2DashboardController;
+use App\Http\Controllers\B2DiagnosticController;
+use App\Http\Controllers\B2ExerciseController;
+use App\Http\Controllers\B2ProgressController;
+use App\Http\Controllers\B2SpeakingController;
+use App\Http\Controllers\B2WritingController;
 use App\Http\Controllers\Api\TablonController;
 use App\Http\Controllers\Api\UserDocumentController;
 use App\Http\Controllers\Api\UserDocumentTagController;
@@ -484,6 +491,29 @@ Route::prefix('v1')->group(function () {
                 }
                 return response()->json($data);
             });
+        });
+
+        // ── B2 ENGLISH — On-demand learning + scoring progressivo ────────────
+        Route::prefix('b2')->group(function () {
+            Route::post('diagnostic/start', [B2DiagnosticController::class, 'start']);
+            Route::post('diagnostic/complete', [B2DiagnosticController::class, 'completeDiagnostic']);
+            Route::get('diagnostic/result', [B2DiagnosticController::class, 'getResult']);
+
+            Route::get('skills/overview', [B2ExerciseController::class, 'getSkillsOverview']);
+            Route::get('exercises/{skill}', [B2ExerciseController::class, 'getExerciseBySkill']);
+            Route::get('exercises/{skill}/next', [B2ExerciseController::class, 'getNextExercise']);
+
+            Route::post('exercise/{exerciseId}/submit', [B2ExerciseController::class, 'submitExercise']);
+            Route::post('writing/{exerciseId}/submit', [B2WritingController::class, 'submitWriting']);
+            Route::post('speaking/{exerciseId}/submit', [B2SpeakingController::class, 'submitSpeaking']);
+
+            Route::get('progress/{skill}', [B2ProgressController::class, 'getSkillProgress']);
+            Route::get('history', [B2ProgressController::class, 'getExerciseHistory']);
+            Route::get('achievements', [B2AchievementController::class, 'getUserAchievements']);
+            Route::get('streak', [B2ProgressController::class, 'getCurrentStreak']);
+
+            Route::get('dashboard', [B2DashboardController::class, 'getDashboardData']);
+            Route::get('weekly-stats', [B2DashboardController::class, 'getWeeklyStats']);
         });
 
         // GVA admin review — role-based authorization via EnsureSuperAdmin

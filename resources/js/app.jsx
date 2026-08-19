@@ -66,6 +66,9 @@ import AdminModoDocente from './components/superadmin/AdminModoDocente';
 import EPSODashboard from './components/epso/EPSODashboard';
 import TestRazonamiento from './components/epso/TestRazonamiento';
 import FlashcardsUE from './components/epso/FlashcardsUE';
+import B2Dashboard from './components/b2/B2Dashboard';
+import SkillFocusMode from './components/b2/SkillFocusMode';
+import ExerciseComponent from './components/b2/ExerciseComponent';
 
 import { useUserList } from './hooks/useUserList';
 import { useVacancies } from './hooks/useVacancies';
@@ -600,6 +603,9 @@ function AppRoutes() {
                 <Route path="epso" element={<EPSODashboard />} />
                 <Route path="epso/test/:tipo" element={<TestRazonamiento />} />
                 <Route path="epso/flashcards" element={<FlashcardsUE />} />
+                <Route path="b2" element={<B2Dashboard />} />
+                <Route path="b2/skill/:skill" element={<SkillFocusMode />} />
+                <Route path="b2/exercise/:skill" element={<ExerciseComponent />} />
             </Route>
 
             {/* Super-admin panel: separate dark SPA at /superadmin/*. */}

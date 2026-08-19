@@ -43,6 +43,14 @@ const NAV_BY_MODE = {
         { to: '/dashboard/epso/test/abstracto', label: 'Abstracto', icon: '🔷' },
         { to: '/dashboard/epso/flashcards', label: 'Flashcards UE', icon: '🎴' },
     ],
+    b2: [
+        { to: '/dashboard/b2', label: 'B2 Dashboard', icon: '🇬🇧', end: true },
+        { to: '/dashboard/b2/skill/reading', label: 'Reading', icon: '📖' },
+        { to: '/dashboard/b2/skill/grammar', label: 'Grammar', icon: '📝' },
+        { to: '/dashboard/b2/skill/writing', label: 'Writing', icon: '✍️' },
+        { to: '/dashboard/b2/skill/listening', label: 'Listening', icon: '🎧' },
+        { to: '/dashboard/b2/skill/speaking', label: 'Speaking', icon: '🗣️' },
+    ],
 };
 
 const MODOS = [
@@ -50,6 +58,7 @@ const MODOS = [
     { value: 'oposicion', label: 'Oposición', icon: '🎓' },
     { value: 'docente', label: 'Docente', icon: '👩‍🏫' },
     { value: 'epso', label: 'EPSO', icon: '🇪🇺' },
+    { value: 'b2', label: 'B2 English', icon: '🇬🇧' },
 ];
 
 function NavItem({ item, onNavigate }) {
