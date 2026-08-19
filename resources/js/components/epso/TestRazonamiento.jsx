@@ -1,12 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 
-const CONFIG = {
-    verbal:    { preguntas: 4, minutos: 7,  label: 'Verbal',    icon: '📝' },
-    numerico:  { preguntas: 3, minutos: 10, label: 'Numérico',  icon: '📊' },
-    abstracto: { preguntas: 2, minutos: 6,  label: 'Abstracto', icon: '🔷' },
+const CONFIG_TIPO = {
+    verbal:    { label: 'Verbal',                 icon: '📝' },
+    numerico:  { label: 'Numérico',               icon: '📊' },
+    abstracto: { label: 'Abstracto',              icon: '🔷' },
+    sjt:       { label: 'Juzgamiento Situacional', icon: '🧭' },
+};
+
+const CONFIG_NIVEL = {
+    ast: {
+        verbal:    { preguntas: 4, minutos: 7 },
+        numerico:  { preguntas: 3, minutos: 10 },
+        abstracto: { preguntas: 2, minutos: 6 },
+    },
+    ad: {
+        verbal:    { preguntas: 5, minutos: 10 },
+        numerico:  { preguntas: 4, minutos: 12 },
+        abstracto: { preguntas: 3, minutos: 8 },
+        sjt:       { preguntas: 4, minutos: 15 },
+    },
 };
 
 const LETRAS = ['A', 'B', 'C', 'D', 'E'];
@@ -106,8 +121,8 @@ function DetalleRespuesta({ r, i }) {
     );
 }
 
-function PantallaFinal({ resultados, tipo, guardado, onRepetir, onVolver }) {
-    const cfg = CONFIG[tipo] || CONFIG.verbal;
+function PantallaFinal({ resultados, tipo, nivel, guardado, onRepetir, onVolver }) {
+    const cfg = CONFIG_TIPO[tipo] || CONFIG_TIPO.verbal;
     const correctas  = resultados.filter(r => r.correcta).length;
     const total      = resultados.length;
     const tiempoTotal = resultados.reduce((a, r) => a + r.segundos, 0);
@@ -125,7 +140,7 @@ function PantallaFinal({ resultados, tipo, guardado, onRepetir, onVolver }) {
                     Test completado
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {cfg.label} · {total} preguntas · {fmt(tiempoTotal)}
+                    {cfg.label} · {nivel.toUpperCase()} · {total} preguntas · {fmt(tiempoTotal)}
                     {guardado && <span className="ml-2 text-green-600 dark:text-green-400">✓ Guardado</span>}
                 </p>
             </div>
@@ -176,8 +191,12 @@ function PantallaFinal({ resultados, tipo, guardado, onRepetir, onVolver }) {
 export default function TestRazonamiento() {
     const { tipo } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const nivel = searchParams.get('nivel') ?? 'ast';
     const qc = useQueryClient();
-    const cfg = CONFIG[tipo] || CONFIG.verbal;
+    const cfgTipo = CONFIG_TIPO[tipo] || CONFIG_TIPO.verbal;
+    const cfgNivel = (CONFIG_NIVEL[nivel] ?? CONFIG_NIVEL.ast)[tipo] ?? { preguntas: 3, minutos: 8 };
+    const cfg = { ...cfgTipo, ...cfgNivel };
 
     const [fase, setFase]             = useState('cargando');
     const [preguntas, setPreguntas]   = useState([]);
@@ -204,11 +223,14 @@ export default function TestRazonamiento() {
         setGuardado(false);
 
         try {
-            const datos = await Promise.all(
-                Array.from({ length: cfg.preguntas }, () =>
-                    api.get(`/epso/test/${tipo}`).then(r => r.data)
-                )
-            );
+            const vistos = new Set();
+            const datos = [];
+            for (let i = 0; i < cfg.preguntas; i++) {
+                const excludeParam = vistos.size > 0 ? `&exclude=${[...vistos].join(',')}` : '';
+                const r = await api.get(`/epso/test/${tipo}?nivel=${nivel}${excludeParam}`);
+                datos.push(r.data);
+                if (r.data?.id) vistos.add(r.data.id);
+            }
             setPreguntas(datos);
             fechaInicioRef.current = new Date().toISOString();
             setFase('en_curso');
@@ -216,7 +238,7 @@ export default function TestRazonamiento() {
         } catch {
             setFase('error');
         }
-    }, [tipo, cfg.preguntas, iniciar]);
+    }, [tipo, nivel, cfg.preguntas, iniciar]);
 
     useEffect(() => { cargarPreguntas(); }, [cargarPreguntas]);
 
@@ -303,6 +325,7 @@ export default function TestRazonamiento() {
             <PantallaFinal
                 resultados={resultados}
                 tipo={tipo}
+                nivel={nivel}
                 guardado={guardado}
                 onRepetir={cargarPreguntas}
                 onVolver={() => navigate('/dashboard/epso')}
@@ -342,6 +365,9 @@ export default function TestRazonamiento() {
                 <div className="flex items-center gap-2">
                     <span className="text-lg">{cfg.icon}</span>
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{cfg.label}</span>
+                    <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                        {nivel.toUpperCase()}
+                    </span>
                     {superado && (
                         <span className="ml-auto text-xs text-red-500 dark:text-red-400 font-medium">
                             Tiempo recomendado superado

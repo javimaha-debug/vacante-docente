@@ -10,6 +10,7 @@ class TestRazonamiento extends Model
 
     protected $fillable = [
         'tipo',
+        'nivel',
         'pregunta',
         'opciones',
         'respuesta_correcta',
@@ -28,17 +29,21 @@ class TestRazonamiento extends Model
         return $query->where('tipo', $tipo);
     }
 
+    public function scopePorNivel($query, $nivel)
+    {
+        return $query->whereIn('nivel', [$nivel, 'ambos']);
+    }
+
     public function scopePorDificultad($query, $dificultad)
     {
         return $query->where('dificultad', $dificultad);
     }
 
-    public static function aleatorio($tipo = null)
+    public static function aleatorio($tipo = null, $nivel = null)
     {
         $query = self::query();
-        if ($tipo) {
-            $query = $query->porTipo($tipo);
-        }
+        if ($tipo) $query->porTipo($tipo);
+        if ($nivel) $query->porNivel($nivel);
         return $query->inRandomOrder()->first();
     }
 }

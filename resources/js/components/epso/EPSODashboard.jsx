@@ -1,33 +1,53 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 
-const TIPOS = [
-    {
-        tipo: 'verbal',
-        label: 'Verbal',
-        icon: '📝',
-        preguntas: 4,
-        minutos: 7,
-        desc: 'Comprensión de textos y relaciones lógicas',
-    },
-    {
-        tipo: 'numerico',
-        label: 'Numérico',
-        icon: '📊',
-        preguntas: 3,
-        minutos: 10,
-        desc: 'Razonamiento con datos numéricos y tablas',
-    },
-    {
-        tipo: 'abstracto',
-        label: 'Abstracto',
-        icon: '🔷',
-        preguntas: 2,
-        minutos: 6,
-        desc: 'Patrones visuales y secuencias lógicas',
-    },
+const NIVELES = [
+    { value: 'ast', label: 'AST', desc: 'Asistente', color: 'brand' },
+    { value: 'ad', label: 'AD', desc: 'Administrador', color: 'indigo' },
 ];
+
+const TIPOS_BASE = [
+    { tipo: 'verbal',    label: 'Verbal',    icon: '📝', desc: 'Comprensión de textos y relaciones lógicas' },
+    { tipo: 'numerico',  label: 'Numérico',  icon: '📊', desc: 'Razonamiento con datos numéricos y tablas' },
+    { tipo: 'abstracto', label: 'Abstracto', icon: '🔷', desc: 'Patrones, secuencias y analogías lógicas' },
+];
+
+const CONFIG_NIVEL = {
+    ast: {
+        verbal:    { preguntas: 4, minutos: 7 },
+        numerico:  { preguntas: 3, minutos: 10 },
+        abstracto: { preguntas: 2, minutos: 6 },
+    },
+    ad: {
+        verbal:    { preguntas: 5, minutos: 10 },
+        numerico:  { preguntas: 4, minutos: 12 },
+        abstracto: { preguntas: 3, minutos: 8 },
+        sjt:       { preguntas: 4, minutos: 15 },
+    },
+};
+
+function NivelSelector({ nivel, onChange }) {
+    return (
+        <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit mx-auto">
+            {NIVELES.map((n) => (
+                <button
+                    key={n.value}
+                    onClick={() => onChange(n.value)}
+                    className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                        nivel === n.value
+                            ? 'bg-white dark:bg-gray-700 text-brand-700 dark:text-brand-400 shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                >
+                    <span className="block font-bold">{n.label}</span>
+                    <span className="block text-xs font-normal opacity-70">{n.desc}</span>
+                </button>
+            ))}
+        </div>
+    );
+}
 
 function ScoreBar({ pct }) {
     const color = pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500';
@@ -38,24 +58,29 @@ function ScoreBar({ pct }) {
     );
 }
 
-function TipoCard({ t, prog }) {
+function TipoCard({ tipo, label, icon, desc, preguntas, minutos, prog, nivel, isNew }) {
     const navigate = useNavigate();
     const pct = prog?.total ? Math.round((prog.correctas / prog.total) * 100) : null;
     const scoreMedio = prog?.score_medio ?? null;
 
     return (
         <button
-            onClick={() => navigate(`/dashboard/epso/test/${t.tipo}`)}
+            onClick={() => navigate(`/dashboard/epso/test/${tipo}?nivel=${nivel}`)}
             className="w-full flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 text-left hover:border-brand-400 hover:shadow-md transition-all group"
         >
-            <span className="text-3xl flex-shrink-0">{t.icon}</span>
+            <span className="text-3xl flex-shrink-0">{icon}</span>
             <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                        {t.label}
+                        {label}
                     </span>
+                    {isNew && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-full">
+                            Solo AD
+                        </span>
+                    )}
                     <span className="text-sm text-gray-400 dark:text-gray-500">
-                        {t.preguntas}Q · {t.minutos} min
+                        {preguntas}Q · {minutos} min
                     </span>
                     {scoreMedio != null && (
                         <span className={`ml-auto text-sm font-bold tabular-nums ${scoreMedio >= 80 ? 'text-green-600 dark:text-green-400' : scoreMedio >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -63,7 +88,7 @@ function TipoCard({ t, prog }) {
                         </span>
                     )}
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t.desc}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{desc}</p>
                 {pct != null && <ScoreBar pct={pct} />}
                 {prog?.num_sesiones > 0 && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
@@ -80,9 +105,7 @@ function TipoCard({ t, prog }) {
 
 function Historial({ sesiones }) {
     if (!sesiones?.length) return null;
-
-    const TIPO_ICON = { verbal: '📝', numerico: '📊', abstracto: '🔷' };
-
+    const TIPO_ICON = { verbal: '📝', numerico: '📊', abstracto: '🔷', sjt: '🧭' };
     return (
         <div>
             <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
@@ -110,11 +133,19 @@ function Historial({ sesiones }) {
     );
 }
 
+const NIVEL_KEY = 'epso_nivel_preferido';
+
 export default function EPSODashboard() {
     const navigate = useNavigate();
+    const [nivel, setNivel] = useState(() => localStorage.getItem(NIVEL_KEY) ?? 'ast');
+
+    const handleNivel = (v) => {
+        setNivel(v);
+        localStorage.setItem(NIVEL_KEY, v);
+    };
 
     const { data: progreso } = useQuery({
-        queryKey: ['epso-progreso'],
+        queryKey: ['epso-progreso', nivel],
         queryFn: async () => {
             try { return (await api.get('/epso/progreso')).data; } catch { return null; }
         },
@@ -130,19 +161,29 @@ export default function EPSODashboard() {
     });
 
     const totalSesiones = historial?.length ?? 0;
+    const config = CONFIG_NIVEL[nivel] ?? CONFIG_NIVEL.ast;
+    const tipos = nivel === 'ad'
+        ? [...TIPOS_BASE, { tipo: 'sjt', label: 'Juzgamiento Situacional', icon: '🧭', desc: 'Escenarios profesionales de la función pública europea' }]
+        : TIPOS_BASE;
 
     return (
         <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
             {/* Header */}
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-3">
                 <div className="text-4xl">🇪🇺</div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    Preparación EPSO AST3
+                    Preparación EPSO
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400 text-sm">
                     {totalSesiones > 0
                         ? `${totalSesiones} sesión${totalSesiones !== 1 ? 'es' : ''} completada${totalSesiones !== 1 ? 's' : ''}`
                         : 'Tests de razonamiento · Flashcards UE'}
+                </p>
+                <NivelSelector nivel={nivel} onChange={handleNivel} />
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                    {nivel === 'ast'
+                        ? 'Nivel AST: Asistente — preguntas de dificultad media'
+                        : 'Nivel AD: Administrador — preguntas avanzadas + Test de Juzgamiento Situacional'}
                 </p>
             </div>
 
@@ -151,8 +192,16 @@ export default function EPSODashboard() {
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Tests de razonamiento
                 </h2>
-                {TIPOS.map(t => (
-                    <TipoCard key={t.tipo} t={t} prog={progreso?.[t.tipo]} />
+                {tipos.map(t => (
+                    <TipoCard
+                        key={t.tipo}
+                        {...t}
+                        preguntas={config[t.tipo]?.preguntas ?? 3}
+                        minutos={config[t.tipo]?.minutos ?? 8}
+                        prog={progreso?.[t.tipo]}
+                        nivel={nivel}
+                        isNew={t.tipo === 'sjt'}
+                    />
                 ))}
             </div>
 

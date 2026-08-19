@@ -387,14 +387,22 @@ Route::prefix('v1')->group(function () {
         // ── EPSO — Tests de razonamiento y flashcards UE ─────────────────────
         Route::prefix('epso')->group(function () {
             // Pregunta aleatoria por tipo (incluye datos para análisis post-test)
-            Route::get('test/{tipo}', function ($tipo) {
-                $test = TestRazonamiento::porTipo($tipo)->inRandomOrder()->first();
+            Route::get('test/{tipo}', function (Request $request, $tipo) {
+                $nivel = $request->query('nivel'); // 'ast', 'ad', or null (all)
+                $exclude = $request->query('exclude') ? array_map('intval', explode(',', $request->query('exclude'))) : [];
+
+                $query = TestRazonamiento::porTipo($tipo);
+                if ($nivel) $query->porNivel($nivel);
+                if ($exclude) $query->whereNotIn('id', $exclude);
+
+                $test = $query->inRandomOrder()->first();
                 if (!$test) {
                     return response()->json(['error' => 'No hay tests de este tipo'], 404);
                 }
                 return response()->json([
                     'id'                       => $test->id,
                     'tipo'                     => $test->tipo,
+                    'nivel'                    => $test->nivel,
                     'pregunta'                 => $test->pregunta,
                     'opciones'                 => $test->opciones,
                     'tiempo_esperado_segundos' => $test->tiempo_esperado_segundos,
@@ -408,7 +416,7 @@ Route::prefix('v1')->group(function () {
             // Guardar sesión completa al finalizar un test
             Route::post('sesion/guardar', function (Request $request) {
                 $data = $request->validate([
-                    'tipo_razonamiento'        => ['required', 'in:verbal,numerico,abstracto'],
+                    'tipo_razonamiento'        => ['required', 'in:verbal,numerico,abstracto,sjt'],
                     'fecha_inicio'             => ['required', 'date'],
                     'fecha_fin'                => ['required', 'date'],
                     'preguntas_respondidas'    => ['required', 'integer', 'min:1'],
