@@ -1,6 +1,11 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
+import ChatModal from './ChatModal';
+import MockExamStart from './MockExamStart';
+import ErrorAnalysis from './ErrorAnalysis';
+import ResourcesModal from './ResourcesModal';
 
 const SKILLS = [
     { key: 'reading',   label: 'Reading',   icon: '📖', desc: 'Comprensión lectora · Textos B2' },
@@ -72,6 +77,10 @@ function StreakBadge({ streak }) {
 
 export default function B2Dashboard() {
     const navigate = useNavigate();
+    const [showChat, setShowChat] = useState(false);
+    const [showExam, setShowExam] = useState(false);
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [showResources, setShowResources] = useState(false);
 
     const { data: dashboard, isLoading } = useQuery({
         queryKey: ['b2-dashboard'],
@@ -143,7 +152,7 @@ export default function B2Dashboard() {
                 ))}
             </div>
 
-            {/* Quick actions */}
+            {/* Quick actions — skills */}
             <div className="grid grid-cols-3 gap-3">
                 {[
                     { label: 'Grammar', icon: '📝', skill: 'grammar' },
@@ -160,6 +169,56 @@ export default function B2Dashboard() {
                     </button>
                 ))}
             </div>
+
+            {/* Expansion features */}
+            <div className="grid grid-cols-2 gap-3">
+                <button
+                    onClick={() => setShowExam(true)}
+                    className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 hover:border-brand-400 hover:shadow-md transition-all text-left"
+                >
+                    <span className="text-2xl">🎓</span>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Mock Exam</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Cambridge B2</p>
+                    </div>
+                </button>
+                <button
+                    onClick={() => setShowChat(true)}
+                    className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 hover:border-brand-400 hover:shadow-md transition-all text-left"
+                >
+                    <span className="text-2xl">🤖</span>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Chat IA</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Tutor B2</p>
+                    </div>
+                </button>
+                <button
+                    onClick={() => setShowAnalytics(true)}
+                    className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 hover:border-brand-400 hover:shadow-md transition-all text-left"
+                >
+                    <span className="text-2xl">📊</span>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Analytics</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Errores y progreso</p>
+                    </div>
+                </button>
+                <button
+                    onClick={() => setShowResources(true)}
+                    className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 hover:border-brand-400 hover:shadow-md transition-all text-left"
+                >
+                    <span className="text-2xl">🌍</span>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Recursos</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Videos · Podcasts</p>
+                    </div>
+                </button>
+            </div>
+
+            {/* Modals */}
+            {showChat && <ChatModal onClose={() => setShowChat(false)} contextType="general" />}
+            {showExam && <MockExamStart onClose={() => setShowExam(false)} />}
+            {showAnalytics && <ErrorAnalysis onClose={() => setShowAnalytics(false)} />}
+            {showResources && <ResourcesModal onClose={() => setShowResources(false)} />}
         </div>
     );
 }

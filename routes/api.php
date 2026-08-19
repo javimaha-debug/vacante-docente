@@ -48,10 +48,14 @@ use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripc
 use App\Http\Controllers\Api\SuperAdmin\TemariosController as AdminTemariosController;
 use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
 use App\Http\Controllers\B2AchievementController;
+use App\Http\Controllers\B2AnalyticsController;
+use App\Http\Controllers\B2ChatController;
 use App\Http\Controllers\B2DashboardController;
 use App\Http\Controllers\B2DiagnosticController;
 use App\Http\Controllers\B2ExerciseController;
+use App\Http\Controllers\B2MockExamController;
 use App\Http\Controllers\B2ProgressController;
+use App\Http\Controllers\B2ResourcesController;
 use App\Http\Controllers\B2SpeakingController;
 use App\Http\Controllers\B2WritingController;
 use App\Http\Controllers\Api\TablonController;
@@ -514,6 +518,27 @@ Route::prefix('v1')->group(function () {
 
             Route::get('dashboard', [B2DashboardController::class, 'getDashboardData']);
             Route::get('weekly-stats', [B2DashboardController::class, 'getWeeklyStats']);
+
+            // Chat IA
+            Route::post('chat', [B2ChatController::class, 'sendMessage']);
+            Route::get('chat/history', [B2ChatController::class, 'getChatHistory']);
+
+            // Mock Exam
+            Route::post('mock-exam/start', [B2MockExamController::class, 'start']);
+            Route::post('mock-exam/{examId}/section', [B2MockExamController::class, 'submitSection']);
+            Route::post('mock-exam/{examId}/complete', [B2MockExamController::class, 'complete']);
+            Route::get('mock-exam/history', [B2MockExamController::class, 'getHistory']);
+
+            // Analytics
+            Route::get('analytics/errors', [B2AnalyticsController::class, 'getErrorAnalysis']);
+            Route::get('analytics/trend', [B2AnalyticsController::class, 'getScoreTrend']);
+            Route::get('analytics/accuracy', [B2AnalyticsController::class, 'getAccuracyByCategory']);
+            Route::get('analytics/habits', [B2AnalyticsController::class, 'getStudyHabits']);
+
+            // Resources
+            Route::get('resources', [B2ResourcesController::class, 'index']);
+            Route::get('resources/favorites', [B2ResourcesController::class, 'getFavorites']);
+            Route::post('resources/{resourceId}/favorite', [B2ResourcesController::class, 'toggleFavorite']);
         });
 
         // GVA admin review — role-based authorization via EnsureSuperAdmin

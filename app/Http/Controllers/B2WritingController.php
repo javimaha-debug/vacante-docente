@@ -8,6 +8,8 @@ use App\Models\B2UserProfile;
 use App\Models\B2UserStreak;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class B2WritingController extends Controller
 {
@@ -24,23 +26,31 @@ class B2WritingController extends Controller
         $userText = $request->input('text');
         $wordCount = str_word_count($userText);
 
-        // Heuristic evaluation: check word count and basic criteria
-        $score = $this->evaluateWriting($userText, $wordCount, $exercise);
+        // Try AI evaluation first, fallback to heuristic
+        $aiResult = $this->evaluateWithAI($userText, $exercise);
+        $score = $aiResult['score'] ?? $this->evaluateWriting($userText, $wordCount, $exercise);
+        $feedback = $aiResult['feedback'] ?? $this->buildFeedback($score, $wordCount);
+        $explanation = $aiResult['explanation'] ?? null;
+        $aiDone = isset($aiResult['score']);
+
         $isCorrect = $score['total'] >= 60;
         $pointsEarned = $isCorrect ? round(($score['total'] / 100) * $exercise->points_reward) : 0;
 
-        $feedback = $this->buildFeedback($score, $wordCount);
-
-        B2ExerciseHistory::create([
+        $historyRecord = B2ExerciseHistory::create([
             'user_id' => $user->id,
             'exercise_id' => $exercise->id,
             'skill' => 'writing',
             'user_answer' => $userText,
             'is_correct' => $isCorrect,
             'points_earned' => $pointsEarned,
-            'feedback_ia' => json_encode($feedback),
+            'feedback_ia' => is_array($feedback) ? json_encode($feedback) : $feedback,
             'time_spent_seconds' => $request->input('time_spent_seconds'),
             'score_percentage' => $score['total'],
+            'ai_evaluation_scores' => $score,
+            'ai_evaluation_feedback' => is_array($feedback) ? implode("\n", $feedback) : $feedback,
+            'ai_evaluation_done' => $aiDone,
+            'ai_evaluation_model' => $aiResult['model'] ?? null,
+            'ai_tokens_used' => $aiResult['tokens_used'] ?? null,
         ]);
 
         $this->updateProgress($user->id, 'writing', $isCorrect, $pointsEarned);
@@ -50,8 +60,65 @@ class B2WritingController extends Controller
             'is_correct' => $isCorrect,
             'points_earned' => $pointsEarned,
             'feedback' => $feedback,
+            'explanation' => $explanation,
             'word_count' => $wordCount,
+            'ai_evaluated' => $aiDone,
+            'history_id' => $historyRecord->id,
         ]);
+    }
+
+    private function evaluateWithAI(string $text, B2Exercise $exercise): array
+    {
+        $apiKey = config('services.anthropic.key') ?? env('ANTHROPIC_API_KEY');
+        if (!$apiKey) return [];
+
+        $prompt = "You are a Cambridge B2 First examiner. Evaluate this writing task.\n\n"
+            . "TASK: {$exercise->user_input_instruction}\n\n"
+            . "STUDENT RESPONSE:\n{$text}\n\n"
+            . "Evaluate on a 0-100 scale for each criterion and return JSON:\n"
+            . '{"content": <0-100>, "organisation": <0-100>, "language": <0-100>, "communicative": <0-100>, '
+            . '"total": <0-100>, "feedback": {"strength": "...", "improvement": "...", "tip": "..."}, '
+            . '"explanation": "2-3 sentence overall assessment in Spanish"}';
+
+        try {
+            $response = Http::withHeaders([
+                'x-api-key' => $apiKey,
+                'anthropic-version' => '2023-06-01',
+                'content-type' => 'application/json',
+            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
+                'model' => 'claude-haiku-4-5-20251001',
+                'max_tokens' => 600,
+                'messages' => [['role' => 'user', 'content' => $prompt]],
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $content = $data['content'][0]['text'] ?? '';
+                // Extract JSON from response
+                if (preg_match('/\{.*\}/s', $content, $matches)) {
+                    $parsed = json_decode($matches[0], true);
+                    if ($parsed && isset($parsed['total'])) {
+                        return [
+                            'score' => [
+                                'content' => (int)($parsed['content'] ?? 60),
+                                'organisation' => (int)($parsed['organisation'] ?? 60),
+                                'language' => (int)($parsed['language'] ?? 60),
+                                'communicative' => (int)($parsed['communicative'] ?? 60),
+                                'total' => (int)$parsed['total'],
+                            ],
+                            'feedback' => $parsed['feedback'] ?? [],
+                            'explanation' => $parsed['explanation'] ?? null,
+                            'model' => 'claude-haiku-4-5-20251001',
+                            'tokens_used' => ($data['usage']['input_tokens'] ?? 0) + ($data['usage']['output_tokens'] ?? 0),
+                        ];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('AI writing evaluation failed', ['error' => $e->getMessage()]);
+        }
+
+        return [];
     }
 
     private function evaluateWriting(string $text, int $wordCount, B2Exercise $exercise): array

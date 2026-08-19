@@ -8,6 +8,8 @@ use App\Models\B2UserProfile;
 use App\Models\B2UserStreak;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class B2SpeakingController extends Controller
 {
@@ -26,11 +28,17 @@ class B2SpeakingController extends Controller
         $duration = $request->input('duration_seconds', 60);
         $wordCount = str_word_count($transcription);
 
-        $score = $this->evaluateSpeaking($transcription, $wordCount, $duration);
+        // Try AI evaluation, fallback to heuristic
+        $aiResult = $this->evaluateWithAI($transcription, $exercise);
+        $score = $aiResult['score'] ?? $this->evaluateSpeaking($transcription, $wordCount, $duration);
+        $feedback = $aiResult['feedback'] ?? $this->buildFeedback($score, $wordCount, $duration);
+        $explanation = $aiResult['explanation'] ?? null;
+        $aiDone = isset($aiResult['score']);
+
         $isCorrect = $score['total'] >= 60;
         $pointsEarned = $isCorrect ? round(($score['total'] / 100) * $exercise->points_reward) : 0;
 
-        B2ExerciseHistory::create([
+        $historyRecord = B2ExerciseHistory::create([
             'user_id' => $user->id,
             'exercise_id' => $exercise->id,
             'skill' => 'speaking',
@@ -39,6 +47,11 @@ class B2SpeakingController extends Controller
             'points_earned' => $pointsEarned,
             'time_spent_seconds' => $request->input('time_spent_seconds'),
             'score_percentage' => $score['total'],
+            'ai_evaluation_scores' => $score,
+            'ai_evaluation_feedback' => is_array($feedback) ? implode("\n", $feedback) : (string)$feedback,
+            'ai_evaluation_done' => $aiDone,
+            'ai_evaluation_model' => $aiResult['model'] ?? null,
+            'ai_tokens_used' => $aiResult['tokens_used'] ?? null,
         ]);
 
         $this->updateProgress($user->id, 'speaking', $isCorrect, $pointsEarned);
@@ -48,8 +61,64 @@ class B2SpeakingController extends Controller
             'is_correct' => $isCorrect,
             'points_earned' => $pointsEarned,
             'word_count' => $wordCount,
-            'feedback' => $this->buildFeedback($score, $wordCount, $duration),
+            'feedback' => $feedback,
+            'explanation' => $explanation,
+            'ai_evaluated' => $aiDone,
+            'history_id' => $historyRecord->id,
         ]);
+    }
+
+    private function evaluateWithAI(string $text, B2Exercise $exercise): array
+    {
+        $apiKey = config('services.anthropic.key') ?? env('ANTHROPIC_API_KEY');
+        if (!$apiKey) return [];
+
+        $prompt = "You are a Cambridge B2 speaking examiner. The student has provided a written transcript of their spoken response.\n\n"
+            . "SPEAKING TASK: {$exercise->user_input_instruction}\n\n"
+            . "STUDENT TRANSCRIPT:\n{$text}\n\n"
+            . "Evaluate on a 0-100 scale and return JSON:\n"
+            . '{"fluency": <0-100>, "vocabulary": <0-100>, "grammar": <0-100>, "interaction": <0-100>, '
+            . '"total": <0-100>, "feedback": {"strength": "...", "improvement": "...", "tip": "..."}, '
+            . '"explanation": "2-3 sentence overall assessment in Spanish"}';
+
+        try {
+            $response = Http::withHeaders([
+                'x-api-key' => $apiKey,
+                'anthropic-version' => '2023-06-01',
+                'content-type' => 'application/json',
+            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
+                'model' => 'claude-haiku-4-5-20251001',
+                'max_tokens' => 500,
+                'messages' => [['role' => 'user', 'content' => $prompt]],
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $content = $data['content'][0]['text'] ?? '';
+                if (preg_match('/\{.*\}/s', $content, $matches)) {
+                    $parsed = json_decode($matches[0], true);
+                    if ($parsed && isset($parsed['total'])) {
+                        return [
+                            'score' => [
+                                'fluency' => (int)($parsed['fluency'] ?? 60),
+                                'vocabulary' => (int)($parsed['vocabulary'] ?? 60),
+                                'grammar' => (int)($parsed['grammar'] ?? 60),
+                                'interaction' => (int)($parsed['interaction'] ?? 60),
+                                'total' => (int)$parsed['total'],
+                            ],
+                            'feedback' => $parsed['feedback'] ?? [],
+                            'explanation' => $parsed['explanation'] ?? null,
+                            'model' => 'claude-haiku-4-5-20251001',
+                            'tokens_used' => ($data['usage']['input_tokens'] ?? 0) + ($data['usage']['output_tokens'] ?? 0),
+                        ];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('AI speaking evaluation failed', ['error' => $e->getMessage()]);
+        }
+
+        return [];
     }
 
     private function evaluateSpeaking(string $text, int $wordCount, int $duration): array

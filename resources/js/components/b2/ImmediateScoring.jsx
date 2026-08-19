@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import ChatModal from './ChatModal';
+
 function ScoreBar({ score, label }) {
     const color = score >= 75 ? 'bg-green-500' : score >= 60 ? 'bg-amber-500' : 'bg-red-500';
     return (
@@ -14,6 +17,7 @@ function ScoreBar({ score, label }) {
 }
 
 export default function ImmediateScoring({ result, skill, exercise, onNext, onBack }) {
+    const [showChat, setShowChat] = useState(false);
     const isCorrect = result?.is_correct;
     const points = result?.points_earned ?? 0;
     const newScore = result?.new_score ?? result?.score?.total;
@@ -84,6 +88,16 @@ export default function ImmediateScoring({ result, skill, exercise, onNext, onBa
                 </div>
             )}
 
+            {/* Chat IA button — only when wrong */}
+            {!isCorrect && (
+                <button
+                    onClick={() => setShowChat(true)}
+                    className="w-full py-2.5 border border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-300 font-semibold rounded-xl hover:bg-brand-50 dark:hover:bg-brand-950 transition-colors text-sm flex items-center justify-center gap-2"
+                >
+                    🤖 ¿Por qué fallé? Pregunta al tutor
+                </button>
+            )}
+
             {/* Actions */}
             <div className="flex gap-3">
                 <button
@@ -99,6 +113,14 @@ export default function ImmediateScoring({ result, skill, exercise, onNext, onBa
                     Siguiente ejercicio →
                 </button>
             </div>
+
+            {showChat && (
+                <ChatModal
+                    onClose={() => setShowChat(false)}
+                    exerciseHistoryId={result?.history_id ?? null}
+                    contextType="why_failed"
+                />
+            )}
         </div>
     );
 }
