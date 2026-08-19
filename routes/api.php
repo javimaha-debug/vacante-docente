@@ -47,6 +47,17 @@ use App\Http\Controllers\Api\SuperAdmin\SistemaController as AdminSistemaControl
 use App\Http\Controllers\Api\SuperAdmin\SuscripcionesController as AdminSuscripcionesController;
 use App\Http\Controllers\Api\SuperAdmin\TemariosController as AdminTemariosController;
 use App\Http\Controllers\Api\SuperAdmin\UsuariosController as AdminUsuariosController;
+use App\Http\Controllers\B2AchievementController;
+use App\Http\Controllers\B2AnalyticsController;
+use App\Http\Controllers\B2ChatController;
+use App\Http\Controllers\B2DashboardController;
+use App\Http\Controllers\B2DiagnosticController;
+use App\Http\Controllers\B2ExerciseController;
+use App\Http\Controllers\B2MockExamController;
+use App\Http\Controllers\B2ProgressController;
+use App\Http\Controllers\B2ResourcesController;
+use App\Http\Controllers\B2SpeakingController;
+use App\Http\Controllers\B2WritingController;
 use App\Http\Controllers\Api\TablonController;
 use App\Http\Controllers\Api\UserDocumentController;
 use App\Http\Controllers\Api\UserDocumentTagController;
@@ -57,7 +68,10 @@ use App\Http\Controllers\Api\VacancyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Middleware\UpdateLastActive;
 use App\Models\Colectivo;
+use App\Models\FlashcardUe;
 use App\Models\Plan;
+use App\Models\SesionTest;
+use App\Models\TestRazonamiento;
 use App\Models\UserIntegration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -368,6 +382,163 @@ Route::prefix('v1')->group(function () {
             Route::post('banco/{recurso}/valorar', [DocenteBancoController::class, 'valorar']);
 
             Route::post('adaptar-texto', [DocenteAdaptadorController::class, 'adaptarTexto'])->middleware('throttle:ai-generate');
+        });
+
+        // ── EPSO — Tests de razonamiento y flashcards UE ─────────────────────
+        Route::prefix('epso')->group(function () {
+            // Pregunta aleatoria por tipo (incluye datos para análisis post-test)
+            Route::get('test/{tipo}', function ($tipo) {
+                $test = TestRazonamiento::porTipo($tipo)->inRandomOrder()->first();
+                if (!$test) {
+                    return response()->json(['error' => 'No hay tests de este tipo'], 404);
+                }
+                return response()->json([
+                    'id'                       => $test->id,
+                    'tipo'                     => $test->tipo,
+                    'pregunta'                 => $test->pregunta,
+                    'opciones'                 => $test->opciones,
+                    'tiempo_esperado_segundos' => $test->tiempo_esperado_segundos,
+                    'respuesta_correcta'       => $test->respuesta_correcta,
+                    'explicacion'              => $test->explicacion,
+                    'tipo_error'               => $test->tipo_error,
+                    'dificultad'               => $test->dificultad,
+                ]);
+            });
+
+            // Guardar sesión completa al finalizar un test
+            Route::post('sesion/guardar', function (Request $request) {
+                $data = $request->validate([
+                    'tipo_razonamiento'        => ['required', 'in:verbal,numerico,abstracto'],
+                    'fecha_inicio'             => ['required', 'date'],
+                    'fecha_fin'                => ['required', 'date'],
+                    'preguntas_respondidas'    => ['required', 'integer', 'min:1'],
+                    'correctas'                => ['required', 'integer', 'min:0'],
+                    'tiempo_total_segundos'    => ['required', 'integer', 'min:0'],
+                    'errores'                  => ['nullable', 'array'],
+                    'errores.*.pregunta_id'    => ['required', 'integer'],
+                    'errores.*.tipo_error'     => ['nullable', 'string', 'max:100'],
+                ]);
+
+                $total  = $data['preguntas_respondidas'];
+                $correctas = $data['correctas'];
+                $sesion = SesionTest::create([
+                    'user_id'                  => $request->user()->id,
+                    'tipo_razonamiento'        => $data['tipo_razonamiento'],
+                    'fecha_inicio'             => $data['fecha_inicio'],
+                    'fecha_fin'                => $data['fecha_fin'],
+                    'preguntas_respondidas'    => $total,
+                    'correctas'                => $correctas,
+                    'tiempo_total_segundos'    => $data['tiempo_total_segundos'],
+                    'tiempo_promedio_pregunta' => $total > 0 ? $data['tiempo_total_segundos'] / $total : 0,
+                    'errores'                  => $data['errores'] ?? [],
+                    'score'                    => $total > 0 ? round(($correctas / $total) * 100, 1) : 0,
+                ]);
+
+                return response()->json(['id' => $sesion->id, 'score' => $sesion->score], 201);
+            });
+
+            // Historial de sesiones del usuario (últimas 20)
+            Route::get('historial', function (Request $request) {
+                $sesiones = SesionTest::where('user_id', $request->user()->id)
+                    ->orderByDesc('fecha_fin')
+                    ->limit(20)
+                    ->get(['id', 'tipo_razonamiento', 'fecha_fin', 'preguntas_respondidas', 'correctas', 'score', 'tiempo_total_segundos']);
+                return response()->json($sesiones);
+            });
+
+            // Flashcards pendientes de repaso (spaced repetition)
+            Route::get('flashcards/proximas', function (Request $request) {
+                $query = FlashcardUe::proximas()->limit(15);
+                if ($request->query('categoria')) {
+                    $query->porCategoria($request->query('categoria'));
+                }
+                return response()->json($query->get());
+            });
+
+            // Registrar repaso de flashcard y actualizar fecha próxima
+            Route::post('flashcards/{id}/repasar', function (Request $request, $id) {
+                $card = FlashcardUe::findOrFail($id);
+                $dificultad = $request->input('dificultad', 'normal');
+                $dias = match ($dificultad) {
+                    'facil'  => 5,
+                    'normal' => 2,
+                    'dificil'=> 1,
+                    default  => 2,
+                };
+                $card->repeticiones += 1;
+                $card->fecha_proxima_repaso = now()->addDays($dias);
+                $card->save();
+                return response()->json(['ok' => true, 'proxima' => $card->fecha_proxima_repaso]);
+            });
+
+            // Dashboard de progreso del usuario
+            Route::get('progreso', function (Request $request) {
+                $userId = $request->user()->id;
+                $tipos  = ['verbal', 'numerico', 'abstracto'];
+                $data   = [];
+                foreach ($tipos as $tipo) {
+                    $sesion = SesionTest::where('user_id', $userId)
+                        ->where('tipo_razonamiento', $tipo)
+                        ->selectRaw('SUM(preguntas_respondidas) as total, SUM(correctas) as correctas, AVG(score) as score_medio, COUNT(*) as num_sesiones')
+                        ->first();
+                    $ultima = SesionTest::where('user_id', $userId)
+                        ->where('tipo_razonamiento', $tipo)
+                        ->orderByDesc('fecha_fin')
+                        ->value('score');
+                    $data[$tipo] = [
+                        'total'       => (int) ($sesion->total ?? 0),
+                        'correctas'   => (int) ($sesion->correctas ?? 0),
+                        'score_medio' => $sesion->score_medio ? round($sesion->score_medio, 1) : null,
+                        'num_sesiones'=> (int) ($sesion->num_sesiones ?? 0),
+                        'ultima_score'=> $ultima,
+                    ];
+                }
+                return response()->json($data);
+            });
+        });
+
+        // ── B2 ENGLISH — On-demand learning + scoring progressivo ────────────
+        Route::prefix('b2')->group(function () {
+            Route::post('diagnostic/start', [B2DiagnosticController::class, 'start']);
+            Route::post('diagnostic/complete', [B2DiagnosticController::class, 'completeDiagnostic']);
+            Route::get('diagnostic/result', [B2DiagnosticController::class, 'getResult']);
+
+            Route::get('skills/overview', [B2ExerciseController::class, 'getSkillsOverview']);
+            Route::get('exercises/{skill}', [B2ExerciseController::class, 'getExerciseBySkill']);
+            Route::get('exercises/{skill}/next', [B2ExerciseController::class, 'getNextExercise']);
+
+            Route::post('exercise/{exerciseId}/submit', [B2ExerciseController::class, 'submitExercise']);
+            Route::post('writing/{exerciseId}/submit', [B2WritingController::class, 'submitWriting']);
+            Route::post('speaking/{exerciseId}/submit', [B2SpeakingController::class, 'submitSpeaking']);
+
+            Route::get('progress/{skill}', [B2ProgressController::class, 'getSkillProgress']);
+            Route::get('history', [B2ProgressController::class, 'getExerciseHistory']);
+            Route::get('achievements', [B2AchievementController::class, 'getUserAchievements']);
+            Route::get('streak', [B2ProgressController::class, 'getCurrentStreak']);
+
+            Route::get('dashboard', [B2DashboardController::class, 'getDashboardData']);
+            Route::get('weekly-stats', [B2DashboardController::class, 'getWeeklyStats']);
+
+            // Chat IA
+            Route::post('chat', [B2ChatController::class, 'sendMessage']);
+            Route::get('chat/history', [B2ChatController::class, 'getChatHistory']);
+
+            // Mock Exam
+            Route::post('mock-exam/start', [B2MockExamController::class, 'start']);
+            Route::post('mock-exam/{examId}/section', [B2MockExamController::class, 'submitSection']);
+            Route::post('mock-exam/{examId}/complete', [B2MockExamController::class, 'complete']);
+            Route::get('mock-exam/history', [B2MockExamController::class, 'getHistory']);
+
+            // Analytics
+            Route::get('analytics/errors', [B2AnalyticsController::class, 'getErrorAnalysis']);
+            Route::get('analytics/trend', [B2AnalyticsController::class, 'getScoreTrend']);
+            Route::get('analytics/accuracy', [B2AnalyticsController::class, 'getAccuracyByCategory']);
+            Route::get('analytics/habits', [B2AnalyticsController::class, 'getStudyHabits']);
+
+            // Resources
+            Route::get('resources', [B2ResourcesController::class, 'index']);
+            Route::get('resources/favorites', [B2ResourcesController::class, 'getFavorites']);
+            Route::post('resources/{resourceId}/favorite', [B2ResourcesController::class, 'toggleFavorite']);
         });
 
         // GVA admin review — role-based authorization via EnsureSuperAdmin

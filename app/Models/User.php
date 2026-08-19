@@ -251,4 +251,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(PushSubscription::class);
     }
+
+    public function b2ResourceFavorites(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\B2Resource::class, 'b2_user_resources_favorites', 'user_id', 'resource_id')
+            ->withTimestamps();
+    }
 }
